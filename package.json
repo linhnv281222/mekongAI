@@ -1,0 +1,24 @@
+{
+  "name": "mekong-ai",
+  "version": "2.0.0",
+  "description": "Mekong AI — AI đọc bản vẽ & Agent báo giá",
+  "main": "server.js",
+  "type": "module",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node --watch server.js",
+    "agent": "node email_agent_v2.js",
+    "oauth": "node gmail_oauth_setup.js"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.39.0",
+    "dotenv": "^16.4.5",
+    "express": "^4.18.2",
+    "form-data": "^4.0.0",
+    "googleapis": "^144.0.0",
+    "multer": "^1.4.5-lts.1",
+    "node-fetch": "^3.3.2",
+    "pdf-lib": "^1.17.1",
+    "pg": "^8.11.3"
+  }
+}
