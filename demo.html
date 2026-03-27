@@ -1,0 +1,737 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Mekong AI — Báo Giá</title>
+<script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+<script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+<script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --white:#fff;--surf:#F5F7FA;--bg:#EEF2F7;
+  --border:#DDE3EA;--border2:#C8D2DC;
+  --text:#1A2332;--text2:#4A5568;--text3:#8A96A3;
+  --accent:#0891B2;--accent2:#0E7490;
+  --accent-bg:#EFF9FC;--accent-bd:#BAE6FD;
+  --green:#059669;--green-bg:#ECFDF5;--green-bd:#6EE7B7;
+  --amber:#D97706;--amber-bg:#FFFBEB;
+  --red:#DC2626;
+  --mono:'JetBrains Mono',monospace;
+  --sans:'Be Vietnam Pro',sans-serif;
+}
+html,body,#root{height:100%;overflow:hidden}
+body{font-family:var(--sans);background:var(--bg);color:var(--text);font-size:13px}
+
+/* ── TOPBAR ── */
+.topbar{height:46px;background:var(--accent2);color:#fff;display:flex;align-items:center;padding:0 18px;gap:12px;flex-shrink:0;box-shadow:0 2px 8px rgba(0,0,0,.15)}
+.t-logo{font-weight:700;font-size:15px;letter-spacing:.01em}
+.t-sep{opacity:.3;font-size:18px}
+.t-sub{font-size:12px;opacity:.8}
+.t-right{margin-left:auto;display:flex;align-items:center;gap:10px;font-size:11.5px;opacity:.85}
+.ai-pill{background:rgba(255,255,255,.22);padding:2px 10px;border-radius:20px;font-size:10.5px;font-weight:700;letter-spacing:.05em}
+.live{width:7px;height:7px;border-radius:50%;background:#4ADE80;animation:blink 2s infinite;flex-shrink:0}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:.35}}
+
+/* ── LAYOUT ── */
+.layout{display:grid;grid-template-columns:285px 1fr;height:calc(100vh - 46px);overflow:hidden}
+
+/* ── MAILBOX ── */
+.mailbox{display:flex;flex-direction:column;background:var(--white);border-right:1px solid var(--border)}
+.mb-hd{padding:11px 14px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-shrink:0}
+.mb-title{font-size:12px;font-weight:700;color:var(--text);display:flex;align-items:center;gap:7px}
+.mb-cnt{background:var(--accent);color:#fff;font-size:9px;padding:1px 6px;border-radius:10px;font-weight:700}
+.mb-search{padding:8px 12px;border-bottom:1px solid var(--border);flex-shrink:0}
+.mb-search input{width:100%;border:1px solid var(--border2);border-radius:6px;padding:5px 10px;font-size:12px;font-family:var(--sans);outline:none;background:var(--surf)}
+.mb-search input:focus{border-color:var(--accent)}
+.mb-list{flex:1;overflow-y:auto}
+.mb-list::-webkit-scrollbar{width:3px}
+.mb-list::-webkit-scrollbar-thumb{background:var(--border2);border-radius:3px}
+
+/* EMAIL ITEM */
+.ei{padding:10px 14px;border-bottom:1px solid var(--border);cursor:pointer;transition:background .1s}
+.ei:hover{background:var(--surf)}
+.ei.active{background:var(--accent-bg);border-left:3px solid var(--accent)}
+.ei-r1{display:flex;align-items:center;gap:5px;margin-bottom:2px}
+.ei-dot{width:7px;height:7px;border-radius:50%;background:var(--accent);flex-shrink:0}
+.ei-from{font-size:12px;font-weight:600;color:var(--text);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ei-time{font-size:10px;color:var(--text3);flex-shrink:0}
+.ei-subj{font-size:11.5px;color:var(--text2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;margin-bottom:2px}
+.ei-prev{font-size:11px;color:var(--text3);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;margin-bottom:5px}
+.ei-tags{display:flex;gap:4px;flex-wrap:wrap}
+.tag{font-size:9.5px;padding:1px 7px;border-radius:10px;font-weight:600}
+.t-rfq{background:var(--green-bg);color:var(--green);border:1px solid var(--green-bd)}
+.t-ja{background:#FEF9C3;color:#92400E;border:1px solid #FDE68A}
+.t-vi{background:#DCFCE7;color:#065F46;border:1px solid #BBF7D0}
+.t-en{background:#DBEAFE;color:#1E40AF;border:1px solid #BFDBFE}
+.t-pdf{background:var(--accent-bg);color:var(--accent);border:1px solid var(--accent-bd)}
+.t-skip{background:var(--surf);color:var(--text3);border:1px solid var(--border2)}
+.t-agent{background:#F3E8FF;color:#7C3AED;border:1px solid #DDD6FE}
+
+/* ── RIGHT PANEL ── */
+.right{display:flex;flex-direction:column;overflow:hidden}
+.empty{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;color:var(--text3)}
+.empty-icon{font-size:48px;opacity:.2}
+
+/* EMAIL HEADER */
+.e-header{padding:14px 20px;background:var(--white);border-bottom:1px solid var(--border);flex-shrink:0}
+.e-subj{font-size:15px;font-weight:700;margin-bottom:7px;line-height:1.4}
+.e-meta{display:flex;gap:14px;font-size:12px;color:var(--text2);margin-bottom:8px;flex-wrap:wrap}
+.e-meta b{color:var(--text)}
+.e-tags{display:flex;gap:6px}
+
+/* TABS */
+.tabs{display:flex;background:var(--white);border-bottom:2px solid var(--border);flex-shrink:0}
+.tab{padding:10px 22px;font-size:12.5px;font-weight:500;color:var(--text3);cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-2px;transition:all .15s;white-space:nowrap}
+.tab:hover{color:var(--accent)}
+.tab.active{color:var(--accent2);border-bottom-color:var(--accent2);font-weight:700}
+
+/* TAB CONTENT */
+.tcontent{flex:1;overflow-y:auto;background:var(--bg)}
+.tcontent::-webkit-scrollbar{width:4px}
+.tcontent::-webkit-scrollbar-thumb{background:var(--border2);border-radius:4px}
+
+/* ── TAB 1: THÔNG TIN CHUNG ── */
+.form-wrap{padding:20px;display:flex;flex-direction:column;gap:0}
+.section{background:var(--white);border:1px solid var(--border);border-radius:8px;overflow:hidden;margin-bottom:14px}
+.sec-hd{padding:10px 16px;background:var(--surf);border-bottom:1px solid var(--border);display:flex;align-items:center;gap:8px}
+.sec-num{width:20px;height:20px;background:var(--accent);color:#fff;border-radius:50%;font-size:9.5px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.sec-title{font-size:13px;font-weight:600;color:var(--text)}
+.sec-body{padding:16px}
+.ai-mark{font-size:9px;padding:1px 5px;background:var(--accent-bg);border:1px solid var(--accent-bd);color:var(--accent);border-radius:3px;font-weight:700;margin-left:4px}
+
+/* FORM FIELDS */
+.fg{display:grid;gap:12px}
+.fg-2{grid-template-columns:1fr 1fr}
+.fg-3{grid-template-columns:1fr 1fr 1fr}
+.f{display:flex;flex-direction:column;gap:4px}
+.f label{font-size:11.5px;color:var(--text2);font-weight:500}
+.f input,.f select{border:1px solid var(--border2);border-radius:5px;padding:7px 10px;font-size:12.5px;font-family:var(--sans);color:var(--text);background:var(--white);outline:none;transition:border-color .12s;width:100%}
+.f input:focus,.f select:focus{border-color:var(--accent);box-shadow:0 0 0 2px rgba(8,145,178,.1)}
+.f input.ai,.f select.ai{background:var(--accent-bg);border-color:var(--accent-bd);color:var(--accent2);font-weight:500}
+.f input.ro{background:var(--surf);color:var(--text3);cursor:default}
+.radio-row{display:flex;gap:16px;padding:6px 0}
+.radio-row label{display:flex;align-items:center;gap:6px;font-size:12.5px;cursor:pointer}
+.radio-row input{accent-color:var(--accent);width:15px;height:15px}
+
+/* ── TAB 2: BẢN VẼ ── */
+.bv-wrap{display:flex;flex-direction:column;height:100%}
+.bv-toolbar{padding:10px 16px;background:var(--white);border-bottom:1px solid var(--border);display:flex;align-items:center;gap:8px;flex-shrink:0}
+.btn{padding:6px 14px;border-radius:5px;font-size:12px;font-weight:500;cursor:pointer;border:1px solid;font-family:var(--sans);transition:all .12s;display:inline-flex;align-items:center;gap:5px;white-space:nowrap}
+.btn-p{background:var(--accent);border-color:var(--accent);color:#fff}
+.btn-p:hover{background:var(--accent2)}
+.btn-o{background:var(--white);border-color:var(--border2);color:var(--text2)}
+.btn-o:hover{border-color:var(--accent);color:var(--accent)}
+.btn-g{background:var(--green);border-color:var(--green);color:#fff}
+
+.sum-bar{padding:7px 16px;background:var(--surf);border-bottom:1px solid var(--border);display:flex;gap:16px;font-size:12px;color:var(--text2);flex-shrink:0}
+.sum-bar b{color:var(--text);font-weight:600}
+
+.bv-table-wrap{flex:1;overflow:auto}
+.bv-table-wrap::-webkit-scrollbar{height:4px;width:4px}
+.bv-table-wrap::-webkit-scrollbar-thumb{background:var(--border2);border-radius:4px}
+
+.bv-tbl{width:100%;border-collapse:collapse;font-size:12.5px}
+.bv-tbl th{background:var(--white);color:var(--text2);font-size:11px;font-weight:700;padding:8px 12px;border-bottom:2px solid var(--border);border-right:1px solid var(--border);text-align:left;white-space:nowrap;position:sticky;top:0;z-index:1}
+.bv-tbl th:last-child{border-right:none}
+.bv-tbl td{padding:8px 12px;border-bottom:1px solid var(--border);border-right:1px solid var(--border);vertical-align:middle}
+.bv-tbl td:last-child{border-right:none}
+.bv-tbl tr:hover td{background:#F8FAFC}
+.bv-tbl tr:last-child td{border-bottom:none}
+
+.cell-code{font-family:var(--mono);font-size:12px;font-weight:600;color:var(--accent2)}
+.cell-nvl{font-family:var(--mono);font-size:12px;font-weight:700;color:var(--green)}
+.cell-sl{font-weight:600;color:var(--text);text-align:right}
+.cell-num{color:var(--text3);font-family:var(--mono);font-size:11px;text-align:center}
+
+.prog-wrap{padding:8px 16px;background:var(--accent-bg);border-bottom:1px solid var(--accent-bd);flex-shrink:0}
+.prog-txt{font-size:12px;color:var(--accent2);margin-bottom:5px;display:flex;align-items:center;gap:7px}
+.prog-bar{height:4px;background:rgba(8,145,178,.2);border-radius:2px;overflow:hidden}
+.prog-fill{height:100%;background:var(--accent);border-radius:2px;transition:width .3s}
+.spin{animation:spinA .7s linear infinite;display:inline-block}
+@keyframes spinA{to{transform:rotate(360deg)}}
+
+.upload-zone{margin:20px;border:2px dashed var(--border2);border-radius:8px;padding:40px 20px;text-align:center;cursor:pointer;transition:all .2s;position:relative;background:var(--white)}
+.upload-zone:hover{border-color:var(--accent);background:var(--accent-bg)}
+.upload-zone input{position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;height:100%}
+
+/* FOOTER */
+.footer{padding:10px 20px;background:var(--white);border-top:1px solid var(--border);display:flex;gap:8px;flex-shrink:0;align-items:center}
+
+/* KHÔNG PHẢI RFQ */
+.not-rfq{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;color:var(--text3);padding:32px}
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script type="text/babel">
+const { useState, useRef, useEffect } = React;
+const API = "";
+
+// Không dùng mock — chỉ lấy data từ backend
+
+// ── HELPERS ───────────────────────────────────────────────────────────────────
+function toDateInput(val) {
+  if (!val) return "";
+  // Nếu là timestamp số
+  if (typeof val === "number") {
+    return new Date(val).toISOString().slice(0, 10);
+  }
+  // Nếu là ISO string
+  if (typeof val === "string") {
+    // Format YYYY-MM-DD đã đúng
+    if (/^\d{4}-\d{2}-\d{2}$/.test(val)) return val;
+    // Format dd/MM/YYYY
+    if (/^\d{2}\/\d{2}\/\d{4}$/.test(val)) {
+      const [d,m,y] = val.split("/");
+      return `${y}-${m}-${d}`;
+    }
+    // ISO string có giờ
+    try { return new Date(val).toISOString().slice(0, 10); } catch(e) {}
+  }
+  return "";
+}
+function LTag({lg}){
+  const m={ja:["🇯🇵 Nhật","t-ja"],vi:["🇻🇳 Việt","t-vi"],en:["🇺🇸 Anh","t-en"]};
+  const[l,c]=m[lg]||["?","t-skip"];
+  return <span className={`tag ${c}`}>{l}</span>;
+}
+
+// ── MAILBOX ───────────────────────────────────────────────────────────────────
+function Mailbox({emails, active, onSelect}){
+  const[q,setQ]=useState("");
+  const list=emails.filter(e=>!q||e.from.toLowerCase().includes(q.toLowerCase())||e.subject.toLowerCase().includes(q.toLowerCase()));
+  return(
+    <div className="mailbox">
+      <div className="mb-hd">
+        <div className="mb-title">
+          📧 Hộp thư
+          <span className="mb-cnt">{emails.filter(e=>e.unread).length}</span>
+        </div>
+        <div className="live"/>
+      </div>
+      <div className="mb-search">
+        <input placeholder="Tìm email..." value={q} onChange={e=>setQ(e.target.value)}/>
+      </div>
+      <div className="mb-list">
+        {list.map(e=>(
+          <div key={e.id} className={`ei${active?.id===e.id?" active":""}`} onClick={()=>onSelect(e)}>
+            <div className="ei-r1">
+              {e.unread&&<div className="ei-dot"/>}
+              <div className="ei-from">{e.from}</div>
+              <div className="ei-time">{e.time}</div>
+            </div>
+            <div className="ei-subj">{e.subject}</div>
+            <div className="ei-prev">{e.preview}</div>
+            <div className="ei-tags">
+              {e.classify==="rfq"
+                ?<span className="tag t-rfq">✓ RFQ</span>
+                :<span className="tag t-skip">{e.classify}</span>}
+              <LTag lg={e.ngon_ngu}/>
+              {e.attachments?.length>0&&<span className="tag t-pdf">📎 {e.attachments.length}</span>}
+              {e._agent&&<span className="tag t-agent">⚡ Agent</span>}
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// ── TAB 1: THÔNG TIN CHUNG ───────────────────────────────────────────────────
+function Tab1({email}){
+  const F=({label,val,ai,type="text",opts,ro})=>(
+    <div className="f">
+      <label>{label}{ai&&<span className="ai-mark">⚡AI</span>}</label>
+      {type==="select"?(
+        <select className={ai&&val?"ai":""} defaultValue={val||""}>
+          {opts?.map(o=><option key={o.v||o}>{o.l||o}</option>)}
+        </select>
+      ):(
+        <input type={type}
+          className={`${ai&&val?"ai":""}${ro?" ro":""}`}
+          defaultValue={val||""} readOnly={ro}/>
+      )}
+    </div>
+  );
+
+  return(
+    <div className="form-wrap">
+
+      {/* Thông tin chung */}
+      <div className="section">
+        <div className="sec-hd">
+          <span className="sec-num">1</span>
+          <span className="sec-title">Thông tin chung</span>
+        </div>
+        <div className="sec-body">
+          <div className="fg fg-2" style={{marginBottom:12}}>
+            <F label="Thời điểm nhận yêu cầu" val={toDateInput(email.date||email.created_at)} ai type="date"/>
+            <F label="Thời hạn báo giá" val={toDateInput(email.han_giao)} ai type="date"/>
+          </div>
+          <div className="fg fg-3" style={{marginBottom:12}}>
+            <div className="f">
+              <label>Vận chuyển <span className="ai-mark">⚡AI</span></label>
+              <div className="radio-row">
+                <label><input type="radio" name={`vc_${email.id}`} defaultChecked={!!email.hinh_thuc_giao}/> Có</label>
+                <label><input type="radio" name={`vc_${email.id}`} defaultChecked={!email.hinh_thuc_giao}/> Không</label>
+              </div>
+            </div>
+            <div className="f">
+              <label>Xử lý bề mặt <span className="ai-mark">⚡AI</span></label>
+              <div className="radio-row">
+                <label><input type="radio" name={`xlbm_${email.id}`} defaultChecked={email.xu_ly_be_mat===true}/> Có</label>
+                <label><input type="radio" name={`xlbm_${email.id}`} defaultChecked={email.xu_ly_be_mat!==true}/> Không</label>
+              </div>
+            </div>
+            <div className="f">
+              <label>VAT</label>
+              <div className="radio-row">
+                <label><input type="radio" name={`vat_${email.id}`} defaultChecked/> Có</label>
+                <label><input type="radio" name={`vat_${email.id}`}/> Không</label>
+              </div>
+            </div>
+          </div>
+          {email.hinh_thuc_giao&&(
+            <F label="Phương thức vận chuyển" val={email.hinh_thuc_giao} ai
+              type="select" opts={["","FedEx International Economy","FedEx International Priority","DHL","Tự vận chuyển"]}/>
+          )}
+        </div>
+      </div>
+
+      {/* Khách hàng */}
+      <div className="section">
+        <div className="sec-hd">
+          <span className="sec-num">2</span>
+          <span className="sec-title">Thông tin khách hàng</span>
+        </div>
+        <div className="sec-body">
+          <div className="fg fg-2">
+            <F label="Tên khách hàng" val={email.ten_kh||email.from} ai/>
+            <F label="Email" val={email.email} ai/>
+          </div>
+        </div>
+      </div>
+
+      {/* Ghi chú */}
+      <div className="section">
+        <div className="sec-hd">
+          <span className="sec-num">3</span>
+          <span className="sec-title">Ghi chú</span>
+        </div>
+        <div className="sec-body">
+          <div className="fg fg-2">
+            <div className="f">
+              <label>Nội dung email <span className="ai-mark">⚡AI</span></label>
+              <textarea className="ai" rows={4} defaultValue={email.body}
+                style={{border:"1px solid var(--accent-bd)",borderRadius:5,padding:"7px 10px",
+                  fontSize:12,fontFamily:"var(--sans)",background:"var(--accent-bg)",
+                  color:"var(--accent2)",outline:"none",resize:"none",lineHeight:1.6}}/>
+            </div>
+            <div className="f">
+              <label>Ghi chú nội bộ</label>
+              <textarea rows={4} defaultValue={`Tạo tự động bởi Mekong AI — ${new Date().toLocaleString("vi-VN")}`}
+                style={{border:"1px solid var(--border2)",borderRadius:5,padding:"7px 10px",
+                  fontSize:12,fontFamily:"var(--sans)",outline:"none",resize:"none",lineHeight:1.6}}/>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  );
+}
+
+// ── TAB 2: DANH SÁCH BẢN VẼ ──────────────────────────────────────────────────
+function Tab2({email, lines, setLines, processing, progress, onUpload}){
+  const fileRef=useRef(null);
+  const totalSL=lines.reduce((s,l)=>s+(parseInt(l.so_luong)||0),0);
+  const totalKL=lines.reduce((s,l)=>s+(parseFloat(l.kl_phoi)||0),0).toFixed(3);
+
+  return(
+    <div className="bv-wrap">
+      {/* Toolbar */}
+      <div className="bv-toolbar">
+        <button className="btn btn-o" onClick={()=>fileRef.current?.click()}>
+          📎 Upload PDF bản vẽ
+        </button>
+        <input ref={fileRef} type="file" accept=".pdf" style={{display:"none"}}
+          onChange={e=>{onUpload(e.target.files[0]);e.target.value="";}}/>
+        {processing&&(
+          <span style={{fontSize:12,color:"var(--accent)"}}>
+            <span className="spin">⟳</span> AI đang đọc bản vẽ...
+          </span>
+        )}
+        <div style={{marginLeft:"auto",fontSize:12,color:"var(--text3)"}}>
+          Mỗi trang PDF = 1 bản vẽ · AI tự động đọc
+        </div>
+      </div>
+
+      {/* Progress */}
+      {processing&&(
+        <div className="prog-wrap">
+          <div className="prog-txt">
+            <span className="spin">⟳</span>
+            Đang phân tích... {progress}%
+          </div>
+          <div className="prog-bar">
+            <div className="prog-fill" style={{width:progress+"%"}}/>
+          </div>
+        </div>
+      )}
+
+      {/* Summary */}
+      {lines.length>0&&(
+        <div className="sum-bar">
+          <span><b>{lines.length}</b> bản vẽ</span>
+          <span>·</span>
+          <span>Tổng SL: <b>{totalSL.toLocaleString()} PCS</b></span>
+          <span>·</span>
+          <span>Tổng KL phôi: <b style={{color:"var(--accent)"}}>{totalKL} KG</b></span>
+        </div>
+      )}
+
+      {/* Table hoặc upload zone */}
+      <div className="bv-table-wrap">
+        {lines.length===0?(
+          <div className="upload-zone" onClick={()=>fileRef.current?.click()}>
+            <input ref={fileRef} type="file" accept=".pdf" style={{display:"none"}}
+              onChange={e=>{onUpload(e.target.files[0]);e.target.value="";}}/>
+            <div style={{fontSize:36,marginBottom:10}}>📄</div>
+            <div style={{fontSize:14,fontWeight:600,color:"var(--text2)",marginBottom:5}}>
+              Upload PDF bản vẽ
+            </div>
+            <div style={{fontSize:12,color:"var(--text3)",marginBottom:4}}>
+              Hỗ trợ PDF nhiều trang — mỗi trang = 1 bản vẽ
+            </div>
+            <div style={{fontSize:12,color:"var(--accent)",fontWeight:500}}>
+              ⚡ AI tự động đọc và bóc tách dữ liệu
+            </div>
+          </div>
+        ):(
+          <table className="bv-tbl">
+            <thead>
+              <tr>
+                <th style={{width:42,textAlign:"center"}}>STT</th>
+                <th style={{width:42,textAlign:"center"}}>Trang</th>
+                <th>Mã bản vẽ</th>
+                <th style={{width:90,textAlign:"right"}}>Số lượng</th>
+                <th style={{width:130}}>Mã NVL</th>
+                <th style={{width:90,textAlign:"right"}}>KL phôi (kg)</th>
+                <th style={{width:50}}></th>
+              </tr>
+            </thead>
+            <tbody>
+              {lines.map((l,i)=>(
+                <tr key={l.id||i}>
+                  <td className="cell-num">{i+1}</td>
+                  <td className="cell-num">{l.page||"—"}</td>
+                  <td>
+                    <input
+                      style={{border:"none",background:"transparent",fontFamily:"var(--mono)",
+                        fontSize:12.5,fontWeight:700,color:"var(--accent2)",
+                        outline:"none",width:"100%",padding:"2px 0"}}
+                      defaultValue={l.ma_ban_ve}
+                      onChange={e=>setLines(prev=>prev.map((x,j)=>j===i?{...x,ma_ban_ve:e.target.value}:x))}
+                    />
+                  </td>
+                  <td style={{textAlign:"right"}}>
+                    <input
+                      type="number"
+                      style={{border:"none",background:"transparent",fontSize:12.5,fontWeight:600,
+                        color:"var(--text)",textAlign:"right",outline:"none",width:"100%",padding:"2px 0"}}
+                      defaultValue={l.so_luong}
+                      onChange={e=>setLines(prev=>prev.map((x,j)=>j===i?{...x,so_luong:e.target.value}:x))}
+                    />
+                  </td>
+                  <td>
+                    <input
+                      style={{border:"none",background:"transparent",fontFamily:"var(--mono)",
+                        fontSize:12.5,fontWeight:700,color:"var(--green)",
+                        outline:"none",width:"100%",padding:"2px 0"}}
+                      defaultValue={l.ma_nvl}
+                      onChange={e=>setLines(prev=>prev.map((x,j)=>j===i?{...x,ma_nvl:e.target.value}:x))}
+                    />
+                  </td>
+                  <td style={{textAlign:"right",fontFamily:"var(--mono)",fontSize:12,color:"var(--amber)"}}>
+                    {l.kl_phoi||"—"}
+                  </td>
+                  <td style={{textAlign:"center"}}>
+                    <button
+                      style={{background:"none",border:"none",color:"var(--red)",cursor:"pointer",fontSize:14}}
+                      onClick={()=>setLines(prev=>prev.filter((_,j)=>j!==i))}>
+                      ✕
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ── RIGHT PANEL ───────────────────────────────────────────────────────────────
+function Right({email}){
+  const[tab,setTab]=useState(0);
+  const[lines,setLines]=useState([]);
+  const[processing,setProcessing]=useState(false);
+  const[progress,setProgress]=useState(0);
+
+  // Load drawings khi đổi email
+  useEffect(()=>{
+    setTab(0);
+    if(email?.drawings?.length>0){
+      setLines(email.drawings.map((r,i)=>{
+        const d=r.data||{};
+        return{
+          id:r.id||i,
+          page:r.page||i+1,
+          ma_ban_ve:d.ban_ve?.ma_ban_ve||"",
+          so_luong:d.san_xuat?.so_luong||1,
+          ma_nvl:d.vat_lieu?.ma||"",
+          kl_phoi:d.khoi_luong?.kl_phoi_kg||0,
+        };
+      }));
+    } else {
+      setLines([]);
+    }
+  },[email?.id]);
+
+  async function handleUpload(file){
+    if(!file) return;
+    setProcessing(true); setProgress(5);
+    try{
+      const form=new FormData();
+      form.append("file",file);
+      setProgress(20);
+      const res=await fetch(`${API}/drawings/batch`,{method:"POST",body:form});
+      const json=await res.json();
+      if(!res.ok) throw new Error(json.error||"Lỗi");
+      const{results=[]}=json;
+      for(let i=0;i<results.length;i++){
+        const r=results[i];
+        const d=r.data||{};
+        setLines(prev=>[...prev,{
+          id:r.id||Date.now()+i,
+          page:r.page||i+1,
+          ma_ban_ve:d.ban_ve?.ma_ban_ve||`Trang ${r.page}`,
+          so_luong:d.san_xuat?.so_luong||1,
+          ma_nvl:d.vat_lieu?.ma||"",
+          kl_phoi:d.khoi_luong?.kl_phoi_kg||0,
+        }]);
+        setProgress(Math.round(20+(i+1)/results.length*75));
+        await new Promise(r=>setTimeout(r,60));
+      }
+      setProgress(100);
+      setTimeout(()=>{setProcessing(false);setProgress(0);},500);
+    }catch(e){
+      console.error(e);
+      setProcessing(false);setProgress(0);
+    }
+  }
+
+  if(!email) return(
+    <div className="right">
+      <div className="empty">
+        <div className="empty-icon">📧</div>
+        <div style={{fontSize:13,color:"var(--text2)"}}>Chọn email để xem chi tiết</div>
+      </div>
+    </div>
+  );
+
+  if(email.classify!=="rfq") return(
+    <div className="right">
+      <div className="e-header">
+        <div className="e-subj">{email.subject}</div>
+        <div className="e-meta">
+          <span>Từ: <b>{email.from}</b></span>
+          <span>📅 <b>{email.date}</b></span>
+        </div>
+        <div className="e-tags">
+          <span className="tag t-skip">{email.classify}</span>
+          <LTag lg={email.ngon_ngu}/>
+        </div>
+      </div>
+      <div className="not-rfq">
+        <div style={{fontSize:36,opacity:.25}}>💬</div>
+        <div style={{fontSize:13,color:"var(--text2)"}}>Không phải RFQ — không tạo phiếu báo giá</div>
+        <div style={{marginTop:8,fontSize:12,color:"var(--text3)",maxWidth:420,textAlign:"center",lineHeight:1.7}}>
+          {email.body}
+        </div>
+      </div>
+    </div>
+  );
+
+  return(
+    <div className="right">
+      {/* Header */}
+      <div className="e-header">
+        <div className="e-subj">{email.subject}</div>
+        <div className="e-meta">
+          <span>Từ: <b>{email.from}</b></span>
+          <span>📧 <b>{email.email}</b></span>
+          <span>📅 <b>{email.date} {email.time}</b></span>
+          {email.han_giao&&<span>🗓 Hạn giao: <b style={{color:"var(--red)"}}>{email.han_giao}</b></span>}
+        </div>
+        <div className="e-tags">
+          <span className="tag t-rfq">✓ RFQ</span>
+          <LTag lg={email.ngon_ngu}/>
+          {email.attachments?.map((a,i)=>(
+            <span key={i} className="tag t-pdf">📎 {a}</span>
+          ))}
+          {email._agent&&<span className="tag t-agent">⚡ Agent</span>}
+        </div>
+      </div>
+
+      {/* Tabs */}
+      <div className="tabs">
+        <div className={`tab${tab===0?" active":""}`} onClick={()=>setTab(0)}>
+          Thông tin chung
+        </div>
+        <div className={`tab${tab===1?" active":""}`} onClick={()=>setTab(1)}>
+          Danh sách bản vẽ{lines.length>0?` (${lines.length})`:""}
+        </div>
+      </div>
+
+      {/* Content */}
+      <div className="tcontent">
+        {tab===0&&<Tab1 email={email}/>}
+        {tab===1&&(
+          <Tab2
+            email={email} lines={lines} setLines={setLines}
+            processing={processing} progress={progress}
+            onUpload={handleUpload}
+          />
+        )}
+      </div>
+
+      {/* Footer */}
+      <div className="footer">
+        <button className="btn btn-p">💾 Lưu phiếu</button>
+        <button className="btn btn-g">✓ Xác nhận</button>
+        <button className="btn btn-o">🖨 In PBG</button>
+        {email.jobId&&(
+          <button className="btn btn-p"
+            style={{marginLeft:"auto",background:"#7C3AED",borderColor:"#7C3AED"}}
+            onClick={async()=>{
+              await fetch(`/jobs/${email.jobId}/push-erp`,{method:"POST"});
+              alert("✓ Đã push ERP!");
+            }}>
+            🚀 Push ERP
+          </button>
+        )}
+        <button className="btn btn-o"
+          style={{marginLeft:email.jobId?"0":"auto",color:"var(--red)"}}>
+          ✕ Hủy
+        </button>
+      </div>
+    </div>
+  );
+}
+
+// ── APP ───────────────────────────────────────────────────────────────────────
+function App(){
+  const[emails,setEmails]=useState([]);
+  const[active,setActive]=useState(null);
+
+  useEffect(()=>{
+    // Load jobs từ server
+    fetch("/jobs").then(r=>r.json()).then(data=>{
+      if(!data.data?.length) return;
+      const agentEmails=data.data.map(j=>({
+        id:j.id, from:j.sender||"Agent",
+        email:j.sender_email||"",
+        subject:j.subject,
+        preview:`${j.lines_count||0} bản vẽ`,
+        body:"", time:new Date(j.created_at).toLocaleTimeString("vi-VN",{hour:"2-digit",minute:"2-digit"}),
+        date:new Date(j.created_at).toLocaleDateString("vi-VN"),
+        created_at:j.created_at,
+        attachments:j.attachments||[],
+        classify:j.classify, ngon_ngu:j.ngon_ngu,
+        ten_kh:j.ten_cong_ty||j.sender||"",
+        han_giao:j.han_giao||null,
+        hinh_thuc_giao:j.hinh_thuc_giao||null,
+        xu_ly_be_mat:j.xu_ly_be_mat??null,
+        drawings:[], jobId:j.id,
+        unread:j.status==="pending_review",
+        _agent:true, _needLoad:true,
+      }));
+      setEmails(prev=>[...agentEmails,...prev]);
+    }).catch(()=>{});
+
+    // Check URL ?job=
+    const p=new URLSearchParams(window.location.search);
+    const jobId=p.get("job");
+    if(jobId){
+      fetch(`/jobs/${jobId}`).then(r=>r.json()).then(job=>{
+        const e={
+          id:job.id, from:job.sender, email:job.sender_email||"",
+          subject:job.subject, preview:"", body:job.ghi_chu||"",
+          time:new Date(job.created_at).toLocaleTimeString("vi-VN",{hour:"2-digit",minute:"2-digit"}),
+          date:new Date(job.created_at).toLocaleDateString("vi-VN"),
+          created_at:job.created_at,
+          attachments:job.attachments||[],
+          classify:job.classify, ngon_ngu:job.ngon_ngu,
+          ten_kh:job.ten_cong_ty||job.sender||"",
+          han_giao:job.han_giao||null,
+          hinh_thuc_giao:job.hinh_thuc_giao||null,
+          xu_ly_be_mat:job.xu_ly_be_mat??null,
+          drawings:job.drawings||[],
+          jobId:job.id, unread:false, _agent:true,
+        };
+        setEmails(prev=>[e,...prev.filter(x=>x.id!==e.id)]);
+        setActive(e);
+        window.history.replaceState({},"",window.location.pathname);
+      }).catch(()=>{});
+    }
+  },[]);
+
+  async function selectEmail(e){
+    if(e._needLoad&&e.jobId){
+      const res=await fetch(`/jobs/${e.jobId}`);
+      const job=await res.json();
+      const full={...e,
+        body:job.ghi_chu||"",
+        attachments:job.attachments||[],
+        han_giao:job.han_giao||null,
+        hinh_thuc_giao:job.hinh_thuc_giao||null,
+        xu_ly_be_mat:job.xu_ly_be_mat??null,
+        ten_kh:job.ten_cong_ty||job.sender||"",
+        drawings:job.drawings||[],
+        _needLoad:false,
+      };
+      setEmails(prev=>prev.map(x=>x.id===e.id?full:x));
+      setActive(full);
+    } else {
+      setActive(e);
+    }
+  }
+
+  return(
+    <div style={{display:"flex",flexDirection:"column",height:"100vh"}}>
+      <div className="topbar">
+        <div className="t-logo">⬡ Mekong AI</div>
+        <span className="t-sep">|</span>
+        <div className="t-sub">Agent Báo Giá Tự Động</div>
+        <div className="t-right">
+          <span className="ai-pill">⚡ LIVE</span>
+          <div className="live"/>
+        </div>
+      </div>
+      <div className="layout">
+        <Mailbox emails={emails} active={active} onSelect={selectEmail}/>
+        <Right email={active}/>
+      </div>
+    </div>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById("root")).render(<App/>);
+</script>
+</body>
+</html>
