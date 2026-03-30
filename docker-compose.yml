@@ -1,0 +1,48 @@
+# Mekong AI — triển khai Docker (API only, dùng PostgreSQL chung trong stack Docker chính)
+# Sao chép .env.example -> .env và chỉnh DATABASE_URL trỏ tới service postgres của stack chính.
+#
+# Ví dụ trong .env khi dùng chung PostgreSQL Docker:
+#   DATABASE_URL=postgresql://postgres:123456@172.17.0.1:5432/mekong_ai
+#   BANVE_API_URL=http://mekong-ai:3000
+#
+services:
+  mekong-api:
+    build: .
+    image: mekong-ai:latest
+    container_name: mekong-ai
+    restart: unless-stopped
+    ports:
+      - "0.0.0.0:3001:3000"
+    env_file:
+      - .env
+    environment:
+      AGENT_JOBS_FILE: /data/agent_jobs.json
+    volumes:
+      - mekong_uploads:/app/uploads
+      - agent_jobs_data:/data
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:3000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+
+  mekong-agent:
+    build: .
+    image: mekong-ai:latest
+    container_name: mekong-agent
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      AGENT_JOBS_FILE: /data/agent_jobs.json
+    command: ["node", "src/agents/emailAgent.js"]
+    depends_on:
+      mekong-api:
+        condition: service_healthy
+    volumes:
+      - agent_jobs_data:/data
+
+volumes:
+  mekong_uploads:
+  agent_jobs_data:
