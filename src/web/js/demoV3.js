@@ -112,7 +112,10 @@ function HanGiaoFlatpickr({ email }) {
   );
 }
 
-/** Một dòng bảng từ kết quả /drawings hoặc drawings trong job (API dùng klPhoiKg hoặc kl_phoi_kg). */
+/** Một dòng bảng từ kết quả /drawings hoặc drawings trong job.
+ * AI trả về JSON theo cấu trúc prompt → lấy đúng trường đó.
+ * Click vào mã bản vẽ → xem PDF trang tương ứng ở panel bên phải.
+ */
 function drawingToLine(r, indexHint) {
   const d = r.data || {};
   const kl = d.khoi_luong || {};
@@ -125,13 +128,65 @@ function drawingToLine(r, indexHint) {
         : parseFloat(String(klRaw).replace(",", "."));
     if (!Number.isNaN(n)) klNum = n;
   }
+
+  // Các trường mới từ AI phân tích bản vẽ
+  const hinh_dang = d.hinh_dang || {};
+  const vat_lieu = d.vat_lieu || {};
+  const kich_thuoc = d.kich_thuoc_bao || {};
+  const quy_trinh = d.quy_trinh_tong_the || [];
+  const be_mat_cnc = d.be_mat_gia_cong || [];
+
+  // Mã quy trình: lấy dòng kết luận cuối cùng từ quy_trinh_tong_the
+  let ma_qt = "";
+  if (Array.isArray(quy_trinh) && quy_trinh.length > 0) {
+    const last = quy_trinh[quy_trinh.length - 1];
+    ma_qt = last.ma || last.ma_quy_trinh || last;
+  }
+
+  // Dung sai: lấy từ bản vẽ hoặc tiêu chuẩn
+  let dung_sai = "";
+  if (hinh_dang.dung_sai_chung) dung_sai = hinh_dang.dung_sai_chung;
+  else if (vat_lieu.dung_sai) dung_sai = vat_lieu.dung_sai;
+
+  // Mô tả kích thước bề mặt CNC
+  let kich_thuoc_cnc = "";
+  if (be_mat_cnc.length > 0) {
+    kich_thuoc_cnc = be_mat_cnc
+      .map((bm) => {
+        const size = bm.kich_thuoc || bm.size || "";
+        const type = bm.loai || bm.type || "";
+        return size ? `${type} ${size}`.trim() : type;
+      })
+      .filter(Boolean)
+      .join(", ");
+  }
+
   return {
     id: r.id != null ? r.id : Date.now() + indexHint,
     page: r.page != null ? r.page : indexHint + 1,
+    fileIndex: r.fileIndex ?? indexHint, // index file để load PDF
+    filename: r.filename || "", // tên file PDF chứa drawing này
+    // Các cột mới
     ma_ban_ve: d.ban_ve?.ma_ban_ve || (r.page != null ? `Trang ${r.page}` : ""),
+    ten_chi_tiet: d.ban_ve?.ten_chi_tiet || "",
+    revision: d.ban_ve?.revision || "",
     so_luong: d.san_xuat?.so_luong ?? 1,
-    ma_nvl: d.vat_lieu?.ma || "",
+    hinh_dang: hinh_dang.loai || hinh_dang.kieu_phoi || "",
+    vat_lieu: vat_lieu.ma || vat_lieu.loai || "",
+    dung_sai: dung_sai,
+    kich_thuoc_cnc: kich_thuoc_cnc,
+    // Kích thước bao để hiển thị ngắn gọn
+    kich_thuoc_bao: kich_thuoc.phi_lon
+      ? `Ø${kich_thuoc.phi_lon} × ${kich_thuoc.cao_hoac_duong_kinh || ""}`
+      : kich_thuoc.dai && kich_thuoc.rong && kich_thuoc.cao_hoac_duong_kinh
+      ? `${kich_thuoc.dai}×${kich_thuoc.rong}×${kich_thuoc.cao_hoac_duong_kinh}`
+      : "",
+    ma_quy_trinh: ma_qt,
+    // Giữ lại các trường cũ cho tương thích
+    ma_nvl: vat_lieu.ma || "",
     kl_phoi: klNum,
+    // Data gốc để debug
+    _raw: d,
   };
 }
 
@@ -890,7 +945,20 @@ function Tab1({ email, classifyUiSchema }) {
 }
 
 // ── TAB 2: DANH SÁCH BẢN VẼ ──────────────────────────────────────────────────
+// Default widths cho các cột bảng bản vẽ (dùng chung cho cả JSX lẫn logic resize)
+const DEFAULT_COL_WIDTHS = {
+  stt: 38,
+  ma_ban_ve: 160,
+  so_luong: 70,
+  hinh_dang: 90,
+  dung_sai: 80,
+  vat_lieu: 80,
+  kich_thuoc_cnc: 120,
+  ma_quy_trinh: 80,
+};
+
 function Tab2({
+  email,
   lines,
   setLines,
   processing,
@@ -900,11 +968,55 @@ function Tab2({
   previewSrc,
   previewName,
   previewLoading,
+  onLoadPdfPage,
+  onSelectGmailAttachment,
+  previewPage,
 }) {
   const fileRef = useRef(null);
   const bvSplitRef = useRef(null);
   const bvMainRef = useRef(null);
   const bvPreviewRef = useRef(null);
+
+  // ── Column resize state & handlers ────────────────────────────────────────
+  const [colWidths, setColWidths] = useState({});
+  const resizeRef = useRef(null); // { colKey, startX, startWidth }
+
+  function onResizeMouseDown(e, colKey) {
+    e.preventDefault();
+    e.stopPropagation();
+    resizeRef.current = {
+      colKey,
+      startX: e.clientX,
+      startWidth: colWidths[colKey] || DEFAULT_COL_WIDTHS[colKey] || 100,
+    };
+    document.body.style.cursor = "col-resize";
+    document.body.style.userSelect = "none";
+    document.addEventListener("mousemove", onResizeMouseMove);
+    document.addEventListener("mouseup", onResizeMouseUp);
+  }
+
+  function onResizeMouseMove(e) {
+    if (!resizeRef.current) return;
+    const { colKey, startX, startWidth } = resizeRef.current;
+    const dx = e.clientX - startX;
+    setColWidths((prev) => ({
+      ...prev,
+      [colKey]: Math.max(40, startWidth + dx),
+    }));
+  }
+
+  function onResizeMouseUp() {
+    resizeRef.current = null;
+    document.body.style.cursor = "";
+    document.body.style.userSelect = "";
+    document.removeEventListener("mousemove", onResizeMouseMove);
+    document.removeEventListener("mouseup", onResizeMouseUp);
+  }
+
+  // Reset colWidths khi email thay đổi
+  useEffect(() => {
+    setColWidths({});
+  }, [email?.id]);
 
   /** Split.js — kéo ranh giới bảng (trái) | xem trước (phải); chỉ layout ngang ≥961px */
   useLayoutEffect(() => {
@@ -1077,50 +1189,215 @@ function Tab2({
               </div>
             ) : (
               <table className="bv-tbl">
+                <colgroup>
+                  <col
+                    style={{
+                      width: colWidths["stt"] || DEFAULT_COL_WIDTHS["stt"],
+                    }}
+                  />
+                  <col
+                    style={{
+                      width:
+                        colWidths["ma_ban_ve"] ||
+                        DEFAULT_COL_WIDTHS["ma_ban_ve"],
+                    }}
+                  />
+                  <col
+                    style={{
+                      width:
+                        colWidths["so_luong"] || DEFAULT_COL_WIDTHS["so_luong"],
+                    }}
+                  />
+                  <col
+                    style={{
+                      width:
+                        colWidths["hinh_dang"] ||
+                        DEFAULT_COL_WIDTHS["hinh_dang"],
+                    }}
+                  />
+                  <col
+                    style={{
+                      width:
+                        colWidths["dung_sai"] || DEFAULT_COL_WIDTHS["dung_sai"],
+                    }}
+                  />
+                  <col
+                    style={{
+                      width:
+                        colWidths["vat_lieu"] || DEFAULT_COL_WIDTHS["vat_lieu"],
+                    }}
+                  />
+                  <col
+                    style={{
+                      width:
+                        colWidths["kich_thuoc_cnc"] ||
+                        DEFAULT_COL_WIDTHS["kich_thuoc_cnc"],
+                    }}
+                  />
+                  <col
+                    style={{
+                      width:
+                        colWidths["ma_quy_trinh"] ||
+                        DEFAULT_COL_WIDTHS["ma_quy_trinh"],
+                    }}
+                  />
+                </colgroup>
                 <thead>
                   <tr>
-                    <th style={{ width: 42, textAlign: "center" }}>STT</th>
-                    <th style={{ width: 42, textAlign: "center" }}>Trang</th>
-                    <th>Mã bản vẽ</th>
-                    <th style={{ width: 90, textAlign: "right" }}>Số lượng</th>
-                    <th style={{ width: 130 }}>Mã NVL</th>
-                    <th style={{ width: 90, textAlign: "right" }}>
-                      KL phôi (kg)
+                    <th style={{ textAlign: "center", position: "relative" }}>
+                      STT
+                      <span
+                        className="col-resize-handle"
+                        onMouseDown={(e) => onResizeMouseDown(e, "stt")}
+                      />
                     </th>
-                    <th style={{ width: 50 }}></th>
+                    <th style={{ position: "relative" }}>
+                      Mã bản vẽ
+                      <span
+                        className="col-resize-handle"
+                        onMouseDown={(e) => onResizeMouseDown(e, "ma_ban_ve")}
+                      />
+                    </th>
+                    <th style={{ textAlign: "right", position: "relative" }}>
+                      Số lượng
+                      <span
+                        className="col-resize-handle"
+                        onMouseDown={(e) => onResizeMouseDown(e, "so_luong")}
+                      />
+                    </th>
+                    <th style={{ position: "relative" }}>
+                      Hình dạng
+                      <span
+                        className="col-resize-handle"
+                        onMouseDown={(e) => onResizeMouseDown(e, "hinh_dang")}
+                      />
+                    </th>
+                    <th style={{ position: "relative" }}>
+                      Dung sai
+                      <span
+                        className="col-resize-handle"
+                        onMouseDown={(e) => onResizeMouseDown(e, "dung_sai")}
+                      />
+                    </th>
+                    <th style={{ position: "relative" }}>
+                      Vật liệu
+                      <span
+                        className="col-resize-handle"
+                        onMouseDown={(e) => onResizeMouseDown(e, "vat_lieu")}
+                      />
+                    </th>
+                    <th style={{ position: "relative" }}>
+                      Kích thước CNC
+                      <span
+                        className="col-resize-handle"
+                        onMouseDown={(e) =>
+                          onResizeMouseDown(e, "kich_thuoc_cnc")
+                        }
+                      />
+                    </th>
+                    <th style={{ position: "relative" }}>
+                      Mã QT
+                      <span
+                        className="col-resize-handle"
+                        onMouseDown={(e) =>
+                          onResizeMouseDown(e, "ma_quy_trinh")
+                        }
+                      />
+                    </th>
                   </tr>
                 </thead>
                 <tbody>
                   {lines.map((l, i) => (
                     <tr key={l.id || i}>
-                      <td className="cell-num">{i + 1}</td>
-                      <td className="cell-num">{l.page || "—"}</td>
-                      <td>
-                        <input
-                          style={{
-                            border: "none",
-                            background: "transparent",
-                            fontFamily: "var(--v3-mono)",
-                            fontSize: 12.5,
-                            fontWeight: 700,
-                            color: "var(--v3-brand2)",
-                            outline: "none",
-                            width: "100%",
-                            padding: "2px 0",
-                          }}
-                          defaultValue={l.ma_ban_ve}
-                          onChange={(e) =>
-                            setLines((prev) =>
-                              prev.map((x, j) =>
-                                j === i
-                                  ? { ...x, ma_ban_ve: e.target.value }
-                                  : x
-                              )
-                            )
-                          }
-                        />
+                      <td
+                        className="cell-num"
+                        style={{
+                          width: colWidths["stt"] || DEFAULT_COL_WIDTHS["stt"],
+                        }}
+                      >
+                        {i + 1}
                       </td>
-                      <td style={{ textAlign: "right" }}>
+                      <td
+                        style={{
+                          width:
+                            colWidths["ma_ban_ve"] ||
+                            DEFAULT_COL_WIDTHS["ma_ban_ve"],
+                        }}
+                      >
+                        <span
+                          style={{
+                            display: "flex",
+                            alignItems: "center",
+                            gap: 6,
+                          }}
+                        >
+                          <button
+                            type="button"
+                            title={`Xem trang ${l.page} trong PDF`}
+                            style={{
+                              background: "none",
+                              border: "none",
+                              cursor: "pointer",
+                              color: "var(--v3-brand2)",
+                              fontSize: 13,
+                              padding: "2px 4px",
+                              borderRadius: 3,
+                              lineHeight: 1,
+                            }}
+                            onClick={() => {
+                              onLoadPdfPage(l.filename || previewName, l.page);
+                            }}
+                          >
+                            📄
+                          </button>
+                          <input
+                            style={{
+                              border: "none",
+                              background: "transparent",
+                              fontFamily: "var(--v3-mono)",
+                              fontSize: 12.5,
+                              fontWeight: 700,
+                              color: "var(--v3-brand2)",
+                              outline: "none",
+                              width: "100%",
+                              padding: "2px 0",
+                            }}
+                            defaultValue={l.ma_ban_ve}
+                            onChange={(e) =>
+                              setLines((prev) =>
+                                prev.map((x, j) =>
+                                  j === i
+                                    ? { ...x, ma_ban_ve: e.target.value }
+                                    : x
+                                )
+                              )
+                            }
+                          />
+                        </span>
+                        {l.ten_chi_tiet && (
+                          <div
+                            style={{
+                              fontSize: 10,
+                              color: "var(--v3-muted)",
+                              whiteSpace: "nowrap",
+                              overflow: "hidden",
+                              textOverflow: "ellipsis",
+                              maxWidth: 180,
+                            }}
+                            title={l.ten_chi_tiet}
+                          >
+                            {l.ten_chi_tiet}
+                          </div>
+                        )}
+                      </td>
+                      <td
+                        style={{
+                          textAlign: "right",
+                          width:
+                            colWidths["so_luong"] ||
+                            DEFAULT_COL_WIDTHS["so_luong"],
+                        }}
+                      >
                         <input
                           type="number"
                           style={{
@@ -1144,24 +1421,30 @@ function Tab2({
                           }
                         />
                       </td>
-                      <td>
+                      <td
+                        style={{
+                          width:
+                            colWidths["hinh_dang"] ||
+                            DEFAULT_COL_WIDTHS["hinh_dang"],
+                        }}
+                      >
                         <input
                           style={{
                             border: "none",
                             background: "transparent",
-                            fontFamily: "var(--v3-mono)",
-                            fontSize: 12.5,
-                            fontWeight: 700,
-                            color: "var(--v3-green)",
+                            fontSize: 11.5,
+                            color: "var(--v3-ink)",
                             outline: "none",
                             width: "100%",
                             padding: "2px 0",
                           }}
-                          defaultValue={l.ma_nvl}
+                          defaultValue={l.hinh_dang}
                           onChange={(e) =>
                             setLines((prev) =>
                               prev.map((x, j) =>
-                                j === i ? { ...x, ma_nvl: e.target.value } : x
+                                j === i
+                                  ? { ...x, hinh_dang: e.target.value }
+                                  : x
                               )
                             )
                           }
@@ -1169,15 +1452,111 @@ function Tab2({
                       </td>
                       <td
                         style={{
-                          textAlign: "right",
-                          fontFamily: "var(--v3-mono)",
-                          fontSize: 12,
-                          color: "var(--v3-amber)",
+                          width:
+                            colWidths["dung_sai"] ||
+                            DEFAULT_COL_WIDTHS["dung_sai"],
                         }}
                       >
-                        {formatKlCell(l.kl_phoi)}
+                        <input
+                          style={{
+                            border: "none",
+                            background: "transparent",
+                            fontFamily: "var(--v3-mono)",
+                            fontSize: 11.5,
+                            color: "var(--v3-amber)",
+                            outline: "none",
+                            width: "100%",
+                            padding: "2px 0",
+                          }}
+                          defaultValue={l.dung_sai}
+                          onChange={(e) =>
+                            setLines((prev) =>
+                              prev.map((x, j) =>
+                                j === i ? { ...x, dung_sai: e.target.value } : x
+                              )
+                            )
+                          }
+                        />
                       </td>
-                      <td style={{ textAlign: "center" }}>
+                      <td
+                        style={{
+                          width:
+                            colWidths["vat_lieu"] ||
+                            DEFAULT_COL_WIDTHS["vat_lieu"],
+                        }}
+                      >
+                        <input
+                          style={{
+                            border: "none",
+                            background: "transparent",
+                            fontFamily: "var(--v3-mono)",
+                            fontSize: 11.5,
+                            fontWeight: 600,
+                            color: "var(--v3-green)",
+                            outline: "none",
+                            width: "100%",
+                            padding: "2px 0",
+                          }}
+                          defaultValue={l.vat_lieu}
+                          onChange={(e) =>
+                            setLines((prev) =>
+                              prev.map((x, j) =>
+                                j === i ? { ...x, vat_lieu: e.target.value } : x
+                              )
+                            )
+                          }
+                        />
+                      </td>
+                      <td
+                        style={{
+                          width:
+                            colWidths["kich_thuoc_cnc"] ||
+                            DEFAULT_COL_WIDTHS["kich_thuoc_cnc"],
+                          fontSize: 11,
+                          color: "var(--v3-ink)",
+                          overflow: "hidden",
+                          textOverflow: "ellipsis",
+                          whiteSpace: "nowrap",
+                        }}
+                        title={l.kich_thuoc_cnc || l.kich_thuoc_bao || "—"}
+                      >
+                        {l.kich_thuoc_cnc || l.kich_thuoc_bao || "—"}
+                      </td>
+                      <td
+                        style={{
+                          width:
+                            colWidths["ma_quy_trinh"] ||
+                            DEFAULT_COL_WIDTHS["ma_quy_trinh"],
+                        }}
+                      >
+                        <input
+                          style={{
+                            border: "none",
+                            background: "transparent",
+                            fontFamily: "var(--v3-mono)",
+                            fontSize: 11.5,
+                            fontWeight: 700,
+                            color: l.ma_quy_trinh
+                              ? "var(--v3-brand2)"
+                              : "var(--v3-muted)",
+                            outline: "none",
+                            width: "100%",
+                            padding: "2px 0",
+                          }}
+                          defaultValue={l.ma_quy_trinh}
+                          placeholder="—"
+                          onChange={(e) =>
+                            setLines((prev) =>
+                              prev.map((x, j) =>
+                                j === i
+                                  ? { ...x, ma_quy_trinh: e.target.value }
+                                  : x
+                              )
+                            )
+                          }
+                        />
+                      </td>
+                      {/* <td style={{ textAlign: "center" }}>
                         <button
                           style={{
                             background: "none",
@@ -1192,7 +1571,7 @@ function Tab2({
                         >
                           ✕
                         </button>
-                      </td>
+                      </td> */}
                     </tr>
                   ))}
                 </tbody>
@@ -1231,9 +1610,13 @@ function Tab2({
             )}
             {previewSrc ? (
               <iframe
+                key={`pdf-${previewName}-${previewPage}`}
                 title={previewName || "Xem trước PDF hoặc ảnh"}
                 className="bv-preview-frame"
-                src={previewSrc}
+                src={
+                  previewSrc ? `${previewSrc}#page=${previewPage}` : undefined
+                }
+                ref={() => {}}
               />
             ) : (
               !previewLoading && (
@@ -1263,19 +1646,44 @@ function Right({ email, setEmails, classifyUiSchema }) {
   const [previewSrc, setPreviewSrc] = useState(null);
   const [previewName, setPreviewName] = useState(null);
   const [previewLoading, setPreviewLoading] = useState(false);
+  const [previewPage, setPreviewPage] = useState(1);
   const previewLoadGen = useRef(0);
+  const currentFileRef = useRef(null); // track file đang load để tránh re-fetch
+  const previewBytesRef = useRef(null); // lưu bytes để tạo blob mới khi page đổi
 
   // Reset tab + xóa preview blob khi chọn job khác
   useEffect(() => {
     setTab(0);
     previewLoadGen.current += 1;
+    currentFileRef.current = null;
+    previewBytesRef.current = null;
     setPreviewLoading(false);
     setPreviewSrc((prev) => {
-      if (prev && prev.startsWith("blob:")) URL.revokeObjectURL(prev);
+      if (!prev) return null;
+      const base = prev.split("#")[0];
+      if (base.startsWith("blob:")) URL.revokeObjectURL(base);
       return null;
     });
     setPreviewName(null);
   }, [email?.id]);
+
+  /**
+   * Tạo blob URL mới mỗi khi previewPage thay đổi (nhảy trang PDF).
+   * Browser PDF viewer cần blob URL mới để nhận diện src thay đổi.
+   */
+  useEffect(() => {
+    const bytes = previewBytesRef.current;
+    if (!bytes) return;
+    setPreviewSrc((prev) => {
+      if (prev) {
+        const base = prev.split("#")[0];
+        if (base.startsWith("blob:")) URL.revokeObjectURL(base);
+      }
+      const blob = new Blob([bytes], { type: "application/pdf" });
+      const url = URL.createObjectURL(blob);
+      return url;
+    });
+  }, [previewPage]);
 
   function onPreviewFile(file) {
     if (!file) return;
@@ -1284,22 +1692,31 @@ function Right({ email, setEmails, classifyUiSchema }) {
     if (!ok) return;
     setPreviewLoading(false);
     setPreviewSrc((prev) => {
-      if (prev && prev.startsWith("blob:")) URL.revokeObjectURL(prev);
+      if (prev) {
+        const base = prev.split("#")[0];
+        if (base.startsWith("blob:")) URL.revokeObjectURL(base);
+      }
       return URL.createObjectURL(file);
     });
     setPreviewName(file.name);
+    setPreviewPage(1);
+    currentFileRef.current = file.name;
   }
 
   function onSelectGmailAttachment(att) {
     const name = typeof att === "string" ? att : att.name;
     setPreviewName(name);
+    currentFileRef.current = name;
     const url = `${API}/jobs/${email.jobId}/attachment-preview`;
     const gen = ++previewLoadGen.current;
     setPreviewLoading(true);
     setPreviewSrc((prev) => {
-      if (prev && prev.startsWith("blob:")) URL.revokeObjectURL(prev);
+      if (!prev) return null;
+      const base = prev.split("#")[0];
+      if (base.startsWith("blob:")) URL.revokeObjectURL(base);
       return null;
     });
+    setPreviewPage(1);
 
     /**
      * POST + JSON { b64 } — IDM thường chặn mọi GET/fetch trả application/pdf (204 Intercepted).
@@ -1348,21 +1765,130 @@ function Right({ email, setEmails, classifyUiSchema }) {
   }
 
   /**
-   * Đồng bộ bảng bản vẽ từ server.
-   * Phải phụ thuộc cả drawings / _needLoad: lúc mới click, job mỏng có cùng id với job sau fetch —
-   * nếu chỉ [email?.id] thì effect không chạy lại → lines vẫn [] → mãi thấy upload.
+   * Load PDF và nhảy đến trang cụ thể bằng URL fragment #page=N
    */
+  function loadPdfPage(fileName, pageNum) {
+    if (!email?.jobId) {
+      console.warn("[mekong] loadPdfPage: no email.jobId");
+      return;
+    }
+    // Ưu tiên: truyền vào > previewName hiện tại > attachment đầu tiên
+    const targetFile =
+      fileName ||
+      previewName ||
+      (email.attachments?.[0] &&
+        (typeof email.attachments[0] === "string"
+          ? email.attachments[0]
+          : email.attachments[0].name));
+    if (!targetFile) {
+      console.warn("[mekong] loadPdfPage: no file to preview");
+      return;
+    }
+
+    setPreviewName(targetFile);
+    setPreviewPage(pageNum || 1);
+
+    // Cùng file đang load → nhảy page bằng blob mới (force iframe reload)
+    if (
+      currentFileRef.current === targetFile &&
+      previewSrc &&
+      previewBytesRef.current
+    ) {
+      setPreviewSrc((prev) => {
+        if (prev) {
+          const base = prev.split("#")[0];
+          if (base.startsWith("blob:")) URL.revokeObjectURL(base);
+        }
+        const blob = new Blob([previewBytesRef.current], {
+          type: "application/pdf",
+        });
+        const url = URL.createObjectURL(blob);
+        return url;
+      });
+      return;
+    }
+
+    // Revoke blob cũ (strip fragment trước khi check)
+    setPreviewSrc((prev) => {
+      if (!prev) return null;
+      const base = prev.split("#")[0];
+      if (base.startsWith("blob:")) URL.revokeObjectURL(base);
+      return null;
+    });
+
+    currentFileRef.current = targetFile;
+    const url = `${API}/jobs/${email.jobId}/attachment-preview`;
+    const gen = ++previewLoadGen.current;
+    setPreviewLoading(true);
+
+    fetch(url, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Accept: "application/json",
+      },
+      body: JSON.stringify({ f: targetFile }),
+    })
+      .then(async (r) => {
+        if (gen !== previewLoadGen.current) return;
+        if (!r.ok) {
+          console.warn(
+            "[mekong] loadPdfPage fetch failed",
+            r.status,
+            r.statusText
+          );
+          return;
+        }
+        const ct = (r.headers.get("Content-Type") || "").toLowerCase();
+        if (!ct.includes("application/json")) return;
+        const data = await r.json();
+        if (gen !== previewLoadGen.current) return;
+        if (!data.ok || typeof data.b64 !== "string" || !data.b64.length) {
+          console.warn("[mekong] loadPdfPage: bad data", data);
+          return;
+        }
+        const bin = atob(data.b64);
+        const bytes = new Uint8Array(bin.length);
+        for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+        previewBytesRef.current = bytes;
+        const blob = new Blob([bytes], {
+          type: data.mime || "application/pdf",
+        });
+        const blobUrl = URL.createObjectURL(blob);
+        setPreviewSrc(blobUrl);
+      })
+      .catch((e) => {
+        console.error("[mekong] loadPdfPage error", e);
+      })
+      .finally(() => {
+        if (gen === previewLoadGen.current) setPreviewLoading(false);
+      });
+  }
+
+  /**
+   * Đồng bộ bảng bản vẽ từ email.drawings.
+   * Dùng ref để track drawings reference — so sánh reference thay vì length
+   * để đảm bảo bảng được cập nhật kể cả khi drawings[] thay đổi reference.
+   */
+  const prevDrawingsRef = useRef(null);
   useEffect(() => {
     if (!email) {
       setLines([]);
+      prevDrawingsRef.current = null;
       return;
     }
-    if (email.drawings?.length > 0) {
-      setLines(email.drawings.map((r, i) => drawingToLine(r, i)));
-    } else {
-      setLines([]);
+    const curr = email.drawings;
+    const prev = prevDrawingsRef.current;
+    // Chạy nếu: drawings reference thay đổi HOẶC email.id/jobId thay đổi
+    if (curr !== prev) {
+      prevDrawingsRef.current = curr;
+      if (curr?.length > 0) {
+        setLines(curr.map((r, i) => drawingToLine(r, i)));
+      } else {
+        setLines([]);
+      }
     }
-  }, [email?.id, email?.drawings?.length, email?._needLoad]);
+  }, [email?.id, email?.jobId, email?.drawings]);
 
   async function handleUpload(file) {
     if (!file) return;
@@ -1536,12 +2062,15 @@ function Right({ email, setEmails, classifyUiSchema }) {
           )}
           {tab === 1 && (
             <Tab2
+              email={email}
               lines={lines}
               previewName={previewName}
               previewSrc={previewSrc}
               previewLoading={previewLoading}
+              previewPage={previewPage}
               onUpload={handleUpload}
               onPreviewFile={onPreviewFile}
+              onLoadPdfPage={loadPdfPage}
               setLines={setLines}
               processing={processing}
               progress={progress}
@@ -1762,8 +2291,11 @@ function App() {
   }, []);
 
   async function selectEmail(e) {
-    if (e._needLoad && e.jobId) {
+    if (e.jobId) {
       const res = await fetch(`/jobs/${e.jobId}`);
+      if (!res.ok) {
+        return;
+      }
       const job = await res.json();
       const full = {
         ...e,
