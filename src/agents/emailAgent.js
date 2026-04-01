@@ -1,8 +1,8 @@
 import fs from "fs";
+import fetch from "node-fetch";
 import os from "os";
 import path from "path";
 import { fileURLToPath } from "url";
-import fetch from "node-fetch";
 
 import { classifyEmail } from "../ai/emailClassifier.js";
 import { isJobProcessed, saveJob, updateJob } from "../data/jobStore.js";
@@ -42,184 +42,189 @@ async function processEmail(gmail, msgId) {
   }
   inflightMsgIds.add(msgId);
   try {
-  // 2. Parse email
-  let emailData;
-  try {
-    emailData = await parseGmailMsg(gmail, msgId);
-  } catch (e) {
-    console.error("[Parse] Loi:", e.message);
-    return;
-  }
-
-  console.log(`[Agent] Subject: "${emailData.subject}"`);
-  console.log(`[Agent] From: ${emailData.from}`);
-  console.log(
-    `[Agent] PDFs: ${
-      emailData.attachments.map((a) => a.name).join(", ") || "khong co"
-    }`
-  );
-
-  // 3. Classify = Haiku
-  console.log("[Classify] Goi Haiku...");
-  const classify = await classifyEmail(emailData);
-  console.log(
-    `[Classify] → ${classify.loai} | ${classify.ngon_ngu} | ${classify.ly_do}`
-  );
-
-  const rawMeta = {
-    subject: emailData.subject,
-    from: emailData.from,
-    attachments: emailData.attachments.map((a) => ({ name: a.name, attachmentId: a.attachmentId })),
-  };
-
-  // Khong phai RFQ → ghi job ngan (1 lan save, co id + created_at) roi danh dau da doc
-  if (!["rfq", "repeat_order"].includes(classify.loai)) {
-    console.log(`[Agent] Khong phai RFQ (${classify.loai}) → ghi nhan, bo qua`);
-    await saveJob({
-      id: makeJobId(msgId),
-      gmail_id: msgId,
-      subject: emailData.subject,
-      sender: emailData.from,
-      sender_email: emailData.senderEmail,
-      sender_name: emailData.senderName,
-      sender_company: classify.ten_cong_ty,
-      classify: classify.loai,
-      ngon_ngu: classify.ngon_ngu,
-      status: classify.loai,
-      classify_output: { ...classify },
-      attachments: [],
-      drawings: [],
-      created_at: Date.now(),
-      raw: rawMeta,
-    });
-    await markRead(gmail, msgId);
-    return;
-  }
-
-  if (!emailData.attachments.length) {
-    console.log("[Agent] RFQ nhung khong co PDF → can lien he KH xin ban ve");
-    await saveJob({
-      id: makeJobId(msgId),
-      gmail_id: msgId,
-      subject: emailData.subject,
-      sender: emailData.from,
-      sender_email: emailData.senderEmail,
-      sender_name: emailData.senderName,
-      sender_company: classify.ten_cong_ty,
-      classify: classify.loai,
-      ngon_ngu: classify.ngon_ngu,
-      status: "no_pdf",
-      classify_output: { ...classify },
-      attachments: [],
-      drawings: [],
-      created_at: Date.now(),
-      raw: rawMeta,
-    });
-    await markRead(gmail, msgId);
-    return;
-  }
-
-  // 4. Xu ly tung file PDF — tach trang → AI doc → gom lai
-  const allResults = [];
-
-  for (const att of emailData.attachments) {
-    console.log(`\n[PDF] Xu ly: ${att.name}`);
-    let pdfBuffer;
+    // 2. Parse email
+    let emailData;
     try {
-      pdfBuffer = await downloadAttachment(
-        gmail,
-        msgId,
-        att.attachmentId,
-        att.name
-      );
+      emailData = await parseGmailMsg(gmail, msgId);
     } catch (e) {
-      console.error(`[Download] Loi ${att.name}:`, e.message);
-      continue;
+      console.error("[Parse] Loi:", e.message);
+      return;
     }
 
-    // Tach trang
-    let pages;
-    try {
-      pages = await splitPdf(pdfBuffer, att.name);
-    } catch (e) {
-      console.error(`[SplitPDF] Loi:`, e.message);
-      // Fallback: gui nguyen 1 file
-      const tmpPath = path.join(
-        os.tmpdir(),
-        `vnt_full_${Date.now()}_${att.name}`
+    console.log(`[Agent] Subject: "${emailData.subject}"`);
+    console.log(`[Agent] From: ${emailData.from}`);
+    console.log(
+      `[Agent] PDFs: ${
+        emailData.attachments.map((a) => a.name).join(", ") || "khong co"
+      }`
+    );
+
+    // 3. Classify = Haiku
+    console.log("[Classify] Goi Haiku...");
+    const classify = await classifyEmail(emailData);
+    console.log(
+      `[Classify] → ${classify.loai} | ${classify.ngon_ngu} | ${classify.ly_do}`
+    );
+
+    const rawMeta = {
+      subject: emailData.subject,
+      from: emailData.from,
+      attachments: emailData.attachments.map((a) => ({
+        name: a.name,
+        attachmentId: a.attachmentId,
+      })),
+    };
+
+    // Khong phai RFQ → ghi job ngan (1 lan save, co id + created_at) roi danh dau da doc
+    if (!["rfq", "repeat_order"].includes(classify.loai)) {
+      console.log(
+        `[Agent] Khong phai RFQ (${classify.loai}) → ghi nhan, bo qua`
       );
-      fs.writeFileSync(tmpPath, pdfBuffer);
-      pages = [{ path: tmpPath, page: 1, name: att.name, total: 1 }];
+      await saveJob({
+        id: makeJobId(msgId),
+        gmail_id: msgId,
+        subject: emailData.subject,
+        sender: emailData.from,
+        sender_email: emailData.senderEmail,
+        sender_name: emailData.senderName,
+        sender_company: classify.ten_cong_ty,
+        classify: classify.loai,
+        ngon_ngu: classify.ngon_ngu,
+        status: classify.loai,
+        classify_output: { ...classify },
+        attachments: [],
+        drawings: [],
+        created_at: Date.now(),
+        raw: rawMeta,
+      });
+      await markRead(gmail, msgId);
+      return;
     }
 
-    // Doc tung trang = AI
-    for (const pg of pages) {
-      console.log(`[BV] Doc trang ${pg.page}/${pages.length}: ${pg.name}`);
+    if (!emailData.attachments.length) {
+      console.log("[Agent] RFQ nhung khong co PDF → can lien he KH xin ban ve");
+      await saveJob({
+        id: makeJobId(msgId),
+        gmail_id: msgId,
+        subject: emailData.subject,
+        sender: emailData.from,
+        sender_email: emailData.senderEmail,
+        sender_name: emailData.senderName,
+        sender_company: classify.ten_cong_ty,
+        classify: classify.loai,
+        ngon_ngu: classify.ngon_ngu,
+        status: "no_pdf",
+        classify_output: { ...classify },
+        attachments: [],
+        drawings: [],
+        created_at: Date.now(),
+        raw: rawMeta,
+      });
+      await markRead(gmail, msgId);
+      return;
+    }
+
+    // 4. Xu ly tung file PDF — tach trang → AI doc → gom lai
+    const allResults = [];
+
+    for (const att of emailData.attachments) {
+      console.log(`\n[PDF] Xu ly: ${att.name}`);
+      let pdfBuffer;
       try {
-        const result = await analyzeDrawingApi(pg.path, pg.name);
-        const d = result.data;
-
-        if (!d?.ban_ve?.ma_ban_ve && !d?.vat_lieu?.ma) {
-          console.log(`[BV] Trang ${pg.page} khong co du lieu → bo qua`);
-          continue;
-        }
-
-        console.log(
-          `[BV] ✓ ${d?.ban_ve?.ma_ban_ve} | ${d?.vat_lieu?.ma} | SL:${d?.san_xuat?.so_luong} | KL:${d?.khoi_luong?.klPhoiKg}kg`
+        pdfBuffer = await downloadAttachment(
+          gmail,
+          msgId,
+          att.attachmentId,
+          att.name
         );
-        allResults.push({ ...result, filename: att.name });
       } catch (e) {
-        console.error(`[BV] Loi trang ${pg.page}:`, e.message);
-      } finally {
-        fs.unlink(pg.path, () => {});
+        console.error(`[Download] Loi ${att.name}:`, e.message);
+        continue;
       }
 
-      await new Promise((r) => setTimeout(r, 1500));
+      // Tach trang
+      let pages;
+      try {
+        pages = await splitPdf(pdfBuffer, att.name);
+      } catch (e) {
+        console.error(`[SplitPDF] Loi:`, e.message);
+        // Fallback: gui nguyen 1 file
+        const tmpPath = path.join(
+          os.tmpdir(),
+          `vnt_full_${Date.now()}_${att.name}`
+        );
+        fs.writeFileSync(tmpPath, pdfBuffer);
+        pages = [{ path: tmpPath, page: 1, name: att.name, total: 1 }];
+      }
+
+      // Doc tung trang = AI
+      for (const pg of pages) {
+        console.log(`[BV] Doc trang ${pg.page}/${pages.length}: ${pg.name}`);
+        try {
+          const result = await analyzeDrawingApi(pg.path, pg.name);
+          const d = result.data;
+
+          if (!d?.ban_ve?.ma_ban_ve && !d?.vat_lieu?.ma) {
+            console.log(`[BV] Trang ${pg.page} khong co du lieu → bo qua`);
+            continue;
+          }
+
+          console.log(
+            `[BV] ✓ ${d?.ban_ve?.ma_ban_ve} | ${d?.vat_lieu?.ma} | SL:${d?.san_xuat?.so_luong} | KL:${d?.khoi_luong?.klPhoiKg}kg`
+          );
+          allResults.push({ ...result, filename: att.name });
+        } catch (e) {
+          console.error(`[BV] Loi trang ${pg.page}:`, e.message);
+        } finally {
+          fs.unlink(pg.path, () => {});
+        }
+
+        await new Promise((r) => setTimeout(r, 1500));
+      }
     }
-  }
 
-  // 5. Tao job ID + luu
-  const jobId = makeJobId(msgId);
-  const jobData = {
-    id: jobId,
-    gmail_id: msgId,
-    subject: emailData.subject,
-    sender: emailData.from,
-    sender_email: emailData.senderEmail,
-    classify: classify.loai,
-    ngon_ngu: classify.ngon_ngu,
-    classify_output: { ...classify },
-    han_giao: classify.han_giao_hang,
-    hinh_thuc_giao: classify.hinh_thuc_giao,
-    xu_ly_be_mat: classify.xu_ly_be_mat,
-    vat_lieu_chung_nhan: classify.vat_lieu_chung_nhan,
-    ten_cong_ty: classify.ten_cong_ty,
-    ghi_chu: emailData.body.slice(0, 500),
-    attachments: emailData.attachments.map((a) => ({
-      name: a.name,
-      attachmentId: a.attachmentId,
-    })),
-    drawings: allResults,
-    status: "pending_review",
-    created_at: Date.now(),
-  };
+    // 5. Tao job ID + luu
+    const jobId = makeJobId(msgId);
+    const jobData = {
+      id: jobId,
+      gmail_id: msgId,
+      subject: emailData.subject,
+      sender: emailData.from,
+      sender_email: emailData.senderEmail,
+      classify: classify.loai,
+      ngon_ngu: classify.ngon_ngu,
+      classify_output: { ...classify },
+      han_giao: classify.han_giao_hang,
+      hinh_thuc_giao: classify.hinh_thuc_giao,
+      xu_ly_be_mat: classify.xu_ly_be_mat,
+      vat_lieu_chung_nhan: classify.vat_lieu_chung_nhan,
+      ten_cong_ty: classify.ten_cong_ty,
+      ghi_chu: emailData.body.slice(0, 500),
+      attachments: emailData.attachments.map((a) => ({
+        name: a.name,
+        attachmentId: a.attachmentId,
+      })),
+      drawings: allResults,
+      status: "pending_review",
+      created_at: Date.now(),
+    };
 
-  await saveJob(jobData);
+    await saveJob(jobData);
 
-  console.log("\n" + "═".repeat(60));
-  console.log(`[Agent] ✓ Xong: ${allResults.length} ban ve`);
-  console.log(`[Agent] → Co the review tai: ${reviewUrl}`);
-  console.log("(Tab demoV3 hien tai se tu dong cap nhat sau 8s)");
-  console.log("═".repeat(60));
+    console.log("\n" + "═".repeat(60));
+    console.log(`[Agent] ✓ Xong: ${allResults.length} ban ve`);
+    console.log(`[Agent] → Co the review tai: ${reviewUrl}`);
+    console.log("(Tab demoV3 hien tai se tu dong cap nhat sau 8s)");
+    console.log("═".repeat(60));
 
-  await updateJob(jobId, {
-    gmail_id: msgId,
-    status: "pending_review",
-    lines_count: allResults.length,
-  });
+    await updateJob(jobId, {
+      gmail_id: msgId,
+      status: "pending_review",
+      lines_count: allResults.length,
+    });
 
-  // 6. Mark email da doc
-  await markRead(gmail, msgId);
+    // 6. Mark email da doc
+    await markRead(gmail, msgId);
   } finally {
     inflightMsgIds.delete(msgId);
   }

@@ -1255,6 +1255,7 @@ button.tab:focus-visible {
   width: 100%;
   border-collapse: collapse;
   font-size: 12.5px;
+  table-layout: fixed;
 }
 
 /* Header bảng — cùng tông indigo với logo */
@@ -1273,10 +1274,33 @@ button.tab:focus-visible {
   position: sticky;
   top: 0;
   z-index: 1;
+  overflow: visible;
 }
 
 .bv-tbl th:last-child {
   border-right: none;
+}
+
+/* Resize handle giống ng-zorro */
+.col-resize-handle {
+  position: absolute;
+  right: 0;
+  top: 0;
+  bottom: 0;
+  width: 6px;
+  cursor: col-resize;
+  z-index: 2;
+  background: transparent;
+  transition: background 0.15s;
+}
+
+.col-resize-handle:hover,
+.col-resize-handle:active {
+  background: rgba(255, 255, 255, 0.5);
+}
+
+.bv-tbl {
+  table-layout: fixed;
 }
 
 .bv-tbl td {
