@@ -15,6 +15,10 @@ import {
   parseGmailMsg,
 } from "../libs/gmailClient.js";
 import { splitPdf } from "../processors/pdfSplitter.js";
+import {
+  drawingHasMinimalData,
+  normalizeDrawingToFlat,
+} from "../libs/drawingNormalize.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -163,16 +167,21 @@ async function processEmail(gmail, msgId) {
         try {
           const result = await analyzeDrawingApi(pg.path, pg.name);
           const d = result.data;
+          const flat = normalizeDrawingToFlat(d);
 
-          if (!d?.ban_ve?.ma_ban_ve && !d?.vat_lieu?.ma) {
+          if (!drawingHasMinimalData(flat)) {
             console.log(`[BV] Trang ${pg.page} khong co du lieu → bo qua`);
             continue;
           }
 
           console.log(
-            `[BV] ✓ ${d?.ban_ve?.ma_ban_ve} | ${d?.vat_lieu?.ma} | SL:${d?.san_xuat?.so_luong} | KL:${d?.khoi_luong?.klPhoiKg}kg`
+            `[BV] ✓ ${flat.ma_ban_ve} | ${flat.vat_lieu} | SL:${flat.so_luong} | QT:${flat.ma_quy_trinh} | ${String(flat.ly_giai_qt).slice(0, 80)}`
           );
-          allResults.push({ ...result, filename: att.name });
+          allResults.push({
+            ...result,
+            data: flat,
+            filename: att.name,
+          });
         } catch (e) {
           console.error(`[BV] Loi trang ${pg.page}:`, e.message);
         } finally {
@@ -211,6 +220,7 @@ async function processEmail(gmail, msgId) {
 
     await saveJob(jobData);
 
+    const reviewUrl = `${agentCfg.banveApiUrl}/src/web/demoV3.html`;
     console.log("\n" + "═".repeat(60));
     console.log(`[Agent] ✓ Xong: ${allResults.length} ban ve`);
     console.log(`[Agent] → Co the review tai: ${reviewUrl}`);
@@ -242,11 +252,13 @@ async function analyzeDrawingApi(pdfPath, filename) {
     contentType: "application/pdf",
   });
 
-  const res = await fetch(`${agentCfg.banveApiUrl}/drawings`, {
+  console.log(`[analyzeDrawingApi] POST ${agentCfg.banveApiUrl}/drawings?provider=claude — file: ${filename}`);
+  const res = await fetch(`${agentCfg.banveApiUrl}/drawings?provider=claude`, {
     method: "POST",
     body: form,
     headers: form.getHeaders(),
   });
+  console.log(`[analyzeDrawingApi] response status: ${res.status}`);
 
   const data = await res.json();
   if (!res.ok) throw new Error(data.error || "Loi doc BV");

@@ -1,0 +1,67 @@
+{
+  "generalRows": [
+    {
+      "layout": "fg-2",
+      "cells": [
+        { "kind": "builtin", "id": "received_at" },
+        { "kind": "date_han_giao" }
+      ]
+    },
+    {
+      "layout": "fg-3",
+      "cells": [
+        {
+          "key": "hinh_thuc_giao",
+          "label": "Vận chuyển",
+          "type": "shipping",
+          "ai": "auto"
+        },
+        {
+          "key": "xu_ly_be_mat",
+          "label": "Xử lý bề mặt",
+          "type": "boolean",
+          "ai": "auto"
+        },
+        {
+          "key": "vat_lieu_chung_nhan",
+          "label": "Vật liệu chứng nhận",
+          "type": "boolean",
+          "ai": "auto"
+        }
+      ]
+    },
+    {
+      "layout": "fg-2",
+      "cells": [
+        { "key": "ten_cong_ty", "label": "Tên khách hàng", "ai": "auto" },
+        { "key": "loai", "label": "Loại (AI)", "ai": true, "hideIfEmpty": true }
+      ]
+    },
+    {
+      "layout": "fg-1",
+      "cells": [
+        {
+          "key": "ly_do",
+          "label": "Lý do phân loại",
+          "type": "textarea",
+          "rows": 3,
+          "ai": true
+        }
+      ]
+    },
+    {
+      "layout": "fg-1",
+      "cells": [
+        {
+          "key": "ghi_chu",
+          "label": "Ghi chú",
+          "type": "textarea",
+          "rows": 4,
+          "ai": "auto"
+        }
+      ]
+    }
+  ],
+  "appendUnknownClassifyKeys": true,
+  "hiddenKeys": []
+}

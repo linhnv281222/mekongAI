@@ -29,14 +29,19 @@ export async function analyzeDrawingGemini(pdfPath, model = null) {
     });
 
     const result = await genModel.generateContent({
-      content: [
+      contents: [
         {
-          inlineData: {
-            mimeType: "application/pdf",
-            data: base64,
-          },
+          role: "user",
+          parts: [
+            {
+              inlineData: {
+                mimeType: "application/pdf",
+                data: base64,
+              },
+            },
+            { text: promptText },
+          ],
         },
-        promptText,
       ],
     });
 
