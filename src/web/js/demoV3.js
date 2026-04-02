@@ -4,6 +4,54 @@ const API = "";
 /** Tự làm mới danh sách job (nhẹ hơn WebSocket; đủ cho agent vài chục giây/lần quét) */
 const JOBS_POLL_MS = 8000;
 
+/**
+ * Log response thô từ AI ra DevTools (phân loại email + text JSON model + object đã parse).
+ * Tắt: localStorage.setItem('mekongDebugAi','0') hoặc ?debugAi=0
+ */
+function shouldLogMekongAi() {
+  if (typeof window === "undefined" || !window.localStorage) return true;
+  const v = window.localStorage.getItem("mekongDebugAi");
+  if (v === "0") return false;
+  try {
+    const q = new URLSearchParams(window.location.search).get("debugAi");
+    if (q === "0") return false;
+  } catch (_) {
+    /* ignore */
+  }
+  return true;
+}
+
+function logMekongJobAiResponses(job, source) {
+  if (!shouldLogMekongAi() || !job || typeof console === "undefined") return;
+  const id = job.id ?? job.jobId ?? "?";
+  if (job.classify_output != null) {
+    console.log(
+      `[mekongAI] classify_output (${source}) job=${id}`,
+      job.classify_output
+    );
+  }
+  const drawings = job.drawings;
+  if (!Array.isArray(drawings) || drawings.length === 0) {
+    console.log(`[mekongAI] drawings (${source}) job=${id}: (không có)`);
+    return;
+  }
+  drawings.forEach((dr, i) => {
+    const name = dr.filename ?? dr.name ?? String(i);
+    if (dr.raw != null && String(dr.raw).length > 0) {
+      console.log(
+        `[mekongAI] drawing RAW text (${source}) job=${id} file=${name}`,
+        dr.raw
+      );
+    }
+    if (dr.data != null) {
+      console.log(
+        `[mekongAI] drawing parsed data (${source}) job=${id} file=${name}`,
+        dr.data
+      );
+    }
+  });
+}
+
 // Không dùng mock — chỉ lấy data từ backend
 
 // ── Date formatters ──
@@ -112,81 +160,165 @@ function HanGiaoFlatpickr({ email }) {
   );
 }
 
+/** Đồng bộ với src/libs/drawingNormalize.js — UI không import Node được */
+function _toStrUi(v) {
+  if (v == null || v === "") return "";
+  if (typeof v === "string") return v;
+  if (typeof v === "number" || typeof v === "boolean") return String(v);
+  if (typeof v === "object") {
+    try {
+      return JSON.stringify(v);
+    } catch {
+      return "";
+    }
+  }
+  return String(v);
+}
+function _materialUi(vl) {
+  if (vl == null) return "";
+  if (typeof vl === "string") return vl;
+  if (typeof vl === "object") {
+    const ma = vl.ma != null ? String(vl.ma).trim() : "";
+    const loai = vl.loai != null ? String(vl.loai).trim() : "";
+    if (ma && loai) return `${ma} (${loai})`;
+    return ma || loai || "";
+  }
+  return _toStrUi(vl);
+}
+function _shapeUi(hd) {
+  if (hd == null) return "";
+  if (typeof hd === "string") return hd;
+  if (typeof hd === "object") {
+    const loai = hd.loai != null ? String(hd.loai).trim() : "";
+    const kieu = hd.kieu_phoi != null ? String(hd.kieu_phoi).trim() : "";
+    if (loai && kieu) return `${loai} · ${kieu}`;
+    return loai || kieu || "";
+  }
+  return _toStrUi(hd);
+}
+function _kichThuocBaoUi(kt) {
+  if (!kt || typeof kt !== "object") return "";
+  if (kt.phi_lon != null && kt.phi_lon !== "")
+    return `Ø${kt.phi_lon} × ${kt.cao_hoac_duong_kinh ?? ""}`.trim();
+  if (kt.dai != null && kt.rong != null)
+    return `${kt.dai}×${kt.rong}×${kt.cao_hoac_duong_kinh ?? ""}`;
+  return "";
+}
+function _maQtLegacyUi(d) {
+  if (d.ma_quy_trinh != null && String(d.ma_quy_trinh).trim())
+    return String(d.ma_quy_trinh).trim();
+  const qt = d.quy_trinh_tong_the;
+  if (!Array.isArray(qt) || !qt.length) return "";
+  const last = qt[qt.length - 1];
+  if (typeof last === "string") return last;
+  if (last && typeof last === "object")
+    return String(last.ma || last.ma_quy_trinh || "").trim();
+  return "";
+}
+function normalizeDrawingDataForUi(raw) {
+  if (!raw || typeof raw !== "object") {
+    return {
+      ma_ban_ve: "",
+      vat_lieu: "",
+      so_luong: 1,
+      xu_ly_be_mat: "",
+      xu_ly_nhiet: "",
+      dung_sai_chung: "",
+      hinh_dang: "",
+      kich_thuoc: "",
+      so_be_mat_cnc: null,
+      dung_sai_chat_nhat: "",
+      co_gdt: false,
+      ma_quy_trinh: "",
+      ly_giai_qt: "",
+    };
+  }
+  const legacy =
+    raw.ban_ve != null ||
+    (raw.vat_lieu != null && typeof raw.vat_lieu === "object") ||
+    raw.kich_thuoc_bao != null;
+  if (!legacy) {
+    const sl = Number(raw.so_luong);
+    return {
+      ma_ban_ve: _toStrUi(raw.ma_ban_ve),
+      vat_lieu: _materialUi(raw.vat_lieu),
+      so_luong: Number.isFinite(sl) && sl > 0 ? sl : 1,
+      xu_ly_be_mat: _toStrUi(raw.xu_ly_be_mat),
+      xu_ly_nhiet: _toStrUi(raw.xu_ly_nhiet),
+      dung_sai_chung: _toStrUi(raw.dung_sai_chung),
+      hinh_dang: _shapeUi(raw.hinh_dang),
+      kich_thuoc: _toStrUi(raw.kich_thuoc),
+      so_be_mat_cnc:
+        raw.so_be_mat_cnc != null && raw.so_be_mat_cnc !== ""
+          ? Number(raw.so_be_mat_cnc)
+          : null,
+      dung_sai_chat_nhat: _toStrUi(raw.dung_sai_chat_nhat),
+      co_gdt: Boolean(raw.co_gdt),
+      ma_quy_trinh: _toStrUi(raw.ma_quy_trinh),
+      ly_giai_qt: _toStrUi(raw.ly_giai_qt),
+    };
+  }
+  const bv = raw.ban_ve || {};
+  const sx = raw.san_xuat || {};
+  const kt = raw.kich_thuoc_bao || {};
+  const xu = raw.xu_ly || {};
+  const sl = Number(sx.so_luong);
+  let xbm = "";
+  if (xu && Array.isArray(xu.be_mat) && xu.be_mat.length) {
+    xbm = xu.be_mat
+      .map((b) => (b && typeof b === "object" ? b.ten || b.tieu_chuan : b))
+      .filter(Boolean)
+      .join("; ");
+  }
+  return {
+    ma_ban_ve: _toStrUi(bv.ma_ban_ve),
+    vat_lieu: _materialUi(raw.vat_lieu),
+    so_luong: Number.isFinite(sl) && sl > 0 ? sl : 1,
+    xu_ly_be_mat: xbm || _toStrUi(raw.xu_ly_be_mat),
+    xu_ly_nhiet: _toStrUi(xu.nhiet ?? raw.xu_ly_nhiet),
+    dung_sai_chung: _toStrUi(sx.tieu_chuan ?? raw.dung_sai_chung),
+    hinh_dang: _shapeUi(raw.hinh_dang),
+    kich_thuoc: _toStrUi(raw.kich_thuoc) || _kichThuocBaoUi(kt),
+    so_be_mat_cnc:
+      raw.so_be_mat_cnc != null && raw.so_be_mat_cnc !== ""
+        ? Number(raw.so_be_mat_cnc)
+        : Array.isArray(raw.nguyen_cong_cnc)
+        ? raw.nguyen_cong_cnc.length
+        : null,
+    dung_sai_chat_nhat: _toStrUi(raw.dung_sai_chat_nhat),
+    co_gdt: Boolean(raw.co_gdt),
+    ma_quy_trinh: _maQtLegacyUi(raw),
+    ly_giai_qt: _toStrUi(raw.ly_giai_qt),
+  };
+}
+
 /** Một dòng bảng từ kết quả /drawings hoặc drawings trong job.
  * AI trả về JSON theo cấu trúc prompt → lấy đúng trường đó.
  * Click vào mã bản vẽ → xem PDF trang tương ứng ở panel bên phải.
  */
 function drawingToLine(r, indexHint) {
-  const d = r.data || {};
-  const kl = d.khoi_luong || {};
-  const klRaw = kl.kl_phoi_kg ?? kl.klPhoiKg;
-  let klNum = null;
-  if (klRaw != null && klRaw !== "") {
-    const n =
-      typeof klRaw === "number"
-        ? klRaw
-        : parseFloat(String(klRaw).replace(",", "."));
-    if (!Number.isNaN(n)) klNum = n;
-  }
-
-  // Các trường mới từ AI phân tích bản vẽ
-  const hinh_dang = d.hinh_dang || {};
-  const vat_lieu = d.vat_lieu || {};
-  const kich_thuoc = d.kich_thuoc_bao || {};
-  const quy_trinh = d.quy_trinh_tong_the || [];
-  const be_mat_cnc = d.be_mat_gia_cong || [];
-
-  // Mã quy trình: lấy dòng kết luận cuối cùng từ quy_trinh_tong_the
-  let ma_qt = "";
-  if (Array.isArray(quy_trinh) && quy_trinh.length > 0) {
-    const last = quy_trinh[quy_trinh.length - 1];
-    ma_qt = last.ma || last.ma_quy_trinh || last;
-  }
-
-  // Dung sai: lấy từ bản vẽ hoặc tiêu chuẩn
-  let dung_sai = "";
-  if (hinh_dang.dung_sai_chung) dung_sai = hinh_dang.dung_sai_chung;
-  else if (vat_lieu.dung_sai) dung_sai = vat_lieu.dung_sai;
-
-  // Mô tả kích thước bề mặt CNC
-  let kich_thuoc_cnc = "";
-  if (be_mat_cnc.length > 0) {
-    kich_thuoc_cnc = be_mat_cnc
-      .map((bm) => {
-        const size = bm.kich_thuoc || bm.size || "";
-        const type = bm.loai || bm.type || "";
-        return size ? `${type} ${size}`.trim() : type;
-      })
-      .filter(Boolean)
-      .join(", ");
-  }
+  const d = normalizeDrawingDataForUi(r.data || {});
 
   return {
     id: r.id != null ? r.id : Date.now() + indexHint,
     page: r.page != null ? r.page : indexHint + 1,
-    fileIndex: r.fileIndex ?? indexHint, // index file để load PDF
-    filename: r.filename || "", // tên file PDF chứa drawing này
-    // Các cột mới
-    ma_ban_ve: d.ban_ve?.ma_ban_ve || (r.page != null ? `Trang ${r.page}` : ""),
-    ten_chi_tiet: d.ban_ve?.ten_chi_tiet || "",
-    revision: d.ban_ve?.revision || "",
-    so_luong: d.san_xuat?.so_luong ?? 1,
-    hinh_dang: hinh_dang.loai || hinh_dang.kieu_phoi || "",
-    vat_lieu: vat_lieu.ma || vat_lieu.loai || "",
-    dung_sai: dung_sai,
-    kich_thuoc_cnc: kich_thuoc_cnc,
-    // Kích thước bao để hiển thị ngắn gọn
-    kich_thuoc_bao: kich_thuoc.phi_lon
-      ? `Ø${kich_thuoc.phi_lon} × ${kich_thuoc.cao_hoac_duong_kinh || ""}`
-      : kich_thuoc.dai && kich_thuoc.rong && kich_thuoc.cao_hoac_duong_kinh
-      ? `${kich_thuoc.dai}×${kich_thuoc.rong}×${kich_thuoc.cao_hoac_duong_kinh}`
-      : "",
-    ma_quy_trinh: ma_qt,
-    // Giữ lại các trường cũ cho tương thích
-    ma_nvl: vat_lieu.ma || "",
-    kl_phoi: klNum,
-    // Data gốc để debug
-    _raw: d,
+    fileIndex: r.fileIndex ?? indexHint,
+    filename: r.filename || "",
+    ma_ban_ve: d.ma_ban_ve || (r.page != null ? `Trang ${r.page}` : ""),
+    vat_lieu: d.vat_lieu,
+    so_luong: d.so_luong ?? 1,
+    xu_ly_be_mat: d.xu_ly_be_mat,
+    xu_ly_nhiet: d.xu_ly_nhiet,
+    dung_sai_chung: d.dung_sai_chung,
+    hinh_dang: d.hinh_dang,
+    kich_thuoc: d.kich_thuoc,
+    so_be_mat_cnc: d.so_be_mat_cnc,
+    dung_sai_chat_nhat: d.dung_sai_chat_nhat,
+    co_gdt: d.co_gdt,
+    ma_quy_trinh: d.ma_quy_trinh,
+    ly_giai_qt: d.ly_giai_qt,
+    dung_sai: d.dung_sai_chung,
+    _raw: r.data || {},
   };
 }
 
@@ -951,10 +1083,10 @@ const DEFAULT_COL_WIDTHS = {
   ma_ban_ve: 160,
   so_luong: 70,
   hinh_dang: 90,
-  dung_sai: 80,
-  vat_lieu: 80,
-  kich_thuoc_cnc: 120,
-  ma_quy_trinh: 80,
+  dung_sai: 90,
+  vat_lieu: 90,
+  kich_thuoc: 110,
+  ma_quy_trinh: 90,
 };
 
 function Tab2({
@@ -1074,12 +1206,6 @@ function Tab2({
     (s, l) => s + (parseInt(l.so_luong, 10) || 0),
     0
   );
-  const totalKL = lines
-    .reduce((s, l) => {
-      const n = parseFloat(l.kl_phoi);
-      return s + (Number.isNaN(n) ? 0 : n);
-    }, 0)
-    .toFixed(3);
 
   function onFileInputChange(e) {
     const f = e.target.files[0];
@@ -1139,11 +1265,14 @@ function Tab2({
           <span>
             Tổng SL: <b>{totalSL.toLocaleString()} PCS</b>
           </span>
-          <span>·</span>
-          <span>
-            Tổng KL phôi:{" "}
-            <b style={{ color: "var(--v3-brand2)" }}>{totalKL} KG</b>
-          </span>
+          {lines[0]?.ma_quy_trinh && (
+            <>
+              <span>·</span>
+              <span>
+                QT: <b style={{ color: "var(--v3-brand2)" }}>{lines[0].ma_quy_trinh}</b>
+              </span>
+            </>
+          )}
         </div>
       )}
 
@@ -1230,8 +1359,8 @@ function Tab2({
                   <col
                     style={{
                       width:
-                        colWidths["kich_thuoc_cnc"] ||
-                        DEFAULT_COL_WIDTHS["kich_thuoc_cnc"],
+                        colWidths["kich_thuoc"] ||
+                        DEFAULT_COL_WIDTHS["kich_thuoc"],
                     }}
                   />
                   <col
@@ -1273,7 +1402,7 @@ function Tab2({
                       />
                     </th>
                     <th style={{ position: "relative" }}>
-                      Dung sai
+                      Dung sai chung
                       <span
                         className="col-resize-handle"
                         onMouseDown={(e) => onResizeMouseDown(e, "dung_sai")}
@@ -1287,11 +1416,11 @@ function Tab2({
                       />
                     </th>
                     <th style={{ position: "relative" }}>
-                      Kích thước CNC
+                      Kích thước
                       <span
                         className="col-resize-handle"
                         onMouseDown={(e) =>
-                          onResizeMouseDown(e, "kich_thuoc_cnc")
+                          onResizeMouseDown(e, "kich_thuoc")
                         }
                       />
                     </th>
@@ -1374,21 +1503,6 @@ function Tab2({
                             }
                           />
                         </span>
-                        {l.ten_chi_tiet && (
-                          <div
-                            style={{
-                              fontSize: 10,
-                              color: "var(--v3-muted)",
-                              whiteSpace: "nowrap",
-                              overflow: "hidden",
-                              textOverflow: "ellipsis",
-                              maxWidth: 180,
-                            }}
-                            title={l.ten_chi_tiet}
-                          >
-                            {l.ten_chi_tiet}
-                          </div>
-                        )}
                       </td>
                       <td
                         style={{
@@ -1510,17 +1624,18 @@ function Tab2({
                       <td
                         style={{
                           width:
-                            colWidths["kich_thuoc_cnc"] ||
-                            DEFAULT_COL_WIDTHS["kich_thuoc_cnc"],
+                            colWidths["kich_thuoc"] ||
+                            DEFAULT_COL_WIDTHS["kich_thuoc"],
                           fontSize: 11,
                           color: "var(--v3-ink)",
                           overflow: "hidden",
                           textOverflow: "ellipsis",
                           whiteSpace: "nowrap",
+                          fontFamily: "var(--v3-mono)",
                         }}
-                        title={l.kich_thuoc_cnc || l.kich_thuoc_bao || "—"}
+                        title={l.kich_thuoc || "—"}
                       >
-                        {l.kich_thuoc_cnc || l.kich_thuoc_bao || "—"}
+                        {l.kich_thuoc || "—"}
                       </td>
                       <td
                         style={{
@@ -1650,6 +1765,7 @@ function Right({ email, setEmails, classifyUiSchema }) {
   const previewLoadGen = useRef(0);
   const currentFileRef = useRef(null); // track file đang load để tránh re-fetch
   const previewBytesRef = useRef(null); // lưu bytes để tạo blob mới khi page đổi
+  const [showDebug, setShowDebug] = useState(false);
 
   // Reset tab + xóa preview blob khi chọn job khác
   useEffect(() => {
@@ -1907,6 +2023,16 @@ function Right({ email, setEmails, classifyUiSchema }) {
       const { results = [] } = json;
       for (let i = 0; i < results.length; i++) {
         const r = results[i];
+        if (shouldLogMekongAi()) {
+          console.log(
+            `[mekongAI] batch drawing RAW trang=${r.page ?? i + 1}`,
+            r.raw
+          );
+          console.log(
+            `[mekongAI] batch drawing parsed trang=${r.page ?? i + 1}`,
+            r.data
+          );
+        }
         setLines((prev) => [...prev, drawingToLine(r, prev.length + i)]);
         setProgress(Math.round(20 + ((i + 1) / results.length) * 75));
         await new Promise((resolve) => setTimeout(resolve, 60));
@@ -2055,6 +2181,16 @@ function Right({ email, setEmails, classifyUiSchema }) {
           >
             Danh sách bản vẽ{lines.length > 0 ? ` (${lines.length})` : ""}
           </button>
+          <button
+            type="button"
+            role="tab"
+            aria-selected={tab === 2}
+            className={`tab${tab === 2 ? " active" : ""}${showDebug ? " tab--debug" : ""}`}
+            onClick={() => setTab(2)}
+            title="Debug: Xem raw AI response"
+          >
+            {showDebug ? "🔍 Debug AI" : "🔍 Debug"}
+          </button>
         </div>
         <div className="tcontent">
           {tab === 0 && (
@@ -2075,6 +2211,106 @@ function Right({ email, setEmails, classifyUiSchema }) {
               processing={processing}
               progress={progress}
             />
+          )}
+          {tab === 2 && (
+            <div style={{ padding: "16px", fontFamily: "monospace", fontSize: 12 }}>
+              <div style={{ marginBottom: 16 }}>
+                <label style={{ display: "flex", alignItems: "center", gap: 8, cursor: "pointer" }}>
+                  <input
+                    type="checkbox"
+                    checked={showDebug}
+                    onChange={(e) => setShowDebug(e.target.checked)}
+                  />
+                  <span>Auto-log console (mekongAI)</span>
+                </label>
+              </div>
+              <div style={{ marginBottom: 12, color: "#888", fontSize: 11 }}>
+                Mở DevTools → Console để xem log AI. Filter: <code>mekongAI</code>
+              </div>
+              <div style={{ marginBottom: 20 }}>
+                <div style={{ color: "#aaa", marginBottom: 4 }}>classify_output:</div>
+                <textarea
+                  readOnly
+                  style={{
+                    width: "100%",
+                    minHeight: 80,
+                    fontFamily: "monospace",
+                    fontSize: 11,
+                    background: "#1e1e1e",
+                    color: "#d4d4d4",
+                    border: "1px solid #333",
+                    padding: 6,
+                    resize: "vertical",
+                    boxSizing: "border-box",
+                  }}
+                  value={
+                    email?.classify_output
+                      ? JSON.stringify(email.classify_output, null, 2)
+                      : "(chưa có — bấm chọn email để tải)"
+                  }
+                />
+              </div>
+              {email?.drawings?.map((dr, i) => (
+                <div key={i} style={{ marginBottom: 16, border: "1px solid #444", borderRadius: 4, overflow: "hidden" }}>
+                  <div style={{
+                    background: "#252526",
+                    padding: "4px 8px",
+                    color: "#9cdcfe",
+                    fontSize: 11,
+                    borderBottom: "1px solid #444",
+                  }}>
+                    {"drawing[" + i + "]: " + (dr.filename || dr.name || ("file " + (i + 1)))}
+                  </div>
+                  <div style={{ padding: 8 }}>
+                    <div style={{ color: "#aaa", marginBottom: 4 }}>raw (text thô AI trả về):</div>
+                    <textarea
+                      readOnly
+                      style={{
+                        width: "100%",
+                        minHeight: 60,
+                        fontFamily: "monospace",
+                        fontSize: 11,
+                        background: "#1e1e1e",
+                        color: "#ce9178",
+                        border: "1px solid #333",
+                        padding: 6,
+                        resize: "vertical",
+                        boxSizing: "border-box",
+                        whiteSpace: "pre-wrap",
+                      }}
+                      value={dr.raw ?? "(không có raw)"}
+                    />
+                    <div style={{ color: "#aaa", margin: "8px 0 4px" }}>data (JSON đã parse):</div>
+                    <textarea
+                      readOnly
+                      style={{
+                        width: "100%",
+                        minHeight: 100,
+                        fontFamily: "monospace",
+                        fontSize: 11,
+                        background: "#1e1e1e",
+                        color: "#b5cea8",
+                        border: "1px solid #333",
+                        padding: 6,
+                        resize: "vertical",
+                        boxSizing: "border-box",
+                        whiteSpace: "pre-wrap",
+                      }}
+                      value={
+                        dr.data
+                          ? JSON.stringify(dr.data, null, 2)
+                          : "(không có data)"
+                      }
+                    />
+                  </div>
+                </div>
+              ))}
+              {!email?.drawings?.length && (
+                <div style={{ color: "#666", fontStyle: "italic" }}>
+                  Chưa có bản vẽ nào. Bấm chọn email trong hộp thư để tải dữ liệu AI.
+                </div>
+              )}
+            </div>
           )}
         </div>
       </div>
@@ -2285,6 +2521,7 @@ function App() {
         };
         setEmails((prev) => [e, ...prev.filter((x) => x.id !== e.id)]);
         setActive(e);
+        logMekongJobAiResponses(job, "GET ?job=");
         window.history.replaceState({}, "", window.location.pathname);
       })
       .catch(() => {});
@@ -2314,6 +2551,7 @@ function App() {
       };
       setEmails((prev) => prev.map((x) => (x.id === e.id ? full : x)));
       setActive(full);
+      logMekongJobAiResponses(job, "selectEmail");
     } else {
       setActive(e);
     }

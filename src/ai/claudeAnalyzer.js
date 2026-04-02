@@ -1,78 +1,28 @@
 import Anthropic from "@anthropic-ai/sdk";
 import fs from "fs";
 import { aiCfg } from "../libs/config.js";
-import { enrichWithF7F8 } from "../processors/processRouter.js";
-import { parseStep } from "../processors/stepParser.js";
 import { getPrompt, getKnowledgeBlock } from "../prompts/promptStore.js";
 
 const client = new Anthropic({ apiKey: aiCfg.anthropicKey });
 
-// ─── SCHEMA mo ta dau ra mong muon ───────────────────────────────────────
+// ─── SCHEMA mô tả đầu ra mong muốn ───────────────────────────────────────
+// Schema phẳng — flat, không lồng nhau, đúng như prompt phân tích bản vẽ
 const DRAWING_SCHEMA = `
 {
-  "ban_ve": {
-    "ma_ban_ve": "string",
-    "ten_chi_tiet": "string",
-    "revision": "string",
-    "so_to": "string — vi du: 1 OF 3",
-    "don_vi": "INCH | MM"
-  },
-  "vat_lieu": {
-    "ma": "string — vi du: AL6061-T6, S45C, SUS304",
-    "loai": "Nhom | Thep | Inox | Khac",
-    "nhiet_luyen": "string | null"
-  },
-  "san_xuat": {
-    "so_luong": "number",
-    "tieu_chuan": "string — vi du: ASME Y14.5-2009"
-  },
-  "xu_ly": {
-    "be_mat": [
-      {
-        "buoc": "number",
-        "ten": "string",
-        "tieu_chuan": "string | null"
-      }
-    ],
-    "nhiet": "string | null"
-  },
-  "hinh_dang": {
-    "loai": "Tron xoay | Vuong canh | Hon hop",
-    "kieu_phoi": "Phi tron dac | Phi tron ong | Hinh tam | Luc giac | Khac",
-    "phuong_an_gia_cong": "Tien CNC | Phay CNC | Tien + Phay | Khac",
-    "mo_ta": ["string"]
-  },
-  "kich_thuoc_bao": {
-    "don_vi": "inch | mm",
-    "dai": "number | null — chieu dai tong the",
-    "rong": "number | null — chieu rong (chi dung cho chi tiet vuong canh)",
-    "cao_hoac_duong_kinh": "number | null — chieu cao hoac duong kinh ngoai lon nhat",
-    "phi_lon": "number | null — duong kinh ngoai lon nhat (CHi dung cho chi tiet tron xoay)",
-    "phi_nho": "number | null — duong kinh nho nhat hoac duong kinh trong neu la ong (CHi dung cho chi tiet tron xoay)",
-    "phan_loai_do_lon": "Nho (<50mm) | Trung binh (50-200mm) | Lon (>200mm)"
-  },
-  "nguyen_cong_cnc": [
-    {
-      "stt": "number",
-      "ten": "string",
-      "may": "string",
-      "ghi_chu": "string | null"
-    }
-  ],
-  "be_mat_gia_cong": [
-    {
-      "be_mat": "string — ten mat/vi tri",
-      "loai": "Ren | Tron | CSK | Chamfer | Bo goc | Cung | Ranh | Khac",
-      "quy_cach": "string — vi du: 4x 6-32 UNC-2B",
-      "sau_hoac_kich_thuoc": "string | null",
-      "dung_sai": "string | null",
-      "critical": "boolean — true neu co ky hieu X hoac AND/OR X tren ban ve",
-      "ghi_chu": "string | null"
-    }
-  ],
-  "quy_trinh_tong_the": ["string"]
-}
-`;
+  "ma_ban_ve": "string — mã số bản vẽ trong khung tên (VD: M1024, DW-2024-001)",
+  "vat_lieu": "string — mã vật liệu ghi trên bản vẽ (VD: AL6061-T6, S45C, SUS304). Nếu không ghi → 'Không ghi trên bản vẽ'",
+  "so_luong": "number — số lượng sản xuất (VD: 1, 5, 10)",
+  "xu_ly_be_mat": "string — xử lý bề mặt ghi trên bản vẽ (VD: Ra 1.6, Ni 10um). Nếu không ghi → 'Không ghi trên bản vẽ'",
+  "xu_ly_nhiet": "string — xử lý nhiệt luyện ghi trên bản vẽ (VD: T6, HRC 58-62). Nếu không ghi → 'Không ghi trên bản vẽ'",
+  "dung_sai_chung": "string — tiêu chuẩn dung sai chung ghi trên khung tên (VD: JIS B 0405, ISO 2768-m). Nếu không ghi → 'Không ghi trên bản vẽ'",
+  "hinh_dang": "string — phân loại hình dạng: 'Tròn xoay' | 'Hình tấm' | 'Khối phức tạp'",
+  "kich_thuoc": "string — kích thước bao tổng thể (VD: Ø35×74.5, 80×50×10, 150×90×15 mm). Giữ nguyên đơn vị gốc",
+  "so_be_mat_cnc": "number — số bề mặt CNC (số lần gá đặt). Quy tắc: x=1 nếu tất cả đặc điểm hoàn thành từ 1 hướng; x=2 chỉ khi có blind features ở 2 mặt đối diện. Hình tấm chỉ lỗ thông suốt + chamfer → x=1. Hình tấm mặc định x=2 (trên+dưới) trừ khi có yêu cầu đặc biệt mặt bên",
+  "dung_sai_chat_nhat": "string — dung sai vị trí nhỏ nhất có trên bản vẽ (VD: ±0.02, 0.05, H7, js6). Nếu không ghi → 'Không ghi trên bản vẽ'",
+  "co_gdt": "boolean — true nếu bản vẽ có ký hiệu GD&T (gd_t, true position, profile tolerance...)",
+  "ma_quy_trinh": "string — mã quy trình gia công theo bảng tra ①②③④⑤: QTxxx (VD: QT111, QT612, QT213). VD: Hình tấm + thép + KT 50-300mm + x=2 → QT612",
+  "ly_giai_qt": "string — giải thích ngắn gọn từng bước logic để ra mã QT (①②③④⑤), ví dụ: '① Hình tấm → bỏ qua ②③④ → ⑤ Thép + KT 50-300mm + x=2 → QT612'"
+}`;
 
 // Knowledge blocks are loaded from promptStore at call time (DB or file fallback).
 // Prompt is loaded from DB via promptStore with variable substitution.
@@ -129,7 +79,7 @@ export async function analyzDrawing(pdfPath) {
           },
           {
             type: "text",
-            text: `Phan tich ban ve ky thuat nay va tra ve JSON theo schema sau:\n${DRAWING_SCHEMA}\n\nLuu y: Tra ve JSON thuan tuy, khong markdown.`,
+            text: `Phan tich ban ve ky thuat nay va tra ve JSON theo schema phang sau:\n${DRAWING_SCHEMA}\n\nLuu y:\n- Tra ve JSON thuan tuy, khong markdown, khong giai thich\n- "Khong ghi tren ban ve" khi thong tin khong co tren ban ve\n- Tu dinh nghia ma_quy_trinh + ly_giai_qt dua tren bieu mau ①②③④⑤\n- so_be_mat_cnc: chi dem so lan ga dat (setups), khong dem so lo/dien tich`,
             cache_control: { type: "ephemeral" },
           },
         ],
@@ -164,11 +114,11 @@ export async function analyzDrawing(pdfPath) {
 
   try {
     let parsed = JSON.parse(cleaned);
-    try {
-      parsed = enrichWithF7F8(parsed);
-    } catch (e) {
-      console.warn("enrich F7F8:", e.message);
-    }
+    // enrichWithF7F8 bo sung F7/F8 cho schema cu (nested). Schema moi (flat) da co
+    // ma_quy_trinh tu AI roi, khong can go lai enrich.
+    // if (parsed) {
+    //   try { parsed = enrichWithF7F8(parsed); } catch(e) { console.warn("enrich:", e.message); }
+    // }
 
     return {
       success: true,
@@ -182,12 +132,12 @@ export async function analyzDrawing(pdfPath) {
         cache_hit_ratio_pct: parseFloat(cacheHitRatio),
       },
     };
-  } catch {
-    console.error("JSON parse failed. Raw output:", raw.substring(0, 500));
+  } catch (e) {
+    console.error("[ClaudeAnalyzer] EXCEPTION:", e.message, e.stack?.split("\n")[1] ?? "");
     return {
       success: false,
-      error: "LLM tra ve khong dung JSON format",
-      raw,
+      error: e.message,
+      raw: "",
     };
   }
 }
@@ -247,34 +197,8 @@ export async function analyzeDrawingWithStep(pdfPath, stepPath) {
   const pdfResult = await analyzDrawing(pdfPath);
   if (!pdfResult.success) return pdfResult;
 
-  if (stepPath && fs.existsSync(stepPath)) {
-    const stepResult = analyzeStep(stepPath);
-    if (stepResult.success) {
-      console.log(
-        `  STEP merge: phi_lon=${stepResult.kich_thuoc_bao.phi_lon}mm, dai=${stepResult.kich_thuoc_bao.dai}mm`
-      );
-
-      const d = pdfResult.data;
-      d.kich_thuoc_bao = {
-        don_vi: "mm",
-        dai: stepResult.kich_thuoc_bao.dai,
-        rong: stepResult.kich_thuoc_bao.rong,
-        cao_hoac_duong_kinh:
-          stepResult.kich_thuoc_bao.phi_lon || stepResult.kich_thuoc_bao.cao,
-        phi_lon: stepResult.kich_thuoc_bao.phi_lon,
-        phi_nho: stepResult.kich_thuoc_bao.phi_nho,
-        phan_loai_do_lon: _classifySize(
-          stepResult.kich_thuoc_bao.phi_lon || stepResult.kich_thuoc_bao.dai
-        ),
-        _source: "STEP",
-      };
-
-      d._step_data = {
-        bounding_box: stepResult.bounding_box_mm,
-        lo_va_be_mat_step: stepResult.lo_va_be_mat,
-      };
-    }
-  }
+// STEP analysis still works for dimension extraction; result is kept separate.
+// STEP merge is disabled for flat schema (no kich_thuoc_bao wrapper).
 
   return pdfResult;
 }
@@ -327,6 +251,7 @@ Tra ve JSON da cap nhat, giu nguyen toan bo cau truc.`,
     return {
       success: true,
       data: JSON.parse(cleaned),
+      raw,
       usage: { input_tokens: u.input_tokens, output_tokens: u.output_tokens },
     };
   } catch {

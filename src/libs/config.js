@@ -72,7 +72,11 @@ export const gmailCfg = {
   clientSecret: process.env.GMAIL_CLIENT_SECRET || "",
   refreshToken: process.env.GMAIL_REFRESH_TOKEN || "",
   user: process.env.GMAIL_USER || "sales@vietnhattan.com.vn",
-  scanIntervalSec: parseInt(process.env.SCAN_INTERVAL_SECONDS || "30", 10),
+  scanIntervalSec: (() => {
+    const sec = parseInt(process.env.SCAN_INTERVAL_SECONDS || "", 10);
+    if (!isNaN(sec) && sec > 0) return sec;
+    return parseInt(process.env.SCAN_INTERVAL_MINUTES || "1", 10) * 60;
+  })(),
 };
 
 // ─── AGENT CONFIG ───────────────────────────────────────────────────────────
