@@ -245,6 +245,32 @@ body {
   color: white;
 }
 
+/* ── Model selector in sidebar ──────────────────────── */
+.model-selector-item {
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.model-select {
+  width: 100%;
+  background: #fff;
+  border: 1px solid var(--border-strong);
+  border-radius: 4px;
+  color: var(--text);
+  padding: 3px 6px;
+  font-size: 11px;
+  font-family: var(--font);
+  cursor: pointer;
+  margin-top: 4px;
+}
+.model-select:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+.model-status {
+  padding: 2px 0 4px 38px;
+  font-size: 11px;
+}
+
 /* ── Content ────────────────────────────────────────── */
 .content {
   overflow-y: auto;
@@ -421,7 +447,7 @@ body {
   cursor: not-allowed;
 }
 
-/* ── Save note ──────────────────────────────────────── */
+/* ── Save note ─────────────────────────────────────── */
 .save-note {
   width: 100%;
   background: #fff;
@@ -700,3 +726,10 @@ body {
     grid-template-columns: 1fr;
   }
 }
+\
+
+/* â €â€ Model selector in sidebar â€â€â€â€â€â€â€â€â€â€â€â€â€â€â€â€â€â€â€â€â€â€â€â€ */
+.model-selector-item { flex-wrap: wrap; gap: 6px; }
+.model-select { width: 100%; background: #fff; border: 1px solid var(--border-strong); border-radius: 4px; color: var(--text); padding: 3px 6px; font-size: 11px; font-family: var(--font); cursor: pointer; margin-top: 4px; }
+.model-select:focus { outline: none; border-color: var(--accent); }
+.model-status { padding: 2px 0 4px 38px; font-size: 11px; }
