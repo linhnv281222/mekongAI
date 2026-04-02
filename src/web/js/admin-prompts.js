@@ -746,5 +746,63 @@ function toast(msg, type = "ok") {
   setTimeout(() => el.remove(), 3500);
 }
 
+// ── Model Selector ─────────────────────────────────────────────────────────
+async function loadCurrentProvider() {
+  try {
+    const r = await fetch("/admin/prompts/config");
+    if (r.ok) {
+      const d = await r.json();
+      const provider = d.data?.provider || "claude";
+      const sel = document.getElementById("modelSelect");
+      if (sel) sel.value = provider;
+      syncProviderStatus(provider);
+    }
+  } catch {}
+}
+
+function syncProviderStatus(provider) {
+  const el = document.getElementById("modelStatus");
+  if (!el) return;
+  const icon = provider === "gemini" ? "&#9729;" : "&#128172;";
+  el.innerHTML = `<span style="font-size:11px;color:var(--muted)">&#8594; ${icon} ${provider}</span>`;
+}
+
+async function onModelChange() {
+  const sel = document.getElementById("modelSelect");
+  if (!sel) return;
+  const provider = sel.value;
+  syncProviderStatus(provider);
+  // Gửi kèm `model` để tương thích server cũ (từng bắt buộc cả hai trường)
+  const modelLegacy =
+    provider === "gemini"
+      ? "gemini-3.1-pro-preview"
+      : "claude-sonnet-4-6";
+  try {
+    const r = await fetch("/admin/prompts/config", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ provider, model: modelLegacy }),
+    });
+    const d = await r.json().catch(() => ({}));
+    if (!r.ok) {
+      throw new Error(
+        d.error || `Máy chủ trả lỗi HTTP ${r.status}`
+      );
+    }
+    toast(
+      `Đã đổi sang ${provider === "gemini" ? "Gemini" : "Claude"}`,
+      "ok"
+    );
+  } catch (e) {
+    toast("Lỗi: " + (e.message || "Không kết nối được máy chủ"), "err");
+  }
+}
+
 // ── Boot ─────────────────────────────────────────────────────────────────
+async function init() {
+  await checkHealth();
+  await loadAll();
+  await loadCurrentProvider();
+  showOverview();
+}
 init();

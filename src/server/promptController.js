@@ -1,4 +1,7 @@
 import express from "express";
+import fs from "fs";
+import path from "path";
+import { fileURLToPath } from "url";
 import {
   createPromptVersion,
   deletePromptVersion,
@@ -12,7 +15,74 @@ import {
   updatePromptVersion,
 } from "../prompts/promptStore.js";
 
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const PROJECT_ROOT = path.resolve(__dirname, "../..");
+const AI_CONFIG_FILE = path.join(PROJECT_ROOT, "data", "ai-model-config.json");
+
+/** Mặc định provider */
+const DEFAULT_AI_CONFIG = { provider: "claude" };
+
+/** Đọc config từ file, tạo file nếu chưa có */
+function loadAiConfig() {
+  try {
+    if (!fs.existsSync(AI_CONFIG_FILE)) {
+      fs.mkdirSync(path.dirname(AI_CONFIG_FILE), { recursive: true });
+      fs.writeFileSync(AI_CONFIG_FILE, JSON.stringify(DEFAULT_AI_CONFIG, null, 2));
+    }
+    const raw = JSON.parse(fs.readFileSync(AI_CONFIG_FILE, "utf8"));
+    let provider =
+      typeof raw?.provider === "string"
+        ? raw.provider.trim().toLowerCase()
+        : "";
+    if (!provider && raw?.model != null && String(raw.model).trim() !== "") {
+      const m = String(raw.model).trim().toLowerCase();
+      provider = m.startsWith("gemini") ? "gemini" : "claude";
+    }
+    if (provider !== "claude" && provider !== "gemini") {
+      provider = "claude";
+    }
+    return { provider };
+  } catch {
+    return { ...DEFAULT_AI_CONFIG };
+  }
+}
+
+/** Ghi config xuống file */
+function saveAiConfig(cfg) {
+  fs.mkdirSync(path.dirname(AI_CONFIG_FILE), { recursive: true });
+  fs.writeFileSync(AI_CONFIG_FILE, JSON.stringify(cfg, null, 2));
+}
+
 const router = express.Router({ mergeParams: true });
+
+// GET /admin/prompts/config — lấy provider hiện tại
+router.get("/config", (req, res) => {
+  res.json({ data: loadAiConfig() });
+});
+
+// PUT /admin/prompts/config — cập nhật provider
+router.put("/config", (req, res) => {
+  const body =
+    req.body && typeof req.body === "object" && !Array.isArray(req.body)
+      ? req.body
+      : {};
+  let provider =
+    typeof body.provider === "string" ? body.provider.trim().toLowerCase() : "";
+  // Tương thích bản cũ: client gửi model (vd. gemini-2.5-pro) thay vì provider
+  if (!provider && body.model != null && String(body.model).trim() !== "") {
+    const m = String(body.model).trim().toLowerCase();
+    provider = m.startsWith("gemini") ? "gemini" : "claude";
+  }
+  if (!provider || !["claude", "gemini"].includes(provider)) {
+    return res.status(400).json({
+      error:
+        "Thiếu hoặc sai provider. Gửi JSON dạng {\"provider\":\"claude\"} hoặc {\"provider\":\"gemini\"}.",
+    });
+  }
+  const cfg = { provider };
+  saveAiConfig(cfg);
+  res.json({ data: cfg });
+});
 
 // GET /admin/prompts
 router.get("/", async (req, res) => {

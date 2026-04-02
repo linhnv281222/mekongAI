@@ -33,21 +33,18 @@ async function analyze() {
   document.getElementById("btnGo").disabled = true;
   document.getElementById("analyzing").style.display = "flex";
 
-  const selectedModel = document.getElementById("modelSelect").value;
+  const selectedProvider = document.getElementById("modelSelect").value;
   const form = new FormData();
   form.append("file", file);
 
-  const isGemini = selectedModel.startsWith("gemini");
-  document.getElementById("analyzingText").textContent = `AI đang phân tích... (${
-    isGemini ? "Gemini" : "Claude"
-  })`;
+  document.getElementById("analyzingText").textContent = `AI đang phân tích... (${selectedProvider === "gemini" ? "Gemini" : "Claude"})`;
 
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), 120000);
 
   try {
     const res = await fetch(
-      `/drawings?model=${encodeURIComponent(selectedModel)}`,
+      `/drawings?provider=${encodeURIComponent(selectedProvider)}`,
       {
         method: "POST",
         body: form,
@@ -68,7 +65,7 @@ async function analyze() {
         json.error || json.detail || "Lỗi server HTTP " + res.status
       );
 
-    fillForm(json.data, selectedModel);
+    fillForm(json.data, json.provider || selectedProvider);
   } catch (e) {
     clearTimeout(timer);
     const isTimeout = e.name === "AbortError";
@@ -82,15 +79,12 @@ async function analyze() {
   }
 }
 
-function fillForm(d, modelUsed) {
+function fillForm(d, providerUsed) {
   document.getElementById("empty").style.display = "none";
   document.getElementById("fbody").style.display = "block";
 
-  if (modelUsed) {
-    const isGem = modelUsed.startsWith("gemini");
-    const badge = `<span class="model-badge ${
-      isGem ? "badge-gemini" : "badge-claude"
-    }">${modelUsed}</span>`;
+  if (providerUsed) {
+    const badge = `<span class="model-badge ${providerUsed === "gemini" ? "badge-gemini" : "badge-claude"}">${providerUsed}</span>`;
     const head = document.querySelector(".sec-head");
     if (head && !head.querySelector(".model-badge"))
       head.insertAdjacentHTML("beforeend", badge);

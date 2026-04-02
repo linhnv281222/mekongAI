@@ -5,6 +5,7 @@ import path from "path";
 import { PDFDocument } from "pdf-lib";
 import { fileURLToPath } from "url";
 import { analyzDrawing, correctDrawing } from "../ai/claudeAnalyzer.js";
+import { analyzeDrawingGemini } from "../ai/geminiAnalyzer.js";
 import {
   getDrawing,
   listDrawings,
@@ -15,6 +16,37 @@ import {
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const PROJECT_ROOT = path.resolve(__dirname, '../..');
 const UPLOADS_DIR = path.join(PROJECT_ROOT, 'uploads');
+const AI_CONFIG_FILE = path.join(PROJECT_ROOT, "data", "ai-model-config.json");
+
+function loadAiConfig() {
+  try {
+    if (fs.existsSync(AI_CONFIG_FILE)) {
+      const raw = JSON.parse(fs.readFileSync(AI_CONFIG_FILE, "utf8"));
+      let provider =
+        typeof raw?.provider === "string"
+          ? raw.provider.trim().toLowerCase()
+          : "";
+      if (!provider && raw?.model != null && String(raw.model).trim() !== "") {
+        const m = String(raw.model).trim().toLowerCase();
+        provider = m.startsWith("gemini") ? "gemini" : "claude";
+      }
+      if (provider !== "claude" && provider !== "gemini") {
+        provider = "claude";
+      }
+      return { provider };
+    }
+  } catch {}
+  return { provider: "claude" };
+}
+
+/** Chọn analyzer dựa trên provider hint hoặc config file */
+function selectAnalyzer(providerHint) {
+  const effective = providerHint || loadAiConfig().provider;
+  if (effective === "gemini") {
+    return { fn: analyzeDrawingGemini, label: "gemini" };
+  }
+  return { fn: analyzDrawing, label: "claude" };
+}
 
 const router = express.Router();
 
@@ -55,11 +87,13 @@ router.post("/", upload.single("file"), async (req, res) => {
   if (!req.file) return res.status(400).json({ error: "Thieu file PDF" });
 
   try {
-    const result = await analyzDrawing(req.file.path);
+    const providerHint = req.query.provider || null;
+    const { fn: analyzer, label: provider } = selectAnalyzer(providerHint);
+    const result = await analyzer(req.file.path);
     if (!result.success) return res.status(422).json({ error: result.error });
 
     const id = await saveDrawing(req.file.originalname, result.data);
-    res.json({ id, data: result.data, tokens_used: result.usage });
+    res.json({ id, data: result.data, tokens_used: result.usage, provider });
   } catch (e) {
     res.status(500).json({ error: e.message });
   } finally {
@@ -75,6 +109,9 @@ router.post("/batch", upload.single("file"), async (req, res) => {
   const pdfBuffer = fs.readFileSync(req.file.path);
   fs.unlink(req.file.path, () => {});
 
+  const providerHint = req.query.provider || null;
+  const { fn: analyzer, label: provider } = selectAnalyzer(providerHint);
+
   let pages = [];
   try {
     pages = await splitPdfLocal(pdfBuffer);
@@ -82,13 +119,13 @@ router.post("/batch", upload.single("file"), async (req, res) => {
     return res.status(500).json({ error: "Tach trang that bai: " + e.message });
   }
 
-  console.log(`[Batch] Tach duoc ${pages.length} trang`);
+  console.log(`[Batch] Tach duoc ${pages.length} trang (${provider})`);
 
   const results = [];
   for (const pg of pages) {
     console.log(`[Batch] Doc trang ${pg.page}/${pg.total}...`);
     try {
-      const result = await analyzDrawing(pg.path);
+      const result = await analyzer(pg.path);
       if (result.success) {
         const d = result.data;
         if (
@@ -119,6 +156,7 @@ router.post("/batch", upload.single("file"), async (req, res) => {
   res.json({
     total_pages: pages.length,
     read_count: results.length,
+    provider,
     results,
   });
 });

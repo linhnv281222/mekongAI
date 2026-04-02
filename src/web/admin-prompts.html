@@ -89,6 +89,16 @@
             <div class="nav-icon">&#9776;</div>
             <span class="nav-label">Tổng quan</span>
           </div>
+          <!-- Model selector -->
+          <div class="nav-item model-selector-item">
+            <div class="nav-icon">&#9881;</div>
+            <span class="nav-label">Model AI</span>
+            <select id="modelSelect" class="model-select" onchange="onModelChange()" title="Chọn AI provider cho phân tích bản vẽ">
+              <option value="claude">Claude</option>
+              <option value="gemini">Gemini</option>
+            </select>
+          </div>
+          <div id="modelStatus" class="model-status"></div>
         </div>
       </div>
 
