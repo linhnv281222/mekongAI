@@ -1,13 +1,13 @@
-import { GoogleGenerativeAI } from "@google/generative-ai";
+import { GoogleGenAI } from "@google/genai";
 import fs from "fs";
 import { aiCfg } from "../libs/config.js";
 import { enrichWithF7F8 } from "../processors/processRouter.js";
 import { getKnowledgeBlock, getPrompt } from "../prompts/promptStore.js";
 
 /**
- * Doc ban ve PDF = Gemini.
+ * Doc ban ve PDF = Gemini (SDK moi @google/genai).
  * @param {string} pdfPath
- * @param {string} model — 'gemini-2.5-pro' hoac 'gemini-2.5-flash'
+ * @param {string} model — 'gemini-3-flash-preview' hoac 'gemini-3.5-flash-preview'
  * @returns {object} { success, data, raw, usage }
  */
 export async function analyzeDrawingGemini(pdfPath, model = null) {
@@ -15,11 +15,10 @@ export async function analyzeDrawingGemini(pdfPath, model = null) {
     return { success: false, error: "GEMINI_API_KEY not set" };
   }
 
-  const genAI = new GoogleGenerativeAI(aiCfg.geminiKey);
+  const ai = new GoogleGenAI({ apiKey: aiCfg.geminiKey });
   const modelName = model || aiCfg.geminiModel;
 
   try {
-    const genModel = genAI.getGenerativeModel({ model: modelName });
     const pdfBuffer = fs.readFileSync(pdfPath);
     const base64 = pdfBuffer.toString("base64");
 
@@ -28,10 +27,10 @@ export async function analyzeDrawingGemini(pdfPath, model = null) {
       VNT_KNOWLEDGE: vntKnowledge ?? "",
     });
 
-    const result = await genModel.generateContent({
+    const response = await ai.models.generateContent({
+      model: modelName,
       contents: [
         {
-          role: "user",
           parts: [
             {
               inlineData: {
@@ -45,7 +44,7 @@ export async function analyzeDrawingGemini(pdfPath, model = null) {
       ],
     });
 
-    const raw = result.response.text();
+    const raw = response.text ?? "";
     const cleaned = raw
       .replace(/^```json\s*/m, "")
       .replace(/```\s*$/m, "")
