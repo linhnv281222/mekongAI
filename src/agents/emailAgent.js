@@ -252,8 +252,8 @@ async function analyzeDrawingApi(pdfPath, filename) {
     contentType: "application/pdf",
   });
 
-  console.log(`[analyzeDrawingApi] POST ${agentCfg.banveApiUrl}/drawings?provider=claude — file: ${filename}`);
-  const res = await fetch(`${agentCfg.banveApiUrl}/drawings?provider=claude`, {
+  console.log(`[analyzeDrawingApi] POST ${agentCfg.banveApiUrl}/drawings?provider=gemini — file: ${filename}`);
+  const res = await fetch(`${agentCfg.banveApiUrl}/drawings?provider=gemini`, {
     method: "POST",
     body: form,
     headers: form.getHeaders(),

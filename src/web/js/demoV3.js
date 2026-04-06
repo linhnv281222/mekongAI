@@ -1269,7 +1269,10 @@ function Tab2({
             <>
               <span>·</span>
               <span>
-                QT: <b style={{ color: "var(--v3-brand2)" }}>{lines[0].ma_quy_trinh}</b>
+                QT:{" "}
+                <b style={{ color: "var(--v3-brand2)" }}>
+                  {lines[0].ma_quy_trinh}
+                </b>
               </span>
             </>
           )}
@@ -1419,9 +1422,7 @@ function Tab2({
                       Kích thước
                       <span
                         className="col-resize-handle"
-                        onMouseDown={(e) =>
-                          onResizeMouseDown(e, "kich_thuoc")
-                        }
+                        onMouseDown={(e) => onResizeMouseDown(e, "kich_thuoc")}
                       />
                     </th>
                     <th style={{ position: "relative" }}>
@@ -1765,7 +1766,6 @@ function Right({ email, setEmails, classifyUiSchema }) {
   const previewLoadGen = useRef(0);
   const currentFileRef = useRef(null); // track file đang load để tránh re-fetch
   const previewBytesRef = useRef(null); // lưu bytes để tạo blob mới khi page đổi
-  const [showDebug, setShowDebug] = useState(false);
 
   // Reset tab + xóa preview blob khi chọn job khác
   useEffect(() => {
@@ -2181,16 +2181,6 @@ function Right({ email, setEmails, classifyUiSchema }) {
           >
             Danh sách bản vẽ{lines.length > 0 ? ` (${lines.length})` : ""}
           </button>
-          <button
-            type="button"
-            role="tab"
-            aria-selected={tab === 2}
-            className={`tab${tab === 2 ? " active" : ""}${showDebug ? " tab--debug" : ""}`}
-            onClick={() => setTab(2)}
-            title="Debug: Xem raw AI response"
-          >
-            {showDebug ? "🔍 Debug AI" : "🔍 Debug"}
-          </button>
         </div>
         <div className="tcontent">
           {tab === 0 && (
@@ -2211,106 +2201,6 @@ function Right({ email, setEmails, classifyUiSchema }) {
               processing={processing}
               progress={progress}
             />
-          )}
-          {tab === 2 && (
-            <div style={{ padding: "16px", fontFamily: "monospace", fontSize: 12 }}>
-              <div style={{ marginBottom: 16 }}>
-                <label style={{ display: "flex", alignItems: "center", gap: 8, cursor: "pointer" }}>
-                  <input
-                    type="checkbox"
-                    checked={showDebug}
-                    onChange={(e) => setShowDebug(e.target.checked)}
-                  />
-                  <span>Auto-log console (mekongAI)</span>
-                </label>
-              </div>
-              <div style={{ marginBottom: 12, color: "#888", fontSize: 11 }}>
-                Mở DevTools → Console để xem log AI. Filter: <code>mekongAI</code>
-              </div>
-              <div style={{ marginBottom: 20 }}>
-                <div style={{ color: "#aaa", marginBottom: 4 }}>classify_output:</div>
-                <textarea
-                  readOnly
-                  style={{
-                    width: "100%",
-                    minHeight: 80,
-                    fontFamily: "monospace",
-                    fontSize: 11,
-                    background: "#1e1e1e",
-                    color: "#d4d4d4",
-                    border: "1px solid #333",
-                    padding: 6,
-                    resize: "vertical",
-                    boxSizing: "border-box",
-                  }}
-                  value={
-                    email?.classify_output
-                      ? JSON.stringify(email.classify_output, null, 2)
-                      : "(chưa có — bấm chọn email để tải)"
-                  }
-                />
-              </div>
-              {email?.drawings?.map((dr, i) => (
-                <div key={i} style={{ marginBottom: 16, border: "1px solid #444", borderRadius: 4, overflow: "hidden" }}>
-                  <div style={{
-                    background: "#252526",
-                    padding: "4px 8px",
-                    color: "#9cdcfe",
-                    fontSize: 11,
-                    borderBottom: "1px solid #444",
-                  }}>
-                    {"drawing[" + i + "]: " + (dr.filename || dr.name || ("file " + (i + 1)))}
-                  </div>
-                  <div style={{ padding: 8 }}>
-                    <div style={{ color: "#aaa", marginBottom: 4 }}>raw (text thô AI trả về):</div>
-                    <textarea
-                      readOnly
-                      style={{
-                        width: "100%",
-                        minHeight: 60,
-                        fontFamily: "monospace",
-                        fontSize: 11,
-                        background: "#1e1e1e",
-                        color: "#ce9178",
-                        border: "1px solid #333",
-                        padding: 6,
-                        resize: "vertical",
-                        boxSizing: "border-box",
-                        whiteSpace: "pre-wrap",
-                      }}
-                      value={dr.raw ?? "(không có raw)"}
-                    />
-                    <div style={{ color: "#aaa", margin: "8px 0 4px" }}>data (JSON đã parse):</div>
-                    <textarea
-                      readOnly
-                      style={{
-                        width: "100%",
-                        minHeight: 100,
-                        fontFamily: "monospace",
-                        fontSize: 11,
-                        background: "#1e1e1e",
-                        color: "#b5cea8",
-                        border: "1px solid #333",
-                        padding: 6,
-                        resize: "vertical",
-                        boxSizing: "border-box",
-                        whiteSpace: "pre-wrap",
-                      }}
-                      value={
-                        dr.data
-                          ? JSON.stringify(dr.data, null, 2)
-                          : "(không có data)"
-                      }
-                    />
-                  </div>
-                </div>
-              ))}
-              {!email?.drawings?.length && (
-                <div style={{ color: "#666", fontStyle: "italic" }}>
-                  Chưa có bản vẽ nào. Bấm chọn email trong hộp thư để tải dữ liệu AI.
-                </div>
-              )}
-            </div>
           )}
         </div>
       </div>
