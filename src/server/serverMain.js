@@ -14,6 +14,7 @@ import jobController, {
   attachmentPreviewPostHandler,
 } from "./jobController.js";
 import promptController from "./promptController.js";
+import chatController from "./chatController.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const PROJECT_ROOT = path.resolve(__dirname, "../.."); // mekongAI/
@@ -47,6 +48,7 @@ function redirectLegacyJobAttachment(req, res, next) {
 // ─── API / HTML routes (trước static để /admin/prompts/... không bị 404 nhầm) ───
 
 app.use("/drawings", drawController);
+app.use("/chat", chatController);
 app.use(redirectLegacyJobAttachment);
 // Preview PDF — tên file qua ?f=
 app.get("/jobs/:jobId/attachment-preview", attachmentPreviewHandler);

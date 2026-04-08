@@ -1,8 +1,11 @@
 import { GoogleGenAI } from "@google/genai";
 import fs from "fs";
 import { aiCfg } from "../libs/config.js";
+import { generateContentWithRetry } from "../libs/geminiGenerateRetry.js";
 import { enrichWithF7F8 } from "../processors/processRouter.js";
 import { getKnowledgeBlock, getPrompt } from "../prompts/promptStore.js";
+
+const geminiAi = new GoogleGenAI({ apiKey: aiCfg.geminiKey });
 
 /**
  * Doc ban ve PDF = Gemini (SDK moi @google/genai).
@@ -15,7 +18,6 @@ export async function analyzeDrawingGemini(pdfPath, model = null) {
     return { success: false, error: "GEMINI_API_KEY not set" };
   }
 
-  const ai = new GoogleGenAI({ apiKey: aiCfg.geminiKey });
   const modelName = model || aiCfg.geminiModel;
 
   try {
@@ -27,22 +29,26 @@ export async function analyzeDrawingGemini(pdfPath, model = null) {
       VNT_KNOWLEDGE: vntKnowledge ?? "",
     });
 
-    const response = await ai.models.generateContent({
-      model: modelName,
-      contents: [
-        {
-          parts: [
-            {
-              inlineData: {
-                mimeType: "application/pdf",
-                data: base64,
+    const response = await generateContentWithRetry(
+      geminiAi,
+      {
+        model: modelName,
+        contents: [
+          {
+            parts: [
+              {
+                inlineData: {
+                  mimeType: "application/pdf",
+                  data: base64,
+                },
               },
-            },
-            { text: promptText },
-          ],
-        },
-      ],
-    });
+              { text: promptText },
+            ],
+          },
+        ],
+      },
+      "GeminiAnalyzer"
+    );
 
     const raw = response.text ?? "";
     const cleaned = raw
