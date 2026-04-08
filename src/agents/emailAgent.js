@@ -1,5 +1,4 @@
 import fs from "fs";
-import fetch from "node-fetch";
 import os from "os";
 import path from "path";
 import { fileURLToPath } from "url";
@@ -7,6 +6,7 @@ import { fileURLToPath } from "url";
 import { classifyEmail } from "../ai/emailClassifier.js";
 import { isJobProcessed, saveJob, updateJob } from "../data/jobStore.js";
 import { agentCfg, gmailCfg } from "../libs/config.js";
+import { postPdfToDrawingsApi } from "../libs/postDrawingUpload.js";
 import {
   downloadAttachment,
   fetchUnread,
@@ -243,25 +243,16 @@ async function processEmail(gmail, msgId) {
 // ─── GOI API SERVER DE DOC BAN VE ───────────────────────────────────────
 
 async function analyzeDrawingApi(pdfPath, filename) {
-  const FormData = (await import("form-data")).default;
-  const form = new FormData();
-  // Buffer thay vì stream: fetch mặc định của Node (undici) + stream multipart hay gây "Unexpected end of form" ở multer
-  const buf = fs.readFileSync(pdfPath);
-  form.append("file", buf, {
+  console.log(
+    `[analyzeDrawingApi] POST ${agentCfg.banveApiUrl}/drawings?provider=gemini — file: ${filename}`
+  );
+  const data = await postPdfToDrawingsApi({
+    pdfPath,
     filename,
-    contentType: "application/pdf",
+    baseUrl: agentCfg.banveApiUrl,
+    provider: "gemini",
   });
-
-  console.log(`[analyzeDrawingApi] POST ${agentCfg.banveApiUrl}/drawings?provider=gemini — file: ${filename}`);
-  const res = await fetch(`${agentCfg.banveApiUrl}/drawings?provider=gemini`, {
-    method: "POST",
-    body: form,
-    headers: form.getHeaders(),
-  });
-  console.log(`[analyzeDrawingApi] response status: ${res.status}`);
-
-  const data = await res.json();
-  if (!res.ok) throw new Error(data.error || "Loi doc BV");
+  console.log(`[analyzeDrawingApi] OK: ${filename}`);
   return data;
 }
 
