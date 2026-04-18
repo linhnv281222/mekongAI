@@ -509,6 +509,7 @@ app-rfq-quotation {
 }
 
 /* PrimeNG TabView */
+/* Global tabview styles - used as base for all tabviews */
 .p-tabview {
   display: flex;
   flex-direction: column;
@@ -522,7 +523,7 @@ app-rfq-quotation {
 }
 
 .p-tabview-panel {
-  height: 100%;
+  height: calc(100vh - 245px);
   overflow: hidden;
 }
 
@@ -556,6 +557,36 @@ app-rfq-quotation {
   font-weight: 700 !important;
   background: var(--v3-brand-soft) !important;
   border-bottom: 3px solid var(--v3-brand2) !important;
+}
+
+/* Override for custom-tabview - more specific to avoid conflict */
+.custom-tabview.p-tabview .p-tabview-nav {
+  border-bottom: none !important;
+  padding: 0 16px !important;
+  gap: 4px !important;
+}
+
+.custom-tabview.p-tabview .p-tabview-nav li .p-tabview-nav-link,
+.custom-tabview.p-tabview .p-tabview-nav li .p-tabview-header-action {
+  border-radius: 8px 8px 0 0 !important;
+  padding: 10px 16px !important;
+  border-bottom: 2px solid transparent !important;
+}
+
+.custom-tabview.p-tabview .p-tabview-nav li.p-tab-selected .p-tabview-nav-link,
+.custom-tabview.p-tabview
+  .p-tabview-nav
+  li.p-tab-selected
+  .p-tabview-header-action {
+  background: var(--v3-brand-soft) !important;
+  color: var(--v3-brand) !important;
+  border-bottom: 2px solid var(--v3-brand) !important;
+}
+
+.custom-tabview.p-tabview .p-tabview-nav li .p-tabview-nav-link:hover,
+.custom-tabview.p-tabview .p-tabview-nav li .p-tabview-header-action:hover {
+  background: var(--v3-surf) !important;
+  color: var(--v3-brand) !important;
 }
 
 /* =========================================================
@@ -599,4 +630,8 @@ app-rfq-quotation {
   border: 1px solid #d9d9d9;
   padding: 0px 6px;
   height: 28px;
+}
+
+.p-tabview .p-tabview-panels {
+  padding: 0 !important;
 }

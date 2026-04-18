@@ -4,7 +4,12 @@ import { firstValueFrom } from 'rxjs';
 import { environment } from 'src/environment/environment';
 import { Job } from './models/job.model';
 import { Drawing } from './models/drawing.model';
-import { PromptTemplate, PromptVersion, KnowledgeBlock, UiSchema } from './models/prompt.model';
+import {
+  PromptTemplate,
+  PromptVersion,
+  KnowledgeBlock,
+  UiSchema,
+} from './models/prompt.model';
 
 /**
  * Mekong AI Service - Giao tiếp với NodeJS backend (port 3000)
@@ -13,11 +18,10 @@ import { PromptTemplate, PromptVersion, KnowledgeBlock, UiSchema } from './model
   providedIn: 'root',
 })
 export class MekongAiService {
-  mekongApiPath: string = environment.mekong_ai_endpoint;
+  // Dùng localhost:3000 trực tiếp - backend đã có CORS configured
+  mekongApiPath: string = 'http://localhost:3000';
 
-  constructor(
-    private http: HttpClient,
-  ) {}
+  constructor(private http: HttpClient) {}
 
   // ==================== JOBS API ====================
 
@@ -40,7 +44,6 @@ export class MekongAiService {
       }
       return [];
     } catch (error: any) {
-      console.error('Lỗi khi lấy danh sách jobs:', error);
       return [];
     }
   }
@@ -78,12 +81,16 @@ export class MekongAiService {
   async pushJobToErp(jobId: number | string): Promise<any> {
     try {
       const response = await firstValueFrom(
-        this.http.post<any>(`${this.mekongApiPath}/jobs/${jobId}/push-erp`, {}, {
-          headers: new HttpHeaders({
-            'Content-Type': 'application/json',
-          }),
-          observe: 'response',
-        })
+        this.http.post<any>(
+          `${this.mekongApiPath}/jobs/${jobId}/push-erp`,
+          {},
+          {
+            headers: new HttpHeaders({
+              'Content-Type': 'application/json',
+            }),
+            observe: 'response',
+          }
+        )
       );
       return response?.body;
     } catch (error: any) {
@@ -106,8 +113,7 @@ export class MekongAiService {
 
       const response = await firstValueFrom(
         this.http.post<any>(`${this.mekongApiPath}/drawings/batch`, formData, {
-          headers: new HttpHeaders({
-          }),
+          headers: new HttpHeaders({}),
           observe: 'response',
         })
       );
@@ -130,7 +136,10 @@ export class MekongAiService {
    * @param fileName - Tên file
    * @returns Promise<{ b64: string, mime: string, ok: boolean }>
    */
-  async getAttachmentPreview(jobId: number | string, fileName: string): Promise<{ b64: string; mime: string; ok: boolean } | null> {
+  async getAttachmentPreview(
+    jobId: number | string,
+    fileName: string
+  ): Promise<{ b64: string; mime: string; ok: boolean } | null> {
     try {
       const response = await firstValueFrom(
         this.http.post<any>(
@@ -139,7 +148,7 @@ export class MekongAiService {
           {
             headers: new HttpHeaders({
               'Content-Type': 'application/json',
-              'Accept': 'application/json',
+              Accept: 'application/json',
             }),
             observe: 'response',
           }
@@ -163,7 +172,10 @@ export class MekongAiService {
    * @param files - Danh sách file đính kèm (optional)
    * @returns Promise<{ reply: string, error?: string }>
    */
-  async sendChatMessage(message: string, files: File[] = []): Promise<{ reply: string; error?: string }> {
+  async sendChatMessage(
+    message: string,
+    files: File[] = []
+  ): Promise<{ reply: string; error?: string }> {
     try {
       const formData = new FormData();
       if (message) {
@@ -175,8 +187,7 @@ export class MekongAiService {
 
       const response = await firstValueFrom(
         this.http.post<any>(`${this.mekongApiPath}/chat/message`, formData, {
-          headers: new HttpHeaders({
-          }),
+          headers: new HttpHeaders({}),
           observe: 'response',
         })
       );
@@ -225,12 +236,15 @@ export class MekongAiService {
   async getPromptVersions(promptKey: string): Promise<PromptVersion[]> {
     try {
       const response = await firstValueFrom(
-        this.http.get<any>(`${this.mekongApiPath}/admin/prompts/${promptKey}/versions`, {
-          headers: new HttpHeaders({
-            'Content-Type': 'application/json',
-          }),
-          observe: 'response',
-        })
+        this.http.get<any>(
+          `${this.mekongApiPath}/admin/prompts/${promptKey}/versions`,
+          {
+            headers: new HttpHeaders({
+              'Content-Type': 'application/json',
+            }),
+            observe: 'response',
+          }
+        )
       );
       if (response?.status === 200 && response?.body) {
         return response.body.data || [];
@@ -250,7 +264,12 @@ export class MekongAiService {
    * @param note - Ghi chú
    * @returns Promise<any>
    */
-  async updatePromptVersion(promptKey: string, version: number, content: string, note: string): Promise<any> {
+  async updatePromptVersion(
+    promptKey: string,
+    version: number,
+    content: string,
+    note: string
+  ): Promise<any> {
     try {
       const response = await firstValueFrom(
         this.http.put<any>(
@@ -279,7 +298,12 @@ export class MekongAiService {
    * @param activate - Có kích hoạt luôn không
    * @returns Promise<any>
    */
-  async createPromptVersion(promptKey: string, content: string, note: string, activate: boolean): Promise<any> {
+  async createPromptVersion(
+    promptKey: string,
+    content: string,
+    note: string,
+    activate: boolean
+  ): Promise<any> {
     try {
       const response = await firstValueFrom(
         this.http.post<any>(
@@ -306,7 +330,10 @@ export class MekongAiService {
    * @param version - Số version
    * @returns Promise<any>
    */
-  async activatePromptVersion(promptKey: string, version: number): Promise<any> {
+  async activatePromptVersion(
+    promptKey: string,
+    version: number
+  ): Promise<any> {
     try {
       const response = await firstValueFrom(
         this.http.post<any>(
@@ -359,7 +386,10 @@ export class MekongAiService {
    * @param variables - Variables cần substitute
    * @returns Promise<any>
    */
-  async testPrompt(promptKey: string, variables: Record<string, string>): Promise<any> {
+  async testPrompt(
+    promptKey: string,
+    variables: Record<string, string>
+  ): Promise<any> {
     try {
       const response = await firstValueFrom(
         this.http.post<any>(
@@ -392,12 +422,15 @@ export class MekongAiService {
   async getKnowledgeBlocks(): Promise<KnowledgeBlock[]> {
     try {
       const response = await firstValueFrom(
-        this.http.get<any>(`${this.mekongApiPath}/admin/prompts/knowledge/list`, {
-          headers: new HttpHeaders({
-            'Content-Type': 'application/json',
-          }),
-          observe: 'response',
-        })
+        this.http.get<any>(
+          `${this.mekongApiPath}/admin/prompts/knowledge/list`,
+          {
+            headers: new HttpHeaders({
+              'Content-Type': 'application/json',
+            }),
+            observe: 'response',
+          }
+        )
       );
       if (response?.status === 200 && response?.body) {
         return response.body.data || [];
@@ -469,7 +502,8 @@ export class MekongAiService {
    */
   async updateAiProvider(provider: string): Promise<any> {
     try {
-      const modelLegacy = provider === 'gemini' ? 'gemini-3.1-pro-preview' : 'claude-sonnet-4-6';
+      const modelLegacy =
+        provider === 'gemini' ? 'gemini-3.1-pro-preview' : 'claude-sonnet-4-6';
       const response = await firstValueFrom(
         this.http.put<any>(
           `${this.mekongApiPath}/admin/prompts/config`,
@@ -522,14 +556,21 @@ export class MekongAiService {
   async getEmailClassifyUiSchema(): Promise<UiSchema | null> {
     try {
       const response = await firstValueFrom(
-        this.http.get<any>(`${this.mekongApiPath}/api/email-classify-ui-schema`, {
-          headers: new HttpHeaders({
-            'Content-Type': 'application/json',
-          }),
-          observe: 'response',
-        })
+        this.http.get<any>(
+          `${this.mekongApiPath}/api/email-classify-ui-schema`,
+          {
+            headers: new HttpHeaders({
+              'Content-Type': 'application/json',
+            }),
+            observe: 'response',
+          }
+        )
       );
-      if (response?.status === 200 && response?.body && Array.isArray(response.body.generalRows)) {
+      if (
+        response?.status === 200 &&
+        response?.body &&
+        Array.isArray(response.body.generalRows)
+      ) {
         return response.body;
       }
       return null;

@@ -4,101 +4,43 @@ import {
   OnDestroy,
   ViewChild,
   ElementRef,
-  HostListener,
   ChangeDetectorRef,
 } from '@angular/core';
-import { CommonModule } from '@angular/common';
-import { FormsModule } from '@angular/forms';
+import { ActivatedRoute } from '@angular/router';
 import { DomSanitizer, SafeResourceUrl } from '@angular/platform-browser';
-import { format, parseISO } from 'date-fns';
-import { vi } from 'date-fns/locale';
-import { MekongAiService } from '../mekong-ai.service';
+import { MessageService } from 'primeng/api';
 
-// Types
-interface Email {
-  id?: number;
-  jobId?: number;
-  from: string;
-  email: string;
-  subject: string;
-  preview: string;
-  body: string;
-  time: string;
-  date: string;
-  attachments: (string | { name: string })[] | null;
-  classify: string;
-  ngon_ngu: string;
-  ten_kh: string;
-  han_giao: string | null;
-  hinh_thuc_giao: string | null;
-  xu_ly_be_mat: boolean | null;
-  vat_lieu_chung_nhan: any;
-  classify_output: any;
-  drawings: Drawing[] | null;
-  unread: boolean;
-  _agent?: boolean;
-  _needLoad?: boolean;
-  created_at?: string;
-}
+import { DemoV3Service } from './demo-v3.service';
+import { EmailRow } from '../models/email.model';
+import { UiSchema, UiCell, UiRow } from '../models/prompt.model';
+import { DrawingLine } from '../utils/drawing.util';
+import { drawingToLine } from '../utils/drawing.util';
+import {
+  mapJobRowToEmail,
+  mergeAgentIntoInbox,
+  normalizeClassifyOutputFromJob,
+  fmtDDMMHHmm,
+  fmtDDMM,
+  resolveClassifyValue,
+  collectSchemaKeys,
+  truthyClassify,
+  inferExtraFieldType,
+  humanizeClassifyKey,
+  toDateInputValue,
+} from '../utils/email.util';
 
-interface Drawing {
-  // Format cũ: { data: {...} }
-  filename?: string;
-  page?: number;
-  raw?: string;
-  data?: {
-    ma_ban_ve?: string;
-    so_luong?: string | number;
-    hinh_dang?: string;
-    dung_sai_chung?: string;
-    dung_sai?: string;
-    vat_lieu?: string;
-    vat_lieu_chung_nhan?: string;
-    kich_thuoc?: string;
-    ma_quy_trinh?: string;
-    xu_ly_be_mat?: string;
-    xu_ly_nhiet?: string;
-    dung_sai_chat_nhat?: string;
-    co_gdt?: boolean;
-    ly_giai_qt?: string;
-  };
-  // Format mới (API mới): fields nằm trực tiếp trong object
-  ma_ban_ve?: string;
-  so_luong?: string | number;
-  hinh_dang?: string;
-  dung_sai_chung?: string;
-  dung_sai?: string;
-  vat_lieu?: string;
-  vat_lieu_chung_nhan?: string;
-  kich_thuoc?: string;
-  ma_quy_trinh?: string;
-  xu_ly_be_mat?: string;
-  xu_ly_nhiet?: string;
-  dung_sai_chat_nhat?: string;
-  co_gdt?: boolean;
-  ly_giai_qt?: string;
-}
+export const DEFAULT_COL_WIDTHS: Record<string, number> = {
+  stt: 38,
+  ma_ban_ve: 160,
+  so_luong: 70,
+  hinh_dang: 90,
+  dung_sai: 90,
+  vat_lieu: 90,
+  kich_thuoc: 110,
+  ma_quy_trinh: 90,
+};
 
-interface DrawingLine {
-  filename: string;
-  page: number;
-  raw: string;
-  data: DrawingData;
-}
-
-interface DrawingData {
-  ma_ban_ve: string;
-  so_luong: string | number;
-  hinh_dang: string;
-  dung_sai: string;
-  vat_lieu: string;
-  kich_thuoc: string;
-  ma_quy_trinh: string;
-}
-
-interface ClassifyUiSchema {
-  generalRows?: any[];
-}
+type ViewTab = 0 | 1;
 
 @Component({
   selector: 'app-demo-v3',
@@ -106,699 +48,585 @@ interface ClassifyUiSchema {
   styleUrls: ['./demo-v3.component.css'],
 })
 export class DemoV3Component implements OnInit, OnDestroy {
-  // State
-  emails: Email[] = [];
-  selectedEmail: Email | null = null;
-  activeTabIndex = 0;
+  // ── State ─────────────────────────────────────────────────
+  emails: EmailRow[] = [];
+  activeEmail: EmailRow | null = null;
   searchQuery = '';
-  filteredEmails: Email[] = [];
-  guideOpen = sessionStorage.getItem('v3guideExpanded') === '1';
-  toastCopied = false;
-  inboxEmail = '';
-  classifyUiSchema: ClassifyUiSchema | null = null;
+  inboxHint = '';
+  classifyUiSchema: UiSchema | null = null;
   debugModalOpen = false;
 
-  // Drawings
+  // Right panel
+  currentTab: ViewTab = 0;
   drawingLines: DrawingLine[] = [];
-  prevDrawingsRef: any = null;
-
-  // Preview
-  previewName: string | null = null;
-  previewSrc: SafeResourceUrl | null = null;
-  previewLoading = false;
-  previewPage = 1;
-  previewLoadGen = 0;
-  currentFileName: string | null = null;
-  previewBytesRef: Uint8Array | null = null;
-  selectedDrawingIdx = -1;
-
-  // Upload
   processing = false;
   progress = 0;
+  previewSrc: SafeResourceUrl | null = null;
+  previewName: string | null = null;
+  previewLoading = false;
+  previewPage = 1;
 
-  // Other
-  vatValue = true;
-  internalNote = '';
-  unreadCount = 0;
-  drawingCount = 0;
+  // Column resize
+  colWidths: Record<string, number> = {};
+  private resizeState: {
+    colKey: string;
+    startX: number;
+    startWidth: number;
+  } | null = null;
+  private boundMouseMove: ((event: MouseEvent) => void) | null = null;
+  private boundMouseUp: (() => void) | null = null;
 
-  // Computed values for radio buttons (toBoolean)
-  private internalNotePrefix = 'Tạo tự động bởi Mekong AI — ';
-  private pollInterval: any;
-  private readonly POLL_MS = 8000;
+  // Guide panel
+  guideExpanded = sessionStorage.getItem('v3guideExpanded') === '1';
+  toastCopy = false;
 
-  shippingOptions = [
-    { label: '— Chọn —', value: '' },
-    {
-      label: 'FedEx International Economy',
-      value: 'FedEx International Economy',
-    },
-    {
-      label: 'FedEx International Priority',
-      value: 'FedEx International Priority',
-    },
-    { label: 'DHL', value: 'DHL' },
-    { label: 'Tự vận chuyển', value: 'Tự vận chuyển' },
-  ];
-
-  @ViewChild('hanGiaoInput') hanGiaoInput!: ElementRef<HTMLInputElement>;
-  @ViewChild('bvSplitRef') bvSplitRef!: ElementRef;
+  // ── Lifecycle ─────────────────────────────────────────────
 
   constructor(
-    private mekongService: MekongAiService,
+    private svc: DemoV3Service,
+    private messageService: MessageService,
     private sanitizer: DomSanitizer,
-    private cdr: ChangeDetectorRef
+    private cdr: ChangeDetectorRef,
+    private route: ActivatedRoute
   ) {}
 
-  ngOnInit(): void {
-    this.loadInboxHint();
-    this.loadClassifyUiSchema();
-    this.startPolling();
-    this.tickPoll(); // load immediately on init
-    this.internalNote =
-      this.internalNotePrefix + new Date().toLocaleString('vi-VN');
+  async ngOnInit(): Promise<void> {
+    await this.loadConfig();
+
+    this.svc.startPolling(
+      (agentEmails: EmailRow[]) => {
+        this.emails = mergeAgentIntoInbox(agentEmails, this.emails);
+        if (this.activeEmail?.id) {
+          const refreshed = this.emails.find(
+            e => e.id === this.activeEmail!.id
+          );
+          if (refreshed) this.activeEmail = refreshed;
+        }
+        this.cdr.markForCheck();
+      },
+      (updatedEmail: EmailRow) => {
+        this.cdr.markForCheck();
+      }
+    );
+
+    const jobId = this.route.snapshot.queryParamMap.get('job');
+    if (jobId) {
+      await this.openJobFromUrl(jobId);
+    }
   }
 
   ngOnDestroy(): void {
-    this.stopPolling();
-    this.revokePreviewUrl();
+    this.svc.stopPolling();
+    this.removeResizeListeners();
   }
 
-  // ── Polling /jobs ─────────────────────────────────────
-  private startPolling() {
-    this.pollInterval = setInterval(() => this.tickPoll(), this.POLL_MS);
-    this.tickPoll(); // immediate first tick
+  // ── Init ─────────────────────────────────────────────────
+
+  private async loadConfig(): Promise<void> {
+    const [hint, schema] = await Promise.all([
+      this.svc.loadInboxHint(),
+      this.svc.loadClassifyUiSchema(),
+    ]);
+    this.inboxHint = hint;
+    this.classifyUiSchema = schema;
+    this.cdr.markForCheck();
   }
 
-  private stopPolling() {
-    if (this.pollInterval) clearInterval(this.pollInterval);
+  private async openJobFromUrl(jobId: string): Promise<void> {
+    const job = await this.svc.loadJobDetail(jobId);
+    if (!job) return;
+    const partial: EmailRow = {
+      id: job.id,
+      from: job.sender || 'Agent',
+      email: job.sender_email || '',
+      subject: job.subject || '',
+      preview: '',
+      body: '',
+      time: '',
+      date: fmtDDMMHHmm(job.created_at),
+      created_at: job.created_at,
+      attachments: job.attachments || [],
+      classify: job.classify || '',
+      ngon_ngu: job.ngon_ngu || '',
+      ten_kh: '',
+      han_giao: null,
+      hinh_thuc_giao: null,
+      xu_ly_be_mat: null,
+      vat_lieu_chung_nhan: null,
+      classify_output: null,
+      drawings: [],
+      unread: false,
+      _agent: true,
+      _needLoad: true,
+    };
+    const full = this.svc.buildFullEmailRow(job, partial);
+    this.emails = [
+      full,
+      ...this.emails.filter((emailItem) => emailItem.id !== full.id),
+    ];
+    this.activeEmail = full;
+    this.loadDrawingLines();
+    this.cdr.markForCheck();
   }
 
-  private async tickPoll() {
-    try {
-      const jobs = await this.mekongService.getJobs();
-      if (!jobs?.length) {
-        this.emails = this.emails.filter((e) => !e._agent);
-        this.unreadCount = this.emails.filter((e) => e.unread).length;
-        this.filteredEmails = this.emails;
-        this.cdr.detectChanges();
-        return;
-      }
-      const agentEmails: Email[] = jobs.map(mapJobRowToEmail);
-      this.emails = mergeAgentIntoInbox(agentEmails, this.emails);
-      this.unreadCount = this.emails.filter((e) => e.unread).length;
-      this.filteredEmails = this.emails;
-      this.updateActiveEmail(agentEmails);
-      this.cdr.detectChanges();
-    } catch (e) {
-      console.error('[mekong] poll error', e);
-    }
-  }
+  // ── Mailbox ───────────────────────────────────────────────
 
-  private updateActiveEmail(agentEmails: Email[]) {
-    if (!this.selectedEmail?.jobId) return;
-    const fresh = agentEmails.find(
-      (x) =>
-        x.jobId === this.selectedEmail!.jobId || x.id === this.selectedEmail!.id
+  get filteredEmails(): EmailRow[] {
+    if (!this.searchQuery) return this.emails;
+    const query = this.searchQuery.toLowerCase();
+    return this.emails.filter(
+      (emailItem) =>
+        emailItem.from.toLowerCase().includes(query) ||
+        (emailItem.subject || '').toLowerCase().includes(query)
     );
-    if (!fresh) return;
-    if (this.selectedEmail._needLoad) {
-      this.selectedEmail = fresh;
-      return;
+  }
+
+  get unreadCount(): number {
+    return this.emails.filter((emailItem) => emailItem.unread).length;
+  }
+
+  onEmailClick(emailItem: EmailRow): void {
+    this.selectEmail(emailItem);
+  }
+
+  async selectEmail(emailItem: EmailRow): Promise<void> {
+    this.resetRightPanel();
+    this.activeEmail = emailItem;
+    this.cdr.markForCheck();
+
+    if (emailItem.id) {
+      const job = await this.svc.loadJobDetail(emailItem.id);
+      if (!job) return;
+      const full = this.svc.buildFullEmailRow(job, emailItem);
+      this.emails = this.emails.map((email) =>
+        email.id === emailItem.id ? full : email
+      );
+      this.activeEmail = full;
+      this.loadDrawingLines();
+    } else if (this.activeEmail?.drawings?.length) {
+      this.loadDrawingLines();
     }
-    this.selectedEmail = {
-      ...this.selectedEmail,
-      preview: fresh.preview,
-      time: fresh.time,
-      date: fresh.date,
-      unread: fresh.unread,
-      classify_output: normalizeClassifyOutputFromJob({
-        classify_output:
-          fresh.classify_output != null
-            ? fresh.classify_output
-            : this.selectedEmail.classify_output,
-        classify: fresh.classify ?? this.selectedEmail.classify,
-        ngon_ngu: fresh.ngon_ngu ?? this.selectedEmail.ngon_ngu,
-        han_giao: this.selectedEmail.han_giao,
-        hinh_thuc_giao: this.selectedEmail.hinh_thuc_giao,
-        xu_ly_be_mat: this.selectedEmail.xu_ly_be_mat,
-        vat_lieu_chung_nhan:
-          this.selectedEmail.vat_lieu_chung_nhan ??
-          this.selectedEmail.classify_output?.vat_lieu_chung_nhan,
-        ten_kh: this.selectedEmail.ten_kh,
-        body: this.selectedEmail.body,
-      }),
-      attachments:
-        fresh.attachments && fresh.attachments.length > 0
-          ? fresh.attachments
-          : this.selectedEmail.attachments,
+
+    this.cdr.markForCheck();
+  }
+
+  // ── Right panel: reset UI state ────────────────────────────
+
+  resetRightPanel(): void {
+    this.currentTab = 0;
+    this.resetPreview();
+    this.colWidths = {};
+    this.drawingLines = [];
+  }
+
+  private loadDrawingLines(): void {
+    if (this.activeEmail?.drawings?.length) {
+      this.drawingLines = this.activeEmail.drawings.map(
+        (rawDrawing, rowIndex) =>
+          drawingToLine(
+            rawDrawing as Parameters<typeof drawingToLine>[0],
+            rowIndex
+          )
+      );
+    }
+  }
+
+  // ── Drawing table ─────────────────────────────────────────
+
+  get totalQuantity(): number {
+    return this.drawingLines.reduce(
+      (sum, drawingLine) =>
+        sum + (parseInt(String(drawingLine.so_luong), 10) || 0),
+      0
+    );
+  }
+
+  getColWidth(key: string): number {
+    return this.colWidths[key] ?? DEFAULT_COL_WIDTHS[key] ?? 100;
+  }
+
+  // Column resize
+  onResizeMouseDown(event: MouseEvent, colKey: string): void {
+    event.preventDefault();
+    event.stopPropagation();
+    this.resizeState = {
+      colKey,
+      startX: event.clientX,
+      startWidth: this.getColWidth(colKey),
+    };
+    document.body.style.cursor = 'col-resize';
+    document.body.style.userSelect = 'none';
+    this.removeResizeListeners();
+    this.boundMouseMove = this.onResizeMouseMove.bind(this);
+    this.boundMouseUp = this.onResizeMouseUp.bind(this);
+    document.addEventListener('mousemove', this.boundMouseMove);
+    document.addEventListener('mouseup', this.boundMouseUp);
+  }
+
+  private onResizeMouseMove(event: MouseEvent): void {
+    if (!this.resizeState) return;
+    const { colKey, startX, startWidth } = this.resizeState;
+    const deltaX = event.clientX - startX;
+    this.colWidths = {
+      ...this.colWidths,
+      [colKey]: Math.max(40, startWidth + deltaX),
     };
   }
 
-  // ── Data loading ──────────────────────────────────────
-  private async loadInboxHint() {
-    const d = await this.mekongService.getDemoHint();
-    this.inboxEmail = d.inboxEmail || '';
+  private onResizeMouseUp(): void {
+    this.resizeState = null;
+    document.body.style.cursor = '';
+    document.body.style.userSelect = '';
+    this.removeResizeListeners();
   }
 
-  private async loadClassifyUiSchema() {
-    const d = await this.mekongService.getEmailClassifyUiSchema();
-    if (d && Array.isArray(d.generalRows)) this.classifyUiSchema = d;
-  }
-
-  // ── Date formatting helpers (date-fns) ─────────────────
-  private formatDate(iso: string | null | undefined): string {
-    if (!iso) return '—';
-    try {
-      const date =
-        typeof iso === 'string' && iso.includes('/')
-          ? parseISO(iso)
-          : new Date(iso);
-      return format(date, 'dd/MM/yyyy HH:mm', { locale: vi });
-    } catch {
-      return '—';
+  private removeResizeListeners(): void {
+    if (this.boundMouseMove) {
+      document.removeEventListener('mousemove', this.boundMouseMove);
+      this.boundMouseMove = null;
+    }
+    if (this.boundMouseUp) {
+      document.removeEventListener('mouseup', this.boundMouseUp);
+      this.boundMouseUp = null;
     }
   }
 
-  private formatDateOnly(iso: string | null | undefined): string {
-    if (!iso) return '';
-    try {
-      const date =
-        typeof iso === 'string' && iso.includes('/')
-          ? parseISO(iso)
-          : new Date(iso);
-      return format(date, 'dd/MM/yyyy', { locale: vi });
-    } catch {
-      return '';
-    }
+  onDrawingFieldChange(
+    rowIndex: number,
+    field: keyof DrawingLine,
+    event: Event
+  ): void {
+    const input = event.target as HTMLInputElement;
+    const value =
+      input.type === 'number' ? parseInt(input.value, 10) || 0 : input.value;
+    this.drawingLines = this.drawingLines.map((drawingLine, index) =>
+      index === rowIndex ? { ...drawingLine, [field]: value } : drawingLine
+    );
   }
 
-  // ── Email selection ───────────────────────────────────
-  async selectEmail(email: Email) {
-    if (email.jobId) {
-      const job = await this.mekongService.getJobById(email.jobId);
-      if (!job) return;
-      const full: Email = {
-        ...email,
-        body: job.ghi_chu || '',
-        attachments: job.attachments || [],
-        date: job.created_at ? this.formatDate(job.created_at) : email.date,
-        han_giao:
-          job.han_giao != null && job.han_giao !== '' ? job.han_giao : null,
-        hinh_thuc_giao: job.hinh_thuc_giao || null,
-        xu_ly_be_mat: job.xu_ly_be_mat ?? null,
-        vat_lieu_chung_nhan: job.vat_lieu_chung_nhan ?? null,
-        classify_output: normalizeClassifyOutputFromJob(job),
-        ten_kh: job.ten_cong_ty || email.from || '',
-        drawings: (job.drawings || []) as Drawing[],
-        _needLoad: false,
-      };
-      const idx = this.emails.findIndex((e) => e.id === email.id);
-      if (idx !== -1) this.emails[idx] = full;
-      this.selectedEmail = full;
-      logMekongJobAiResponses(job, 'selectEmail');
+  // ── File upload ────────────────────────────────────────────
 
-      // Sync drawings từ API vào bảng
-      this.syncDrawingsFromEmail(full);
-    } else {
-      this.selectedEmail = email;
-      // Sync drawings từ email đã có (nếu có)
-      this.syncDrawingsFromEmail(email);
-    }
-    // Reset state
-    this.activeTabIndex = 0;
-    this.previewName = null;
+  @ViewChild('fileInput') fileInput!: ElementRef<HTMLInputElement>;
+
+  triggerFileUpload(): void {
+    this.fileInput?.nativeElement.click();
+  }
+
+  onFileInputChange(event: Event): void {
+    const input = event.target as HTMLInputElement;
+    const file = input.files?.[0];
+    if (!file) return;
+    this.handleUpload(file);
+    input.value = '';
+  }
+
+  private async handleUpload(file: File): Promise<void> {
+    this.processing = true;
+    this.progress = 0;
     this.previewSrc = null;
-    this.previewLoading = false;
-    this.revokePreviewUrl();
-    this.internalNote =
-      this.internalNotePrefix + new Date().toLocaleString('vi-VN');
-  }
 
-  /** Sync drawings[] từ email vào drawingLines để hiển thị bảng */
-  private syncDrawingsFromEmail(email: Email) {
-    const drawings = email.drawings;
-    if (drawings && drawings.length > 0) {
-      this.drawingLines = drawings.map((r: any, i: number) =>
-        drawingToLine(r, i)
-      );
-    } else {
-      this.drawingLines = [];
-    }
-  }
+    const localUrl = URL.createObjectURL(file);
+    this.previewSrc = this.sanitizer.bypassSecurityTrustResourceUrl(localUrl);
+    this.previewName = file.name;
+    this.previewPage = 1;
+    this.cdr.markForCheck();
 
-  // ── Filter emails ─────────────────────────────────────
-  filterEmails() {
-    if (!this.searchQuery.trim()) {
-      this.filteredEmails = this.emails;
-    } else {
-      const q = this.searchQuery.toLowerCase();
-      this.filteredEmails = this.emails.filter(
-        (e) =>
-          e.from.toLowerCase().includes(q) ||
-          e.subject.toLowerCase().includes(q)
-      );
-    }
-  }
-
-  get unreadCountValue(): number {
-    this.unreadCount = this.emails.filter((e) => e.unread).length;
-    return this.unreadCount;
-  }
-
-  // ── Guide ─────────────────────────────────────────────
-  toggleGuide() {
-    this.guideOpen = !this.guideOpen;
-    sessionStorage.setItem('v3guideExpanded', this.guideOpen ? '1' : '0');
-  }
-
-  async copyEmail() {
-    if (!this.inboxEmail) return;
     try {
-      await navigator.clipboard.writeText(this.inboxEmail);
-      this.toastCopied = true;
-      setTimeout(() => (this.toastCopied = false), 2200);
-    } catch (e) {
+      await this.svc.uploadAndAnalyzeDrawing(
+        file,
+        (progressPercent: number) => {
+          this.progress = progressPercent;
+          this.cdr.markForCheck();
+        },
+        (drawingLine: DrawingLine) => {
+          this.drawingLines = [...this.drawingLines, drawingLine];
+          this.cdr.markForCheck();
+        }
+      );
+      setTimeout(() => {
+        this.processing = false;
+        this.progress = 0;
+        this.cdr.markForCheck();
+      }, 500);
+    } catch (err: unknown) {
+      this.processing = false;
+      this.progress = 0;
+      const error = err as Error;
+      this.messageService.add({
+        severity: 'error',
+        summary: 'Lỗi upload',
+        detail: error?.message || 'Không upload được file',
+      });
+    }
+    this.cdr.markForCheck();
+  }
+
+  // ── Attachment preview ─────────────────────────────────────
+
+  async onSelectAttachment(
+    attachment: string | { name: string }
+  ): Promise<void> {
+    if (!this.activeEmail?.id) return;
+    const attachmentName =
+      typeof attachment === 'string' ? attachment : attachment.name;
+    this.previewName = attachmentName;
+    this.previewPage = 1;
+    this.previewLoading = true;
+    this.previewSrc = null;
+    this.cdr.markForCheck();
+
+    const result = await this.svc.loadGmailAttachmentPreview(
+      this.activeEmail.id,
+      attachmentName
+    );
+    this.previewLoading = false;
+    if (!result) {
+      this.messageService.add({
+        severity: 'warn',
+        summary: 'Không tải được file',
+      });
+      this.cdr.markForCheck();
+      return;
+    }
+    const blob = new Blob([result.bytes], { type: result.mime });
+    const url = URL.createObjectURL(blob);
+    this.previewSrc = this.sanitizer.bypassSecurityTrustResourceUrl(url);
+    this.cdr.markForCheck();
+  }
+
+  async loadPdfPage(fileName: string, page: number): Promise<void> {
+    if (!this.activeEmail?.id) return;
+    const cached = this.svc.getPreviewBytesCache();
+    const currentFile = this.svc.getCurrentPreviewFile();
+
+    this.previewName = fileName;
+    this.previewPage = page || 1;
+
+    if (currentFile === fileName && cached) {
+      const blob = new Blob([cached], { type: 'application/pdf' });
+      const url = URL.createObjectURL(blob);
+      this.previewSrc = this.sanitizer.bypassSecurityTrustResourceUrl(url);
+      this.cdr.markForCheck();
+      return;
+    }
+
+    this.previewLoading = true;
+    this.previewSrc = null;
+    this.cdr.markForCheck();
+
+    const result = await this.svc.loadGmailAttachmentPreview(
+      this.activeEmail.id,
+      fileName
+    );
+    this.previewLoading = false;
+    if (!result) {
+      this.messageService.add({
+        severity: 'warn',
+        summary: 'Không tải được trang PDF',
+      });
+      this.cdr.markForCheck();
+      return;
+    }
+    const blob = new Blob([result.bytes], { type: result.mime });
+    const url = URL.createObjectURL(blob);
+    this.previewSrc = this.sanitizer.bypassSecurityTrustResourceUrl(url);
+    this.cdr.markForCheck();
+  }
+
+  private resetPreview(): void {
+    if (this.previewSrc) {
+      const urlStr = String(this.previewSrc);
+      if (urlStr.startsWith('blob:')) URL.revokeObjectURL(urlStr);
+    }
+    this.previewSrc = null;
+    this.previewName = null;
+    this.previewLoading = false;
+    this.previewPage = 1;
+  }
+
+  // ── Guide panel ───────────────────────────────────────────
+
+  toggleGuide(): void {
+    this.guideExpanded = !this.guideExpanded;
+    sessionStorage.setItem('v3guideExpanded', this.guideExpanded ? '1' : '0');
+  }
+
+  async copyInboxEmail(event: Event): Promise<void> {
+    event.stopPropagation();
+    if (!this.inboxHint) return;
+    try {
+      await navigator.clipboard.writeText(this.inboxHint);
+      this.toastCopy = true;
+      setTimeout(() => {
+        this.toastCopy = false;
+      }, 2200);
+    } catch {
       /* ignore */
     }
   }
 
-  // ── Attachment / Preview ──────────────────────────────
-  isAttachmentActive(name: string): boolean {
-    return this.previewName === name;
+  // ── Debug ─────────────────────────────────────────────────
+
+  toggleDebug(): void {
+    this.debugModalOpen = !this.debugModalOpen;
   }
 
-  getAttachmentName(a: string | { name: string }): string {
-    return typeof a === 'string' ? a : a.name;
+  get debugClassifyRaw(): string {
+    if (!this.activeEmail) return '(khong co)';
+    const classifyOutput = this.activeEmail.classify_output;
+    return classifyOutput != null
+      ? JSON.stringify(classifyOutput, null, 2)
+      : '(khong co classify_output)';
   }
 
-  selectAttachment(name: string) {
-    this.previewName = name;
-    this.currentFileName = name;
-    if (this.selectedEmail?.jobId) {
-      this.loadPreviewFromJob(name);
-    }
+  get debugDrawingsRaw(): string {
+    if (!this.activeEmail) return '(khong co)';
+    const drawings = this.activeEmail.drawings;
+    return drawings != null
+      ? JSON.stringify(drawings, null, 2)
+      : '(khong co drawings)';
   }
 
-  private loadPreviewFromJob(fileName: string) {
-    if (!this.selectedEmail?.jobId) return;
-    const gen = ++this.previewLoadGen;
-    this.previewLoading = true;
-    this.previewSrc = null;
+  // ── ERP ──────────────────────────────────────────────────
 
-    this.mekongService
-      .getAttachmentPreview(this.selectedEmail.jobId, fileName)
-      .then((data: { ok: boolean; b64?: string; mime?: string } | null) => {
-        if (gen !== this.previewLoadGen) return;
-        if (!data?.ok || !data?.b64) {
-          this.previewLoading = false;
-          return;
-        }
-        const bin = atob(data.b64);
-        const bytes = new Uint8Array(bin.length);
-        for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
-        this.previewBytesRef = bytes;
-        this.updatePreviewSrc();
-        this.previewPage = 1;
-        this.previewLoading = false;
-      })
-      .catch(() => {
-        if (gen === this.previewLoadGen) this.previewLoading = false;
+  async pushErp(): Promise<void> {
+    if (!this.activeEmail?.id) return;
+    try {
+      await this.svc.pushToErp(this.activeEmail.id);
+      this.messageService.add({ severity: 'success', summary: 'Da push ERP!' });
+    } catch (err: unknown) {
+      const error = err as Error;
+      this.messageService.add({
+        severity: 'error',
+        summary: 'Push ERP that bai',
+        detail: error?.message,
       });
-  }
-
-  private updatePreviewSrc() {
-    if (this.previewBytesRef) {
-      const blob = new Blob([this.previewBytesRef], {
-        type: 'application/pdf',
-      });
-      const url = URL.createObjectURL(blob);
-      this.previewSrc = this.sanitizer.bypassSecurityTrustResourceUrl(url);
     }
   }
 
-  private revokePreviewUrl() {
-    if (
-      this.previewSrc &&
-      typeof this.previewSrc === 'string' &&
-      this.previewSrc.startsWith('blob:')
-    ) {
-      URL.revokeObjectURL(this.previewSrc);
-    }
+  // ── Tab ─────────────────────────────────────────────────
+
+  setTab(tab: ViewTab): void {
+    this.currentTab = tab;
   }
 
-  loadPdfPage(fileName: string, pageNum: number) {
-    if (!this.selectedEmail?.jobId) return;
-    const targetFile =
-      fileName ||
-      this.previewName ||
-      (this.selectedEmail.attachments?.[0] &&
-      typeof this.selectedEmail.attachments[0] === 'string'
-        ? this.selectedEmail.attachments[0]
-        : '');
-    if (!targetFile) return;
+  // ── Schema rendering helpers ─────────────────────────────
 
-    this.previewName = targetFile;
-    this.previewPage = pageNum || 1;
-
-    if (
-      this.currentFileName === targetFile &&
-      this.previewSrc &&
-      this.previewBytesRef
-    ) {
-      this.updatePreviewSrc();
-      return;
-    }
-
-    this.previewSrc = null;
-    this.currentFileName = targetFile;
-    this.loadPreviewFromJob(targetFile);
+  getSchemaRows(): UiRow[] {
+    return this.classifyUiSchema?.generalRows || [];
   }
 
-  selectDrawingByIdx(idx: number) {
-    this.selectedDrawingIdx = idx;
-    const line = this.drawingLines[idx];
-    if (line) {
-      this.previewName = line.filename;
-      this.currentFileName = line.filename;
-      this.previewPage = line.page || 1;
-      this.loadPdfPage(line.filename, line.page || 1);
-    }
+  getSchemaKeysSet(): Set<string> {
+    return collectSchemaKeys(this.classifyUiSchema);
   }
 
-  // ── Drawings / Lines ──────────────────────────────────
-  get drawingCountValue(): number {
-    this.drawingCount = this.drawingLines.length;
-    return this.drawingCount;
-  }
-
-  getDrawingValue(d: DrawingLine, key: keyof DrawingLine['data']): string {
-    return d.data[key] != null ? String(d.data[key]) : '';
-  }
-
-  updateDrawingLine(
-    idx: number,
-    key: keyof DrawingData,
-    value: string | number
-  ) {
-    const line = this.drawingLines[idx];
-    if (line) {
-      (line.data as any)[key] = value;
-    }
-  }
-
-  // ── Tab & Drawing sync ────────────────────────────────
-  @HostListener('window:popstate')
-  onUrlChange() {
-    // Handle URL params if needed
-  }
-
-  // ── Upload ────────────────────────────────────────────
-  triggerUpload() {
-    const input = document.createElement('input');
-    input.type = 'file';
-    input.accept = 'application/pdf,image/*';
-    input.multiple = true;
-    input.onchange = async (e: any) => {
-      const files = e.target.files;
-      if (!files?.length) return;
-      await this.handleUpload(Array.from(files));
-    };
-    input.click();
-  }
-
-  private async handleUpload(files: File[]) {
-    this.processing = true;
-    this.progress = 5;
-    try {
-      for (let i = 0; i < files.length; i++) {
-        const file = files[i];
-        const results = await this.mekongService.uploadAndAnalyzeDrawing(file);
-        if (results) {
-          for (let j = 0; j < results.length; j++) {
-            const r = results[j];
-            this.drawingLines.push(
-              drawingToLine(r, this.drawingLines.length + j)
-            );
-            this.progress = Math.round(20 + ((j + 1) / results.length) * 75);
-            await new Promise((resolve) => setTimeout(resolve, 60));
-          }
-        }
-      }
-      this.progress = 100;
-      setTimeout(() => {
-        this.processing = false;
-        this.progress = 0;
-      }, 500);
-    } catch (e) {
-      console.error(e);
-      this.processing = false;
-      this.progress = 0;
-    }
-  }
-
-  // ── Helpers ───────────────────────────────────────────
-  getLanguageTag(lang: string): { class: string; label: string } {
-    const map: Record<string, { class: string; label: string }> = {
-      ja: { class: 't-ja', label: '🇯🇵 Nhật' },
-      vi: { class: 't-vi', label: '🇻🇳 Việt' },
-      en: { class: 't-en', label: '🇺🇸 Anh' },
-    };
-    return map[lang] || { class: 't-skip', label: lang || '?' };
-  }
-
-  hasShipping(): boolean {
-    return !!this.selectedEmail?.hinh_thuc_giao;
-  }
-
-  // Radio button two-way binding helpers
-  get hinh_thuc_giao_vn(): boolean {
-    if (!this.selectedEmail) return false;
-    const v = this.selectedEmail.hinh_thuc_giao;
-    if (typeof v === 'boolean') return v;
-    if (typeof v === 'string') return v !== '' && v !== 'false' && v !== '0';
-    return !!v;
-  }
-
-  set hinh_thuc_giao_vn(value: boolean) {
-    if (this.selectedEmail) {
-      this.selectedEmail.hinh_thuc_giao = value ? 'true' : null;
-    }
-  }
-
-  get xu_ly_be_mat_vn(): boolean {
-    if (!this.selectedEmail) return false;
-    const v = this.selectedEmail.xu_ly_be_mat;
-    if (typeof v === 'boolean') return v;
-    if (typeof v === 'string') return v !== '' && v !== 'false' && v !== '0';
-    return !!v;
-  }
-
-  set xu_ly_be_mat_vn(value: boolean) {
-    if (this.selectedEmail) {
-      this.selectedEmail.xu_ly_be_mat = value ? true : false;
-    }
-  }
-
-  // hanGiao date picker helper (Date <-> ISO string for PrimeNG Calendar)
-  get hanGiaoDate(): Date | null {
-    if (!this.selectedEmail?.han_giao) return null;
-    try {
-      const d = new Date(this.selectedEmail.han_giao);
-      return Number.isNaN(d.getTime()) ? null : d;
-    } catch {
-      return null;
-    }
-  }
-
-  set hanGiaoDate(value: Date | null) {
-    if (this.selectedEmail) {
-      this.selectedEmail.han_giao = value ? this.formatDateToIso(value) : null;
-    }
-  }
-
-  private formatDateToIso(date: Date): string {
-    const yyyy = date.getFullYear();
-    const mm = String(date.getMonth() + 1).padStart(2, '0');
-    const dd = String(date.getDate()).padStart(2, '0');
-    return `${dd}/${mm}/${yyyy}`;
-  }
-
-  onDebug() {
-    this.debugModalOpen = true;
-  }
-
-  debugModalClose(e: MouseEvent) {
-    if (e.target === e.currentTarget) this.debugModalOpen = false;
-  }
-
-  getClassifyRaw(): string {
-    return this.selectedEmail?.classify_output != null
-      ? JSON.stringify(this.selectedEmail.classify_output, null, 2)
-      : '(không có classify_output)';
-  }
-
-  getDrawingsRaw(): string {
-    return this.selectedEmail?.drawings != null
-      ? JSON.stringify(this.selectedEmail.drawings, null, 2)
-      : '(không có drawings)';
-  }
-
-  // ── Push ERP ──────────────────────────────────────────
-  async pushToErp() {
-    if (this.selectedEmail?.jobId) {
-      try {
-        await this.mekongService.pushJobToErp(this.selectedEmail.jobId);
-        alert('✓ Đã push ERP!');
-      } catch (e) {
-        console.error('Push ERP error:', e);
-      }
-    }
-  }
-}
-
-// ── Helpers (standalone functions from demoV3.js) ──────
-function mapJobRowToEmail(job: any): Email {
-  const d = job.created_at != null ? new Date(job.created_at) : null;
-  const ok = d && !Number.isNaN(d.getTime());
-  return {
-    id: job.id,
-    from: job.sender,
-    email: job.sender_email || '',
-    subject: job.subject,
-    preview: '',
-    body: job.ghi_chu || '',
-    time: ok
-      ? d.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })
-      : '—',
-    date: fmtDDMMHHmm(job.created_at),
-    created_at: job.created_at,
-    attachments: job.attachments || [],
-    classify: job.classify,
-    ngon_ngu: job.ngon_ngu,
-    ten_kh: job.ten_cong_ty || job.sender || '',
-    han_giao: job.han_giao != null && job.han_giao !== '' ? job.han_giao : null,
-    hinh_thuc_giao: job.hinh_thuc_giao || null,
-    xu_ly_be_mat: job.xu_ly_be_mat ?? null,
-    vat_lieu_chung_nhan: job.vat_lieu_chung_nhan ?? null,
-    classify_output: normalizeClassifyOutputFromJob(job),
-    drawings: job.drawings || [],
-    jobId: job.id,
-    unread: false,
-    _agent: true,
-    _needLoad: false,
-  };
-}
-
-function mergeAgentIntoInbox(agentEmails: Email[], prev: Email[]): Email[] {
-  const nonAgent = prev.filter((e) => !e._agent);
-  const loadedById = new Map();
-  for (const e of prev) {
-    if (e._agent && !e._needLoad && (e.jobId || e.id)) {
-      loadedById.set(e.jobId || e.id, e);
-    }
-  }
-  const merged = agentEmails.map((a) => {
-    const kept = loadedById.get(a.jobId);
-    if (!kept) return a;
-    return {
-      ...kept,
-      preview: a.preview,
-      time: a.time,
-      date: a.date,
-      unread: a.unread,
-      attachments:
-        a.attachments && a.attachments.length > 0
-          ? a.attachments
-          : kept.attachments,
-    };
-  });
-  return [...merged, ...nonAgent];
-}
-
-function fmtDDMMHHmm(iso: string | null): string {
-  const d = iso != null ? new Date(iso) : null;
-  if (!d || Number.isNaN(d.getTime())) return '—';
-  const dd = String(d.getDate()).padStart(2, '0');
-  const mm = String(d.getMonth() + 1).padStart(2, '0');
-  const yyyy = d.getFullYear();
-  const hh = String(d.getHours()).padStart(2, '0');
-  const min = String(d.getMinutes()).padStart(2, '0');
-  return `${dd}/${mm}/${yyyy} ${hh}:${min}`;
-}
-
-function drawingToLine(r: any, i: number): DrawingLine {
-  // API mới: data fields nằm trực tiếp trong r (không phải r.data)
-  const d = r.data || r;
-  return {
-    filename: r.filename || `file_${i}.pdf`,
-    page: r.page || i + 1,
-    raw: r.raw || '',
-    data: {
-      ma_ban_ve: d.ma_ban_ve || '',
-      so_luong: d.so_luong || 1,
-      hinh_dang: d.hinh_dang || '',
-      dung_sai: d.dung_sai_chung || d.dung_sai || '',
-      vat_lieu: d.vat_lieu || '',
-      kich_thuoc: d.kich_thuoc || '',
-      ma_quy_trinh: d.ma_quy_trinh || '',
-    },
-  };
-}
-
-function normalizeClassifyOutputFromJob(job: any) {
-  if (!job.classify_output) return null;
-  const co = job.classify_output;
-  if (typeof co === 'string') {
-    try {
-      return JSON.parse(co);
-    } catch {
-      return co;
-    }
-  }
-  return co;
-}
-
-function logMekongJobAiResponses(job: any, source: string) {
-  if (!shouldLogMekongAi() || !job || typeof console === 'undefined') return;
-  const id = job.id ?? job.jobId ?? '?';
-  if (job.classify_output != null) {
-    console.log(
-      `[mekongAI] classify_output (${source}) job=${id}`,
-      job.classify_output
-    );
-  }
-  const drawings = job.drawings;
-  if (!Array.isArray(drawings) || drawings.length === 0) {
-    console.log(`[mekongAI] drawings (${source}) job=${id}: (không có)`);
-    return;
-  }
-  drawings.forEach((dr: any, i: number) => {
-    const name = dr.filename ?? dr.name ?? String(i);
-    if (dr.raw != null && String(dr.raw).length > 0) {
-      console.log(
-        `[mekongAI] drawing RAW text (${source}) job=${id} file=${name}`,
-        dr.raw
+  getCellAi(emailItem: EmailRow, cell: UiCell): boolean {
+    const classifyOutput = emailItem.classify_output;
+    if (cell.ai === true) return true;
+    if (cell.ai === 'auto') {
+      return !!(
+        classifyOutput &&
+        Object.prototype.hasOwnProperty.call(classifyOutput, cell.key) &&
+        classifyOutput[cell.key] != null &&
+        classifyOutput[cell.key] !== ''
       );
     }
-    if (dr.data != null) {
-      console.log(
-        `[mekongAI] drawing parsed data (${source}) job=${id} file=${name}`,
-        dr.data
-      );
-    }
-  });
-}
-
-function shouldLogMekongAi() {
-  if (typeof window === 'undefined' || !window.localStorage) return true;
-  const v = window.localStorage.getItem('mekongDebugAi');
-  if (v === '0') return false;
-  try {
-    const q = new URLSearchParams(window.location.search).get('debugAi');
-    if (q === '0') return false;
-  } catch (_) {
-    /* ignore */
+    return false;
   }
-  return true;
+
+  isSchemaCellVisible(emailItem: EmailRow, cell: UiCell): boolean {
+    if (
+      cell.showWhenKey &&
+      !truthyClassify(resolveClassifyValue(emailItem, cell.showWhenKey, false))
+    ) {
+      return false;
+    }
+    return true;
+  }
+
+  resolveCellVal(emailItem: EmailRow, cell: UiCell): unknown {
+    const defaultValue =
+      cell.defaultValue !== undefined ? cell.defaultValue : undefined;
+    return resolveClassifyValue(emailItem, cell.key, defaultValue);
+  }
+
+  extraFieldType(value: unknown): string {
+    return inferExtraFieldType(value);
+  }
+
+  humanizeKey(key: string): string {
+    return humanizeClassifyKey(key);
+  }
+
+  // ── Language tag ──────────────────────────────────────────
+
+  getLangTag(languageCode: string | null | undefined): {
+    label: string;
+    cls: string;
+  } {
+    const languageMap: Record<string, [string, string]> = {
+      ja: ['Nhat', 't-ja'],
+      vi: ['Viet', 't-vi'],
+      en: ['Anh', 't-en'],
+    };
+    const [label, cls] = languageMap[languageCode || ''] || ['?', 't-skip'];
+    return { label, cls };
+  }
+
+  langTagSeverity(
+    languageCode: string | null | undefined
+  ): 'warning' | 'info' | 'danger' | 'secondary' {
+    const severityMap: Record<
+      string,
+      'warning' | 'info' | 'danger' | 'secondary'
+    > = { ja: 'warning', vi: 'info', en: 'danger' };
+    return severityMap[languageCode || ''] || 'secondary';
+  }
+
+  // ── Misc helpers ──────────────────────────────────────────
+
+  formatDeadline(deadlineDate: string | null): string {
+    return fmtDDMM(deadlineDate);
+  }
+
+  get activeEmailId(): number | string | null {
+    return this.activeEmail?.id || null;
+  }
+
+  loadPdfPageByLine(drawingLine: DrawingLine): void {
+    const fileName = drawingLine.filename || this.previewName || '';
+    this.loadPdfPage(fileName, drawingLine.page);
+  }
+
+  trackByEmailId(index: number, emailItem: EmailRow): number | string {
+    return emailItem.jobId || emailItem.id;
+  }
+
+  getAttachmentName(attachment: string | { name: string }): string {
+    return typeof attachment === 'string' ? attachment : attachment.name;
+  }
+
+  getAttachmentList(): Array<string | { name: string }> {
+    return this.activeEmail?.attachments || [];
+  }
+
+  isActiveAttachment(attachment: string | { name: string }): boolean {
+    return this.previewName === this.getAttachmentName(attachment);
+  }
+
+  getKhachHang(): string {
+    return this.activeEmail?.ten_kh || this.activeEmail?.from || '';
+  }
+
+  getEmail(): string {
+    return this.activeEmail?.email || '';
+  }
+
+  getEmailBody(): string {
+    return this.activeEmail?.body || '';
+  }
+
+  isRfq(emailItem: EmailRow | null): boolean {
+    return emailItem?.classify === 'rfq';
+  }
 }
