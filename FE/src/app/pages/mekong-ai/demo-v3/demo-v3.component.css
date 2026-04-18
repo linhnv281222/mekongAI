@@ -899,12 +899,12 @@ button.tab:focus-visible {
   border-radius: var(--v3-radius-sm) !important;
 }
 :host ::ng-deep .p-datatable .p-datatable-thead > tr > th {
-  background: var(--v3-surf) !important;
-  color: var(--v3-muted) !important;
+  background: #4338ca !important;
+  color: #ffffff !important;
   font-weight: 600 !important;
   font-size: 11.5px !important;
-  padding: 6px 10px !important;
-  border-color: var(--v3-line) !important;
+  padding: 8px 10px !important;
+  border-color: #3730a3 !important;
 }
 :host ::ng-deep .p-datatable .p-datatable-tbody > tr > td {
   padding: 6px 10px !important;
@@ -1020,13 +1020,22 @@ button.tab:focus-visible {
   border-color: #6d28d9 !important;
 }
 
+/* Tab Content - for tab 2 (bv) */
+:host ::ng-deep .tcontent > div[hidden="false"],
+.tcontent > div:not([hidden]) {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
 /* ── Bản vẽ (Tab 2) ─────────────────────────────────── */
 .bv-wrap {
   display: flex;
   flex-direction: column;
-  height: 100%;
+  flex: 1;
   min-height: 0;
   padding: 8px;
+  overflow: hidden;
 }
 .bv-wrap--has-table {
   padding-bottom: 0;
@@ -1049,6 +1058,13 @@ button.tab:focus-visible {
   min-height: 0;
   display: flex;
   flex-direction: column;
+  overflow: hidden;
+}
+
+.bv-table-wrap {
+  flex: 1;
+  overflow: auto;
+  min-height: 0;
 }
 
 .bv-split-preview {
@@ -1231,54 +1247,36 @@ button.tab:focus-visible {
   font-weight: 700 !important;
 }
 
-/* Debug Modal */
-.debug-modal {
-  position: fixed;
-  inset: 0;
-  z-index: 9999;
-  background: rgba(0, 0, 0, 0.75);
-  display: flex;
+/* Cell button container - inline flex */
+.cell-btn {
+  display: flex !important;
   align-items: center;
-  justify-content: center;
-  padding: 24px;
+  gap: 4px;
 }
-.debug-modal-content {
-  background: #fff;
-  color: #1a1a2e;
-  border-radius: 10px;
-  width: 100%;
-  max-width: 900px;
-  max-height: 90vh;
-  display: flex;
-  flex-direction: column;
-  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
-  font-family: "Menlo", "Consolas", "Courier New", monospace;
-  font-size: 12px;
-  overflow: hidden;
-}
-.debug-modal-hd {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 14px 18px;
-  border-bottom: 1px solid #ddd;
-  background: #f5f5f5;
-  border-radius: 10px 10px 0 0;
+.cell-btn button {
   flex-shrink: 0;
+}
+.cell-btn input {
+  flex: 1;
+  min-width: 0;
+}
+
+/* Debug Dialog - PrimeNG p-dialog override */
+:host ::ng-deep .debug-dialog {
+  font-family: "Menlo", "Consolas", "Courier New", monospace;
+}
+:host ::ng-deep .debug-dialog .p-dialog-header {
+  background: #f5f5f5;
+  border-bottom: 1px solid #ddd;
   font-family: system-ui, sans-serif;
   font-weight: 700;
-  font-size: 14;
+  font-size: 14px;
   color: #1a1a2e;
+  padding: 14px 18px;
 }
-.debug-modal-hd button {
-  background: none;
-  border: none;
-  cursor: pointer;
-  font-size: 20;
-  color: #888;
-  line-height: 1;
-  padding: 0 4px;
-  border-radius: 4px;
+:host ::ng-deep .debug-dialog .p-dialog-content {
+  padding: 0;
+  overflow-y: auto;
 }
 .debug-modal-body {
   overflow-y: auto;
