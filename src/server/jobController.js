@@ -1,10 +1,15 @@
 import express from "express";
+import fs from "fs";
+import path from "path";
+import { fileURLToPath } from "url";
 import { getJob, getJobs, updateJob } from "../data/jobStore.js";
 import {
   downloadAttachment,
   makeGmail,
   parseGmailMsg,
 } from "../libs/gmailClient.js";
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 const router = express.Router();
 
@@ -43,7 +48,7 @@ function resolveAttachmentFilename(req) {
   }
 }
 
-/** Lấy buffer PDF từ Gmail; set header X-Job-Attachments khi refresh danh sách đính kèm. */
+/** Lấy buffer PDF từ Gmail HOẶC từ thư mục uploads (chat uploads); set header X-Job-Attachments khi refresh danh sách đính kèm. */
 async function loadAttachmentPdfBuffer(jobId, filename, res) {
   if (!jobId) {
     return { ok: false, status: 400, body: { error: "Thieu job id" } };
@@ -59,6 +64,33 @@ async function loadAttachmentPdfBuffer(jobId, filename, res) {
   const job = getJob(jobId);
   if (!job) return { ok: false, status: 404, body: { error: "Khong tim thay job" } };
 
+  // ── 1. Thử lấy từ thư mục uploads (chat uploads / agent uploads) ──
+  const PROJECT_ROOT = path.resolve(__dirname, "../..");
+  const uploadsDir = path.join(PROJECT_ROOT, "uploads");
+  const safeName = filename.replace(/[^a-zA-Z0-9_\-. ]/g, "_");
+  const altPaths = [
+    path.join(uploadsDir, filename),
+    path.join(uploadsDir, jobId + "_" + filename),
+    // Pattern chat upload: chat_{jobId}_{baseName}.pdf  (bản archive copy)
+    path.join(uploadsDir, "chat_" + jobId + "_" + path.basename(filename)),
+    // Pattern safeName (đã sanitize)
+    path.join(uploadsDir, jobId + "_" + safeName),
+    // Pattern cũ: chat_full_{timestamp}_{originalName}
+    path.join(uploadsDir, "chat_full_" + filename),
+    path.join(uploadsDir, "chat_full_" + safeName),
+  ];
+  for (const filePath of altPaths) {
+    if (fs.existsSync(filePath)) {
+      try {
+        const buf = fs.readFileSync(filePath);
+          if (buf.length > 0) {
+            return { ok: true, buf };
+        }
+      } catch (_) { /* thử path khác */ }
+    }
+  }
+
+  // ── 2. Thử tìm trong attachments của job (upload trực tiếp) ──
   let att = Array.isArray(job.attachments)
     ? job.attachments.find((a) => {
         const name = typeof a === "string" ? a : a?.name;
@@ -66,10 +98,14 @@ async function loadAttachmentPdfBuffer(jobId, filename, res) {
       })
     : null;
 
-  if (!att || typeof att === "string") {
+  // ── 3. Thử Gmail (chỉ cho job từ email, có gmail_id) ──
+  const isGmailJob =
+    !!(job.gmail_id || job.gmailId) &&
+    job.source !== "chat";
+  if ((!att || typeof att === "string") && isGmailJob) {
     try {
       const gmail = makeGmail();
-      const emailData = await parseGmailMsg(gmail, job.gmail_id);
+      const emailData = await parseGmailMsg(gmail, job.gmail_id || job.gmailId);
       const refreshed = emailData.attachments.map((a) => ({
         name: a.name,
         attachmentId: a.attachmentId,
@@ -93,7 +129,7 @@ async function loadAttachmentPdfBuffer(jobId, filename, res) {
     const gmail = makeGmail();
     const buf = await downloadAttachment(
       gmail,
-      job.gmail_id,
+      job.gmail_id || job.gmailId,
       att.attachmentId,
       att.name
     );

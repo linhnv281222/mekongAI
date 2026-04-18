@@ -3,6 +3,8 @@ import { Component } from '@angular/core';
 /** Giống project-demo: icon + chữ tĩnh (không translate) */
 @Component({
   selector: 'app-no-data',
+  standalone: true,
+  imports: [],
   template: `
     <div class="no-data-container">
       <img class="no-data-image" src="./assets/icon/no-result.svg" alt="" />

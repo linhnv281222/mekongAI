@@ -3,6 +3,7 @@ import { CommonModule } from '@angular/common';
 import { FormsModule, ReactiveFormsModule } from '@angular/forms';
 import { HttpClientModule } from '@angular/common/http';
 import { TranslateModule } from '@ngx-translate/core';
+import { RouterModule } from '@angular/router';
 import { ButtonModule } from 'primeng/button';
 import { InputTextModule } from 'primeng/inputtext';
 import { ToastModule } from 'primeng/toast';
@@ -30,9 +31,11 @@ import { AdminPromptsComponent } from './admin-prompts/admin-prompts.component';
 import { SafeUrlPipe } from './pipes/safe-url.pipe';
 import { DemoV3Component } from './demo-v3/demo-v3.component';
 import { DemoV3Service } from './demo-v3/demo-v3.service';
+import { ChatbotComponent } from './chatbot/chatbot.component';
+import { SharedComponentsModule } from '../../shared/shared-components.module';
 
 @NgModule({
-  declarations: [DemoV3Component, AdminPromptsComponent, SafeUrlPipe],
+  declarations: [DemoV3Component, AdminPromptsComponent, SafeUrlPipe, ChatbotComponent],
   imports: [
     CommonModule,
     FormsModule,
@@ -59,9 +62,11 @@ import { DemoV3Service } from './demo-v3/demo-v3.service';
     ConfirmDialogModule,
     InputMaskModule,
     SplitterModule,
+    RouterModule,
+    SharedComponentsModule,
     MekongAiRoutingModule,
   ],
-  exports: [DemoV3Component, AdminPromptsComponent, SafeUrlPipe],
+  exports: [DemoV3Component, AdminPromptsComponent, SafeUrlPipe, ChatbotComponent],
   providers: [MessageService, ConfirmationService, DemoV3Service],
 })
 export class MekongAiModule {}

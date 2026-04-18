@@ -12,7 +12,7 @@ import {
 } from "../libs/drawingNormalize.js";
 import { agentCfg, aiCfg } from "../libs/config.js";
 import { saveJob } from "../data/jobStore.js";
-import { chatAssistantReply } from "../ai/chatAssistant.js";
+import { chatAssistantReply, extractChatInfo } from "../ai/chatAssistant.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const PROJECT_ROOT = path.resolve(__dirname, "../..");
@@ -112,14 +112,33 @@ function parseEmailContent(text) {
   if (!text) return result;
 
   const lines = text.split("\n");
-  for (const line of lines) {
-    if (
-      /PRECISION\s+MECHANICAL|CO\.,?\s*LTD|COMPANY\s+LIMITED|Ky Thuat|I\.T|I.T|Vietnam|HCM\s+HN|SG\s+700000|SGN|HANOI/i.test(
-        line
-      )
-    ) {
-      result.ten_cong_ty = line.trim();
-      break;
+
+  // ── 1. "khách hàng VNT", "customer ABC", "dành cho XYZ", "attn Mr X" — không cần separator ──
+  // Pattern: keyword + tên công ty/người (tối thiểu 2 ký tự)
+  const customerKeywordRe =
+    /(?:^|[\s,])(?:khách?\s*hàng?|customer|client|dành\s+cho|to\s+company|for\s+company|attn|attention)\s+(.{2,60})/i;
+  {
+    const m = text.match(customerKeywordRe);
+    if (m) {
+      // Lấy phần tên — cắt ngắn ở newline hoặc nhiều khoảng trắng
+      const candidate = m[1].trim().split(/[\n\r]+/)[0].trim();
+      if (candidate && candidate.length >= 2) {
+        result.ten_cong_ty = candidate.slice(0, 80);
+      }
+    }
+  }
+
+  // ── 2. Trích từ chữ ký email công ty (pattern Nhật) ──
+  if (!result.ten_cong_ty) {
+    for (const line of lines) {
+      if (
+        /PRECISION\s+MECHANICAL|CO\.,?\s*LTD|COMPANY\s+LIMITED|Ky Thuat|I\.T|I.T|Vietnam|HCM\s+HN|SGN|HANOI/i.test(
+          line
+        )
+      ) {
+        result.ten_cong_ty = line.trim();
+        break;
+      }
     }
   }
 
@@ -195,114 +214,165 @@ async function handleNormalChat(message) {
 
 // ─── XỬ LÝ BÁO GIÁ ─────────────────────────────────────────────────────────
 
-async function handleBaoGiaChat(message, files, senderEmail) {
+async function handleBaoGiaChat(message, files, senderEmail, jobId) {
   const allResults = [];
   const fileErrors = [];
-  const emailInfo = parseEmailContent(message || "");
 
-  // Xử lý từng file PDF
+  // ── Lưu bản sao vĩnh viễn của mỗi file để preview sau này ──────────────
   for (const file of files) {
     if (!file.path) continue;
-
-    const ext = file.originalname.toLowerCase();
-
-    if (ext.endsWith(".pdf")) {
-      let pages;
-      try {
-        pages = await splitPdf(
-          fs.readFileSync(file.path),
-          file.originalname
-        );
-      } catch (e) {
-        const tmpPath = path.join(
-          UPLOADS_DIR,
-          "chat_full_" + Date.now() + "_" + file.originalname
-        );
-        fs.writeFileSync(tmpPath, fs.readFileSync(file.path));
-        pages = [
-          { path: tmpPath, page: 1, name: file.originalname, total: 1 },
-        ];
-      }
-
-      for (const pg of pages) {
-        try {
-          const result = await analyzeDrawingApi(pg.path, pg.name);
-          const flat = normalizeDrawingToFlat(result.data);
-
-          if (!drawingHasMinimalData(flat)) {
-            console.log(
-              "[ChatBaoGia] Trang " +
-                pg.page +
-                " không có dữ liệu -> bỏ qua"
-            );
-            continue;
-          }
-
-          const enriched = enrichWithF7F8(flat);
-          allResults.push({
-            ...result,
-            data: enriched,
-            filename: file.originalname,
-            page: pg.page,
-          });
-
-          console.log(
-            "[ChatBaoGia] OK: " +
-              enriched.ma_ban_ve +
-              " | " +
-              enriched.vat_lieu +
-              " | SL:" +
-              enriched.so_luong
-          );
-        } catch (e) {
-          console.error(
-            "[ChatBaoGia] Lỗi trang " +
-              pg.page +
-              " (" +
-              pg.name +
-              "): " +
-              e.message
-          );
-          fileErrors.push(
-            file.originalname + " trang " + pg.page + ": " + e.message
-          );
-        } finally {
-          fs.unlink(pg.path, () => {});
-        }
-      }
-    } else {
-      fileErrors.push(
-        file.originalname +
-          ": Định dạng ảnh chưa được hỗ trợ phân tích. Vui lòng gửi file PDF."
-      );
+    try {
+      const ext = path.extname(file.originalname);
+      const baseName = path.basename(file.originalname, ext);
+      // Pattern: chat_{jobId}_{baseName}.pdf  (dễ tìm từ jobController)
+      const archiveName = `chat_${jobId}_${baseName}${ext}`;
+      const archivePath = path.join(UPLOADS_DIR, archiveName);
+      fs.copyFileSync(file.path, archivePath);
+    } catch (e) {
+      // archive không critical — bỏ qua nếu lỗi
     }
-
-    fs.unlink(file.path, () => {});
   }
 
-  // Tạo job
-  const jobId = makeJobId();
-  const companyName = emailInfo.ten_cong_ty || senderEmail || "";
+  // ── Xử lý từng file PDF trước (chạy song song với AI extraction) ──
+  const fileProcessPromise = (async () => {
+    for (const file of files) {
+      if (!file.path) continue;
+
+      const ext = file.originalname.toLowerCase();
+
+      if (ext.endsWith(".pdf")) {
+        let pages;
+        try {
+          pages = await splitPdf(
+            fs.readFileSync(file.path),
+            file.originalname
+          );
+        } catch (e) {
+          const tmpPath = path.join(
+            UPLOADS_DIR,
+            "chat_full_" + Date.now() + "_" + file.originalname
+          );
+          fs.writeFileSync(tmpPath, fs.readFileSync(file.path));
+          pages = [
+            { path: tmpPath, page: 1, name: file.originalname, total: 1 },
+          ];
+        }
+
+        for (const pg of pages) {
+          try {
+            const result = await analyzeDrawingApi(pg.path, pg.name);
+            const flat = normalizeDrawingToFlat(result.data);
+
+            if (!drawingHasMinimalData(flat)) {
+              console.log(
+                "[ChatBaoGia] Trang " +
+                  pg.page +
+                  " không có dữ liệu -> bỏ qua"
+              );
+              continue;
+            }
+
+            const enriched = enrichWithF7F8(flat);
+            allResults.push({
+              ...result,
+              data: enriched,
+              filename: file.originalname,
+              page: pg.page,
+            });
+
+            console.log(
+              "[ChatBaoGia] OK: " +
+                enriched.ma_ban_ve +
+                " | " +
+                enriched.vat_lieu +
+                " | SL:" +
+                enriched.so_luong
+            );
+          } catch (e) {
+            console.error(
+              "[ChatBaoGia] Lỗi trang " +
+                pg.page +
+                " (" +
+                pg.name +
+                "): " +
+                e.message
+            );
+            fileErrors.push(
+              file.originalname + " trang " + pg.page + ": " + e.message
+            );
+          } finally {
+            fs.unlink(pg.path, () => {});
+          }
+        }
+      } else {
+        fileErrors.push(
+          file.originalname +
+            ": Định dạng ảnh chưa được hỗ trợ phân tích. Vui lòng gửi file PDF."
+        );
+      }
+
+      fs.unlink(file.path, () => {});
+    }
+  })();
+
+  // ── Dùng AI trích xuất thông tin (prompt 'chat-classify' — chỉnh sửa được trong admin) ──
+  let chatInfo = null;
+  try {
+    chatInfo = await extractChatInfo(message || "");
+    console.log("[ChatBaoGia] AI extract:", JSON.stringify(chatInfo));
+  } catch (e) {
+    console.warn("[ChatBaoGia] extractChatInfo failed:", e.message);
+  }
+
+  // Chờ file process xong
+  await fileProcessPromise;
+
+  // Fallback: regex cho email signature (khi AI thất bại)
+  const emailInfo = parseEmailContent(message || "");
+
+  // ── Validation: không có thông tin khách hàng và không có bản vẽ → hỏi lại ──
+  const aiCompany = chatInfo && chatInfo.ten_cong_ty && chatInfo.ten_cong_ty !== "unknown"
+    ? chatInfo.ten_cong_ty : "";
+  const hasCustomer = !!(aiCompany || emailInfo.ten_cong_ty || emailInfo.sender_email || emailInfo.sender_name);
+  if (!hasCustomer && allResults.length === 0) {
+    return {
+      isBotReply: true,
+      askClarify: true,
+      reply:
+        "Mình chưa có đủ thông tin để tạo báo giá. Bạn cho mình biết thêm:\n" +
+        "- Tên công ty khách hàng là gì?\n" +
+        "- Email liên hệ (nếu có)?\n" +
+        "Hoặc dán nội dung email có chữ ký công ty / đính kèm file PDF bản vẽ nhé.",
+    };
+  }
+
+  // Tạo job — ưu tiên AI extraction, fallback regex
+  const companyName = aiCompany || emailInfo.ten_cong_ty || senderEmail || "";
   const jobData = {
     id: jobId,
     gmail_id: "chat_" + jobId,
-    subject: emailInfo.noi_dung
-      ? emailInfo.noi_dung
-          .slice(0, 80)
-          .replaceAll("\n", " ")
-          .trim() || "Chat báo giá"
-      : "Chat báo giá",
+    subject: chatInfo && chatInfo.loi_nhan && chatInfo.loi_nhan !== "unknown"
+      ? chatInfo.loi_nhan.slice(0, 80)
+      : (emailInfo.noi_dung
+          ? emailInfo.noi_dung
+              .slice(0, 80)
+              .replaceAll("\n", " ")
+              .trim() || "Chat báo giá"
+          : "Chat báo giá"),
     sender: companyName,
-    sender_email: emailInfo.sender_email || senderEmail || "",
-    sender_name: emailInfo.sender_name || "",
+    sender_email: (chatInfo && chatInfo.email_khach_hang && chatInfo.email_khach_hang !== "unknown"
+      ? chatInfo.email_khach_hang : emailInfo.sender_email) || senderEmail || "",
+    sender_name: (chatInfo && chatInfo.ten_nguoi_lien_he && chatInfo.ten_nguoi_lien_he !== "unknown"
+      ? chatInfo.ten_nguoi_lien_he : emailInfo.sender_name) || "",
     sender_company: companyName,
     classify: "rfq",
-    ngon_ngu: "vi",
+    ngon_ngu: (chatInfo && chatInfo.ngon_ngu) || emailInfo.ngon_ngu || "vi",
     classify_output: {
       loai: "rfq",
-      ngon_ngu: "vi",
+      ngon_ngu: (chatInfo && chatInfo.ngon_ngu) || "vi",
       ten_cong_ty: companyName,
       ly_do: "Chat bot báo giá",
+      chat_info: chatInfo,
     },
     han_giao: null,
     hinh_thuc_giao: null,
@@ -319,6 +389,7 @@ async function handleBaoGiaChat(message, files, senderEmail) {
     created_at: Date.now(),
     source: "chat",
     email_info: emailInfo,
+    chat_info: chatInfo,
   };
 
   await saveJob(jobData);
@@ -326,17 +397,24 @@ async function handleBaoGiaChat(message, files, senderEmail) {
   // Tạo phản hồi
   let reply = "";
 
-  if (emailInfo.ten_cong_ty) {
-    reply += "Công ty: " + emailInfo.ten_cong_ty + "\n";
+  if (companyName) {
+    reply += "Công ty: " + companyName + "\n";
   }
-  if (emailInfo.sender_name) {
-    reply += "Người liên hệ: " + emailInfo.sender_name + "\n";
+  const senderName = (chatInfo && chatInfo.ten_nguoi_lien_he && chatInfo.ten_nguoi_lien_he !== "unknown"
+    ? chatInfo.ten_nguoi_lien_he : emailInfo.sender_name);
+  if (senderName) {
+    reply += "Người liên hệ: " + senderName + "\n";
   }
-  if (emailInfo.sender_email) {
-    reply += "Email: " + emailInfo.sender_email + "\n";
+  const extractedEmail = (chatInfo && chatInfo.email_khach_hang && chatInfo.email_khach_hang !== "unknown"
+    ? chatInfo.email_khach_hang : emailInfo.sender_email);
+  if (extractedEmail) {
+    reply += "Email: " + extractedEmail + "\n";
   }
   if (emailInfo.dien_thoai) {
     reply += "Điện thoại: " + emailInfo.dien_thoai + "\n";
+  }
+  if (chatInfo && chatInfo.so_luong && chatInfo.so_luong !== "unknown") {
+    reply += "Số lượng: " + chatInfo.so_luong + "\n";
   }
 
   if (allResults.length > 0) {
@@ -400,6 +478,28 @@ router.post(
         files.length
     );
 
+    // Tạo jobId TRƯỚC xử lý để đặt tên file đúng pattern
+    const jobId = makeJobId();
+
+    // Đổi tên file từ multer → {jobId}_{originalName} để jobController tìm được khi preview
+    for (const file of files) {
+      if (!file.path) continue;
+      // file.originalname đã có đuôi (.pdf), dùng trực tiếp làm safeName
+      const safeName = file.originalname.replace(/[^a-zA-Z0-9_\-. ]/g, "_");
+      const newPath = path.join(UPLOADS_DIR, jobId + "_" + safeName);
+      try {
+        fs.renameSync(file.path, newPath);
+        file.path = newPath;
+        file.destination = UPLOADS_DIR;
+      } catch (e) {
+        // Nếu rename thất bại (file đang dùng), copy rồi xóa gốc
+        fs.copyFileSync(file.path, newPath);
+        fs.unlinkSync(file.path);
+        file.path = newPath;
+        file.destination = UPLOADS_DIR;
+      }
+    }
+
     try {
       const intent = isBaoGiaIntent(message, files);
 
@@ -410,7 +510,7 @@ router.post(
       }
 
       // Có intent báo giá -> phân tích
-      const result = await handleBaoGiaChat(message, files, senderEmail);
+      const result = await handleBaoGiaChat(message, files, senderEmail, jobId);
       return res.json(result);
     } catch (e) {
       console.error("[ChatController] EXCEPTION:", e.message);

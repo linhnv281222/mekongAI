@@ -9,6 +9,7 @@ import { TranslateModule, TranslateLoader } from '@ngx-translate/core';
 import { AppRoutingModule } from './app-routing.module';
 import { AppComponent } from './app.component';
 import { initializer } from './app-init';
+import { MekongAiModule } from './pages/mekong-ai/mekong-ai.module';
 
 export function translateLoaderFactory(http: HttpClient): TranslateLoader {
   return {
@@ -33,6 +34,7 @@ export function translateLoaderFactory(http: HttpClient): TranslateLoader {
         deps: [HttpClient],
       },
     }),
+    MekongAiModule,
   ],
   providers: [
     {

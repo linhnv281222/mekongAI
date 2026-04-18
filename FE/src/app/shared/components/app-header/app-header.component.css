@@ -1,0 +1,120 @@
+.app-header {
+  flex-shrink: 0;
+  height: 52px;
+  padding: 0 20px 0 22px;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  background: var(--v3-surface, #ffffff);
+  border-bottom: 1px solid var(--v3-line, #e2e8f0);
+  box-shadow: var(--v3-shadow, 0 1px 3px rgba(15, 23, 42, 0.06));
+}
+
+.app-brand-mark {
+  width: 34px;
+  height: 34px;
+  border-radius: 10px;
+  background: linear-gradient(
+    135deg,
+    var(--v3-brand, #4f46e5) 0%,
+    #6366f1 100%
+  );
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  font-size: 16px;
+  font-weight: 700;
+  flex-shrink: 0;
+}
+
+.app-brand-text {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  min-width: 0;
+}
+
+.app-brand-title {
+  font-weight: 700;
+  font-size: 15px;
+  letter-spacing: -0.02em;
+  color: var(--v3-ink, #0f172a);
+}
+
+.app-brand-sub {
+  font-size: 11px;
+  color: var(--v3-muted, #64748b);
+  font-weight: 500;
+}
+
+.app-header-spacer {
+  flex: 1;
+}
+
+.app-live {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--v3-muted, #64748b);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  flex-shrink: 0;
+}
+
+.app-live-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #22c55e;
+  box-shadow: 0 0 0 3px rgba(34, 197, 94, 0.25);
+  animation: ap-pulse 2s ease-in-out infinite;
+  flex-shrink: 0;
+}
+
+.app-live-dot--err {
+  background: #ef4444;
+  box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.25);
+  animation: none;
+}
+
+@keyframes ap-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.55; }
+}
+
+.app-nav {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-left: 12px;
+  padding-left: 12px;
+  border-left: 1px solid var(--v3-line, #e2e8f0);
+}
+
+.nav-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 12px;
+  border-radius: var(--v3-radius-sm, 10px);
+  font-size: 11.5px;
+  font-weight: 600;
+  color: var(--v3-muted, #64748b);
+  text-decoration: none;
+  transition: background 0.15s, color 0.15s;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.nav-link:hover {
+  background: var(--v3-surf, #f5f7fa);
+  color: var(--v3-brand, #4f46e5);
+}
+
+.nav-link--active {
+  background: var(--v3-brand-soft, #eef2ff);
+  color: var(--v3-brand2, #4338ca);
+}
