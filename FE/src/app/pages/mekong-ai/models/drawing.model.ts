@@ -11,6 +11,7 @@ export interface Drawing {
 }
 
 export interface DrawingData {
+  [key: string]: unknown;
   ma_ban_ve?: string;
   vat_lieu?: string;
   so_luong?: number;
