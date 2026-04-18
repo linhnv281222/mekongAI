@@ -192,7 +192,6 @@ async function handleNormalChat(message) {
     return { isBotReply: true, ai: true, reply };
   } catch (e) {
     const errMsg = e?.message || String(e);
-    console.error("[ChatAssistant] Lỗi:", errMsg);
     let reply;
     if (!aiCfg.geminiKey || /GEMINI_API_KEY chưa được cấu hình/i.test(errMsg)) {
       reply =
