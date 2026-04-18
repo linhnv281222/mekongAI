@@ -42,18 +42,41 @@ interface Email {
 }
 
 interface Drawing {
+  // Format cũ: { data: {...} }
   filename?: string;
   page?: number;
   raw?: string;
-  data: {
+  data?: {
     ma_ban_ve?: string;
     so_luong?: string | number;
     hinh_dang?: string;
+    dung_sai_chung?: string;
     dung_sai?: string;
     vat_lieu?: string;
+    vat_lieu_chung_nhan?: string;
     kich_thuoc?: string;
     ma_quy_trinh?: string;
+    xu_ly_be_mat?: string;
+    xu_ly_nhiet?: string;
+    dung_sai_chat_nhat?: string;
+    co_gdt?: boolean;
+    ly_giai_qt?: string;
   };
+  // Format mới (API mới): fields nằm trực tiếp trong object
+  ma_ban_ve?: string;
+  so_luong?: string | number;
+  hinh_dang?: string;
+  dung_sai_chung?: string;
+  dung_sai?: string;
+  vat_lieu?: string;
+  vat_lieu_chung_nhan?: string;
+  kich_thuoc?: string;
+  ma_quy_trinh?: string;
+  xu_ly_be_mat?: string;
+  xu_ly_nhiet?: string;
+  dung_sai_chat_nhat?: string;
+  co_gdt?: boolean;
+  ly_giai_qt?: string;
 }
 
 interface DrawingLine {
@@ -294,18 +317,34 @@ export class DemoV3Component implements OnInit, OnDestroy {
       if (idx !== -1) this.emails[idx] = full;
       this.selectedEmail = full;
       logMekongJobAiResponses(job, 'selectEmail');
+
+      // Sync drawings từ API vào bảng
+      this.syncDrawingsFromEmail(full);
     } else {
       this.selectedEmail = email;
+      // Sync drawings từ email đã có (nếu có)
+      this.syncDrawingsFromEmail(email);
     }
     // Reset state
     this.activeTabIndex = 0;
-    this.drawingLines = [];
     this.previewName = null;
     this.previewSrc = null;
     this.previewLoading = false;
     this.revokePreviewUrl();
     this.internalNote =
       this.internalNotePrefix + new Date().toLocaleString('vi-VN');
+  }
+
+  /** Sync drawings[] từ email vào drawingLines để hiển thị bảng */
+  private syncDrawingsFromEmail(email: Email) {
+    const drawings = email.drawings;
+    if (drawings && drawings.length > 0) {
+      this.drawingLines = drawings.map((r: any, i: number) =>
+        drawingToLine(r, i)
+      );
+    } else {
+      this.drawingLines = [];
+    }
   }
 
   // ── Filter emails ─────────────────────────────────────
@@ -371,13 +410,17 @@ export class DemoV3Component implements OnInit, OnDestroy {
       .getAttachmentPreview(this.selectedEmail.jobId, fileName)
       .then((data: { ok: boolean; b64?: string; mime?: string } | null) => {
         if (gen !== this.previewLoadGen) return;
-        if (!data?.ok || !data?.b64) return;
+        if (!data?.ok || !data?.b64) {
+          this.previewLoading = false;
+          return;
+        }
         const bin = atob(data.b64);
         const bytes = new Uint8Array(bin.length);
         for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
         this.previewBytesRef = bytes;
         this.updatePreviewSrc();
         this.previewPage = 1;
+        this.previewLoading = false;
       })
       .catch(() => {
         if (gen === this.previewLoadGen) this.previewLoading = false;
@@ -685,18 +728,20 @@ function fmtDDMMHHmm(iso: string | null): string {
 }
 
 function drawingToLine(r: any, i: number): DrawingLine {
+  // API mới: data fields nằm trực tiếp trong r (không phải r.data)
+  const d = r.data || r;
   return {
     filename: r.filename || `file_${i}.pdf`,
     page: r.page || i + 1,
     raw: r.raw || '',
     data: {
-      ma_ban_ve: r.data?.ma_ban_ve || '',
-      so_luong: r.data?.so_luong || '',
-      hinh_dang: r.data?.hinh_dang || '',
-      dung_sai: r.data?.dung_sai || '',
-      vat_lieu: r.data?.vat_lieu || r.data?.vat_lieu_chung_nhan || '',
-      kich_thuoc: r.data?.kich_thuoc || '',
-      ma_quy_trinh: r.data?.ma_quy_trinh || '',
+      ma_ban_ve: d.ma_ban_ve || '',
+      so_luong: d.so_luong || 1,
+      hinh_dang: d.hinh_dang || '',
+      dung_sai: d.dung_sai_chung || d.dung_sai || '',
+      vat_lieu: d.vat_lieu || '',
+      kich_thuoc: d.kich_thuoc || '',
+      ma_quy_trinh: d.ma_quy_trinh || '',
     },
   };
 }
