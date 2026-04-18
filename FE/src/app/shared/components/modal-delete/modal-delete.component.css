@@ -1,0 +1,41 @@
+.modal-delete__body {
+  font-size: 13px;
+}
+
+.modal-delete__question {
+  color: #42526d;
+  font-size: 13px;
+  font-weight: 500;
+  margin-bottom: 12px;
+}
+
+.modal-delete__title {
+  text-align: center;
+  font-size: 16px;
+  font-weight: 700;
+  padding: 12px;
+  color: #244a64;
+}
+
+.modal-delete__hint {
+  padding: 10px 12px 14px 12px;
+  background-color: rgba(207, 241, 255, 0.2);
+  border-left: 4px solid #c41d7f;
+  margin-bottom: 20px;
+  font-size: 12px;
+  color: #42526d;
+}
+
+.modal-delete__hint-label {
+  font-size: 12px;
+  font-weight: 700;
+  color: #c41d7f;
+  display: block;
+  margin-bottom: 4px;
+}
+
+.modal-delete__footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+}

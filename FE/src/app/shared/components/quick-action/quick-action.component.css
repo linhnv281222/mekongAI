@@ -1,0 +1,11 @@
+.quick-action-wrap {
+  position: fixed;
+  z-index: 1000;
+  cursor: grab;
+}
+
+.quick-action__btn {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  width: 40px !important;
+  height: 40px !important;
+}

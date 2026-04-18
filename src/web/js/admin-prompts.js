@@ -1,5 +1,39 @@
 const API = "/admin/prompts";
 
+// ── Knowledge variable config ────────────────────────────────────────────────
+/** Map từ biến trong prompt → key knowledge block tương ứng */
+const VAR_TO_KB = {
+  MATERIAL:      "vnt-materials",
+  HEAT_TREAT:    "vnt-heat-treat",
+  SURFACE:       "vnt-surface",
+  SHAPE:         "vnt-shapes",
+  VNT_KNOWLEDGE: "vnt-knowledge",
+};
+
+/** Biến nào là "knowledge" (hiển thị chip xanh, click → mở bảng) */
+const KNOWLEDGE_VARS = new Set(["MATERIAL", "HEAT_TREAT", "SURFACE", "SHAPE", "VNT_KNOWLEDGE"]);
+
+/** Mô tả ngắn cho từng biến knowledge (hiện trong tooltip/guide) */
+const KB_VAR_LABELS = {
+  MATERIAL:      "Bảng quy đổi mã vật liệu quốc tế → mã VNT",
+  HEAT_TREAT:    "Bảng ký hiệu xử lý nhiệt → tên tiếng Việt VNT",
+  SURFACE:       "Bảng ký hiệu xử lý bề mặt → tên tiếng Việt VNT",
+  SHAPE:         "Bảng phân loại hình dạng phôi & phương án gia công",
+  VNT_KNOWLEDGE: "Bảng lượng riêng, mã vật liệu, hình dạng, mã qui trình VNT",
+};
+
+/**
+ * Xác định loại biến để render chip đúng màu.
+ * @param {string} name — tên biến VD: "MATERIAL", "DRAWING_SCHEMA"
+ * @returns {"knowledge"|"schema"|"prompt"}
+ */
+function detectVarType(name) {
+  if (KNOWLEDGE_VARS.has(name)) return "knowledge";
+  if (["DRAWING_SCHEMA", "CURRENT_JSON", "USER_REQUEST", "emailFrom", "emailSubject", "emailBody", "emailAttachments"].includes(name))
+    return "schema";
+  return "prompt";
+}
+
 /** Tên hiển thị tiếng Việt (ưu tiên hơn tên tiếng Anh từ API) */
 const PROMPT_LABELS_VI = {
   "drawing-system": "Phân tích bản vẽ — Prompt hệ thống",
@@ -142,18 +176,23 @@ async function activatePromptVersion(key, version) {
   return d;
 }
 
-async function saveKnowledge(key, content) {
+async function saveKnowledge(key, payload) {
+  // payload: string  (plain text)  hoặc  {format, headers, rows, content}
   const res = await fetch(`${API}/knowledge/${key}`, {
     method: "PUT",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ content }),
+    body: JSON.stringify(payload),
   });
+  const data = await res.json();
   if (!res.ok) {
-    const d = await res.json();
-    throw new Error(d.error);
+    throw new Error(data.error || `HTTP ${res.status}`);
   }
   await loadAll();
-  toast("Đã lưu: " + key, "ok");
+  if (data.updated) {
+    toast("Đã lưu: " + key, "ok");
+  } else {
+    toast("Lưu thất bại (DB: " + (data.error || "không khả dụng") + ")", "err");
+  }
 }
 
 async function testPrompt(key, variables) {
@@ -396,12 +435,56 @@ async function showPrompt(key) {
       <strong>Dùng bản này</strong> — chỉ đổi runtime sang v đang chọn.
     </div>
 
-    <div class="editor-hint">Biến trong mẫu (bấm để chèn):</div>
+    <div class="knowledge-guide" id="kbGuidePanel">
+      <details>
+        <summary class="guide-summary">
+          <span class="guide-icon">&#128218;</span> Hướng dẫn dùng kiến thức trong prompt
+        </summary>
+        <div class="guide-body">
+          <p>Khi AI đọc bản vẽ, nó sẽ <strong>tự tra bảng</strong> để map về mã VNT nội bộ. Chèn biến kiến thức vào vị trí phù hợp trong prompt:</p>
+          <table class="guide-table">
+            <thead>
+              <tr><th>Biến</th><th>Bảng kiến thức</th><th>Mục đích</th></tr>
+            </thead>
+            <tbody>
+              <tr><td><code>{{MATERIAL}}</code></td><td>Nguyên vật liệu</td><td>Map AISI 1045 → S45C, EN AW-6061 → A6061…</td></tr>
+              <tr><td><code>{{HEAT_TREAT}}</code></td><td>Xử lý nhiệt</td><td>Map 焼入れ焼戻し → Nhiệt toàn phần [HRC...]…</td></tr>
+              <tr><td><code>{{SURFACE}}</code></td><td>Xử lý bề mặt</td><td>Map 白アルマイト → Anod trang, Hard Anodize…</td></tr>
+              <tr><td><code>{{SHAPE}}</code></td><td>Phân loại hình dạng</td><td>Map hình dạng → phương án gia công</td></tr>
+              <tr><td><code>{{VNT_KNOWLEDGE}}</code></td><td>Kiến thức nội bộ VNT</td><td>Bảng lượng riêng, mã vật liệu, hình dạng, mã qui trình</td></tr>
+            </tbody>
+          </table>
+          <p class="guide-tip">&#9888; Chip <span class="chip-demo chip-knowledge">xanh dương</span> = biến kiến thức (bấm để xem bảng). Chip <span class="chip-demo chip-prompt">xám</span> = biến prompt thường (bấm để chèn).</p>
+        </div>
+      </details>
+    </div>
+
+    <div class="editor-hint">Biến trong mẫu (bấm chip để chèn hoặc xem bảng kiến thức):</div>
     <div class="variables-row" id="varChips">
       ${currentVars
         .map(
-          (v) =>
-            `<span class="var-chip" onclick="insertVar('${v}')">{{${v}}}</span>`
+          (v) => {
+            const type = detectVarType(v);
+            const kbKey = VAR_TO_KB[v];
+            const label = KB_VAR_LABELS[v] || "";
+            const icon = KNOWLEDGE_VARS.has(v) ? "&#128203;" : "&#123;&#125;";
+            const kb = kbKey ? knowledgeData.find((k) => k.key === kbKey) : null;
+            if (type === "knowledge") {
+              return `<span class="var-chip var-chip--knowledge"
+                title="${escapeHtml(label)}&#10;Bấm để xem/sửa bảng"
+                onclick="showKnowledge('${kbKey}')">
+                <span class="chip-icon">${icon}</span>
+                <span class="chip-name">{{${v}}}</span>
+                <span class="chip-ref">${kbKey ? escapeHtml(kb?.name || kbKey) : ""}</span>
+              </span>`;
+            }
+            return `<span class="var-chip var-chip--prompt"
+              title="${escapeHtml(label)}"
+              onclick="insertVar('${v}')">
+              <span class="chip-icon">${icon}</span>
+              <span class="chip-name">{{${v}}}</span>
+            </span>`;
+          }
         )
         .join("")}
     </div>
@@ -515,7 +598,7 @@ function detectVars(text) {
 }
 
 function escapeHtml(str) {
-  return str.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+  return str.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
 }
 
 function markDirty() {
@@ -555,12 +638,28 @@ function testCurrentPrompt() {
   if (panel.style.display === "block") {
     const vars = detectVars(document.getElementById("promptEditor").value);
     const varChips = document.getElementById("varChips");
-    varChips.innerHTML = vars
-      .map(
-        (v) =>
-          `<span class="var-chip" onclick="insertVar('${v}')">{{${v}}}</span>`
-      )
-      .join("");
+    varChips.innerHTML = vars.map((v) => {
+      const type = detectVarType(v);
+      const kbKey = VAR_TO_KB[v];
+      const label = KB_VAR_LABELS[v] || "";
+      const icon = KNOWLEDGE_VARS.has(v) ? "&#128203;" : "&#123;&#125;";
+      const kb = kbKey ? knowledgeData.find((k) => k.key === kbKey) : null;
+      if (type === "knowledge") {
+        return `<span class="var-chip var-chip--knowledge"
+          title="${escapeHtml(label)}"
+          onclick="showKnowledge('${kbKey}')">
+          <span class="chip-icon">${icon}</span>
+          <span class="chip-name">{{${v}}}</span>
+          <span class="chip-ref">${kbKey ? escapeHtml(kb?.name || kbKey) : ""}</span>
+        </span>`;
+      }
+      return `<span class="var-chip var-chip--prompt"
+        title="${escapeHtml(label)}"
+        onclick="insertVar('${v}')">
+        <span class="chip-icon">${icon}</span>
+        <span class="chip-name">{{${v}}}</span>
+      </span>`;
+    }).join("");
   }
 }
 
@@ -668,64 +767,292 @@ async function showKnowledge(key) {
   const kb = knowledgeData.find((k) => k.key === key);
   if (!kb) return;
 
+  const format = kb.format || "text";
+  const headers = kb.headers || ["Mã gốc", "Mã VNT", "Ghi chú"];
+  const rows = kb.rows || [];
+
+  const isTableFormat = format === "table" && Array.isArray(rows) && rows.length > 0;
+
   document.getElementById("contentArea").innerHTML = `
     <div class="content-header">
       <div>
         <h2>${escapeHtml(labelVi(key, kb.name))}</h2>
-        <div class="meta">${escapeHtml(
-          descVi(key, kb.description || "")
-        )} &middot; mã: <code style="color:var(--accent2)">${escapeHtml(
-    key
-  )}</code></div>
-      </div>
-      <div class="actions">
-        <button class="btn btn-primary" onclick="saveCurrentKnowledge()">Lưu</button>
-      </div>
-    </div>
-    <div class="editor-hint">Nội dung (văn bản thuần hoặc có cấu trúc — không cần cú pháp biến):</div>
-    <textarea class="editor" id="kbEditor" style="min-height:300px">${escapeHtml(
-      kb.content || ""
-    )}</textarea>
-    ${
-      kb.updated_at
-        ? `<div style="font-size:11px;color:var(--muted);margin-top:6px">Cập nhật lần cuối: ${new Date(
-            kb.updated_at
-          ).toLocaleString("vi-VN")}</div>`
-        : ""
-    }
-    <div id="testPanel" style="display:none">
-      <div class="test-panel">
-        <h4>Thử kết quả render</h4>
-        <button class="btn btn-secondary btn-sm" onclick="runKBTest()">Chạy thử</button>
-        <div id="testOutput" style="margin-top:12px">
-          <div class="test-label">Kết quả:</div>
-          <div class="test-output" id="testResult">—</div>
+        <div class="meta">
+          ${escapeHtml(descVi(key, kb.description || ""))}
+          &middot; mã: <code style="color:var(--accent2)">${escapeHtml(key)}</code>
+          &middot; <span class="tag ${isTableFormat ? "active" : "draft"}">${isTableFormat ? "Bảng (" + rows.length + " dòng)" : "Text"}</span>
         </div>
       </div>
+      <div class="actions">
+        <button class="btn btn-secondary" onclick="kbImportCSV()">&#128230; Import CSV</button>
+        <button class="btn btn-secondary" onclick="kbExportCSV('${escapeHtml(key)}')">&#128229; Export CSV</button>
+        <button class="btn btn-primary" onclick="saveCurrentKnowledge()">&#128190; Lưu</button>
+      </div>
     </div>
+
+    <!-- Table editor -->
+    <div class="kb-table-container" id="kbTableContainer">
+      <div class="kb-table-toolbar">
+        <button class="btn btn-secondary" onclick="kbAddRow()">+ Thêm dòng</button>
+        <button class="btn btn-secondary" onclick="kbDeleteSelectedRows()">&#128465; Xóa dòng đã chọn</button>
+        <span class="kb-table-info">${rows.length} dòng</span>
+      </div>
+      <div class="kb-table-scroll">
+        <table class="kb-table" id="kbTable">
+          <thead>
+            <tr>
+              <th class="col-check"><input type="checkbox" id="kbSelectAll" onchange="kbToggleSelectAll()" title="Chọn tất cả"></th>
+              ${headers.map((h, i) => `
+              <th class="col-data">
+                <div class="th-inner">
+                  <span class="th-label" id="thLabel${i}">${escapeHtml(h)}</span>
+                  <button class="th-edit-btn" onclick="kbEditHeader(${i})" title="Đổi tên cột">&#9998;</button>
+                </div>
+              </th>`).join("")}
+              <th class="col-actions">Xóa</th>
+            </tr>
+          </thead>
+          <tbody id="kbTableBody">
+            ${renderKbTableRows(rows, headers)}
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    ${
+      kb.updated_at
+        ? `<div style="font-size:11px;color:var(--muted);margin-top:8px">Cập nhật lần cuối: ${new Date(kb.updated_at).toLocaleString("vi-VN")}</div>`
+        : ""
+    }
   `;
 }
 
-async function saveCurrentKnowledge() {
-  const content = document.getElementById("kbEditor").value;
-  if (!content.trim()) {
-    toast("Nội dung không được để trống", "warn");
+function renderKbTableRows(rows, headers) {
+  if (!Array.isArray(rows) || !rows.length) {
+    return `<tr class="empty-row"><td colspan="${headers.length + 2}" style="text-align:center;color:var(--muted);padding:24px">
+      Chưa có dữ liệu. Bấm <strong>+ Thêm dòng</strong> để bắt đầu.
+    </td></tr>`;
+  }
+  return rows
+    .map(
+      (r, i) => `
+      <tr data-row-index="${i}">
+        <td class="col-check"><input type="checkbox" class="kb-row-check" data-idx="${i}"></td>
+        ${headers.map((h, ci) => {
+          const val = kbGetCellVal(r, h, ci);
+          return `<td><input type="text" class="cell-input" value="${escapeHtml(val)}"
+            onchange="kbOnCellChange(${i},${ci},this.value,'${escapeHtml(h.replace(/'/g, "\\'"))}')"></td>`;
+        }).join("")}
+        <td class="col-actions">
+          <button class="btn-icon btn-icon--danger" onclick="kbDeleteRow(${i})" title="Xóa dòng">&#128465;</button>
+        </td>
+      </tr>`
+    )
+    .join("");
+}
+
+function kbEditHeader(colIndex) {
+  const th = document.getElementById("thLabel" + colIndex);
+  if (!th) return;
+  const current = th.textContent;
+  const input = document.createElement("input");
+  input.type = "text";
+  input.value = current;
+  input.className = "th-edit-input";
+  input.onblur = () => {
+    th.textContent = input.value;
+    input.remove();
+    const kb = knowledgeData.find((k) => k.key === currentView.key);
+    if (kb && kb.headers) kb.headers[colIndex] = input.value;
+  };
+  input.onkeydown = (e) => {
+    if (e.key === "Enter") input.blur();
+    if (e.key === "Escape") {
+      th.textContent = current;
+      input.remove();
+    }
+  };
+  th.textContent = "";
+  th.appendChild(input);
+  input.focus();
+  input.select();
+}
+
+function kbAddRow() {
+  const kb = knowledgeData.find((k) => k.key === currentView.key);
+  const headers = kb?.headers || ["Mã gốc", "Mã VNT", "Ghi chú"];
+  const rows = kb?.rows || [];
+  const newRow = { from: "", to: "", group: "", note: "" };
+  rows.push(newRow);
+  kb.rows = rows;
+  const tbody = document.getElementById("kbTableBody");
+  if (tbody) {
+    tbody.innerHTML = renderKbTableRows(rows, headers);
+    const newTr = tbody.querySelector(`tr[data-row-index="${rows.length - 1}"]`);
+    if (newTr) newTr.scrollIntoView({ behavior: "smooth", block: "center" });
+  }
+  document.querySelector(".kb-table-info").textContent = rows.length + " dòng";
+}
+
+function kbDeleteRow(rowIndex) {
+  const kb = knowledgeData.find((k) => k.key === currentView.key);
+  if (!kb || !kb.rows) return;
+  kb.rows.splice(rowIndex, 1);
+  const tbody = document.getElementById("kbTableBody");
+  const headers = kb.headers || ["Mã gốc", "Mã VNT", "Ghi chú"];
+  if (tbody) tbody.innerHTML = renderKbTableRows(kb.rows, headers);
+  document.querySelector(".kb-table-info").textContent = kb.rows.length + " dòng";
+}
+
+function kbDeleteSelectedRows() {
+  const checks = document.querySelectorAll(".kb-row-check:checked");
+  if (!checks.length) {
+    toast("Chọn ít nhất 1 dòng để xóa", "warn");
     return;
   }
-  try {
-    await saveKnowledge(currentView.key, content);
-  } catch (e) {
-    toast("Lưu thất bại: " + e.message, "err");
+  if (!confirm(`Xóa ${checks.length} dòng đã chọn?`)) return;
+  const kb = knowledgeData.find((k) => k.key === currentView.key);
+  if (!kb || !kb.rows) return;
+  const idxs = [...checks].map((c) => parseInt(c.dataset.idx, 10)).sort((a, b) => b - a);
+  for (const i of idxs) kb.rows.splice(i, 1);
+  const tbody = document.getElementById("kbTableBody");
+  const headers = kb.headers || ["Mã gốc", "Mã VNT", "Ghi chú"];
+  if (tbody) tbody.innerHTML = renderKbTableRows(kb.rows, headers);
+  document.querySelector(".kb-table-info").textContent = kb.rows.length + " dòng";
+}
+
+function kbToggleSelectAll() {
+  const sel = document.getElementById("kbSelectAll");
+  const checks = document.querySelectorAll(".kb-row-check");
+  checks.forEach((c) => (c.checked = sel.checked));
+}
+
+function kbGetCellVal(row, h, colIndex) {
+  if (!row) return "";
+  // Cấu trúc 4 bảng knowledge: Nhóm(0) | Mã gốc(1) | Kết quả VNT(2) | Ghi chú(3)
+  if (colIndex === 0) return row.group || "";
+  if (colIndex === 1) return row.from || "";
+  if (colIndex === 2) return row.to || "";
+  return row.note || row[h] || "";
+}
+
+function kbOnCellChange(rowIndex, colIndex, value, header) {
+  const kb = knowledgeData.find((k) => k.key === currentView.key);
+  if (!kb || !kb.rows) return;
+  const row = kb.rows[rowIndex];
+  if (!row) return;
+  if (colIndex === 0) row.group = value;
+  else if (colIndex === 1) row.from = value;
+  else if (colIndex === 2) row.to = value;
+  else row.note = value;
+}
+
+
+async function kbImportCSV() {
+  const input = document.createElement("input");
+  input.type = "file";
+  input.accept = ".csv,.txt";
+  input.onchange = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    const text = await file.text();
+    const kb = knowledgeData.find((k) => k.key === currentView.key);
+    if (!kb) return;
+    const headers = kb.headers || ["Mã gốc", "Mã VNT", "Ghi chú"];
+    const newRows = parseCSVToRows(text, headers);
+    if (!newRows.length) {
+      toast("Không đọc được dữ liệu từ file CSV", "warn");
+      return;
+    }
+    kb.rows = [...(kb.rows || []), ...newRows];
+    const tbody = document.getElementById("kbTableBody");
+    if (tbody) tbody.innerHTML = renderKbTableRows(kb.rows, headers);
+    document.querySelector(".kb-table-info").textContent = kb.rows.length + " dòng";
+    toast(`Đã thêm ${newRows.length} dòng từ CSV`, "ok");
+  };
+  input.click();
+}
+
+function kbExportCSV(key) {
+  const kb = knowledgeData.find((k) => k.key === key);
+  if (!kb || !kb.rows?.length) {
+    toast("Không có dữ liệu để export", "warn");
+    return;
   }
+  const headers = kb.headers || ["Mã gốc", "Mã VNT", "Ghi chú"];
+  const lines = [headers.join(",")];
+  for (const row of kb.rows) {
+    const vals = headers.map((h) => {
+      let v = "";
+      if (h === "Nhóm vật liệu" || h === "Nhóm xử lý" || h === "Loại phôi") v = row.group || "";
+      else if (h === "Mã gốc (quốc tế)" || h === "Ký hiệu gốc" || h === "Đặc điểm") v = row.from || "";
+      else if (h === "Mã VNT" || h === "Kết quả VNT" || h === "Phương án gia công") v = row.to || "";
+      else v = row.note || "";
+      return `"${String(v).replace(/"/g, '""')}"`;
+    });
+    lines.push(vals.join(","));
+  }
+  const blob = new Blob(["\uFEFF" + lines.join("\n")], { type: "text/csv;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `${key}.csv`;
+  a.click();
+  URL.revokeObjectURL(url);
+  toast(`Đã export ${kb.rows.length} dòng`, "ok");
+}
+
+function parseCSVToRows(text, headers) {
+  const rows = [];
+  const lines = (text || "").split(/\r?\n/);
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i].trim();
+    if (!line) continue;
+    const cols = line.split(",").map((c) => c.replace(/^"|"$/g, "").replace(/""/g, '"').trim());
+    if (cols.length < 2) continue;
+    rows.push({ from: cols[0] || "", to: cols[1] || "", group: cols[2] || "", note: cols[3] || "" });
+  }
+  return rows;
+}
+
+async function saveCurrentKnowledge() {
+  const kb = knowledgeData.find((k) => k.key === currentView.key);
+  if (!kb) return;
+
+  const thLabels = document.querySelectorAll(".th-label");
+  const headers = [...thLabels].map((th) => th.textContent.trim());
+  const rows = kb.rows || [];
+  const textContent = renderKbToText(headers, rows);
+  try {
+    await saveKnowledge(currentView.key, { format: "table", headers, rows, content: textContent });
+  } catch (e) {
+    // saveKnowledge tự toast lỗi rồi
+  }
+}
+
+function renderKbToText(headers, rows) {
+  if (!Array.isArray(rows) || !rows.length) return "";
+  const lines = [];
+  lines.push(headers.join(" | "));
+  lines.push(headers.map(() => "---").join(" | "));
+  for (const r of rows) {
+    const vals = headers.map((h, ci) => kbGetCellVal(r, h, ci));
+    lines.push(vals.join(" | "));
+  }
+  return lines.join("\n");
 }
 
 async function runKBTest() {
   try {
+    const kb = knowledgeData.find((k) => k.key === currentView.key);
+    const headers = kb?.headers || ["Mã gốc", "Mã VNT"];
+    const rows = kb?.rows || [];
+    const text = renderKbToText(headers, rows);
     const result = await testPrompt("drawing-system", {
-      VNT_MAT: document.getElementById("kbEditor").value,
-      VNT_NHIET: "",
-      VNT_BM: "",
-      VNT_HINH: "",
+      MATERIAL: text,
+      HEAT_TREAT: "",
+      SURFACE: "",
+      SHAPE: "",
     });
     document.getElementById("testResult").textContent =
       result.content?.substring(0, 1000) || "(trống)";

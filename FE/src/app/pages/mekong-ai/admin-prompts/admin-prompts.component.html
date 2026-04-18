@@ -1,0 +1,508 @@
+<!-- Header -->
+<header class="app-header">
+  <div class="app-brand-mark" aria-hidden="true">M</div>
+  <div class="app-brand-text">
+    <div class="app-brand-title">Mekong AI</div>
+    <div class="app-brand-sub">Soạn thảo báo giá từ email tự động</div>
+  </div>
+  <div class="app-header-spacer"></div>
+  <div class="app-live" id="apiStatus">
+    <span
+      class="app-live-dot"
+      [class.app-live-dot--err]="apiStatus === 'offline'"
+      aria-hidden="true"
+    ></span>
+    <span>{{ apiStatus === "online" ? "Đang kết nối" : "Không kết nối" }}</span>
+  </div>
+  <nav class="app-nav" aria-label="Điều hướng">
+    <a routerLink="/mekong-ai/rfq" class="nav-link" title="Phiếu báo giá RFQ">
+      <i class="pi pi-inbox"></i>
+      Phiếu báo giá
+    </a>
+    <a
+      routerLink="/mekong-ai/admin/prompts"
+      class="nav-link nav-link--active"
+      title="Cấu hình prompt & kiến thức AI"
+    >
+      <i class="pi pi-sliders-h"></i>
+      Cấu hình AI
+    </a>
+  </nav>
+</header>
+
+<!-- Main Layout -->
+<div class="layout">
+  <!-- Sidebar -->
+  <div class="sidebar">
+    <!-- Prompt Section -->
+    <div class="sidebar-section">
+      <div class="sidebar-section-title">Prompt</div>
+      <div id="promptNav">
+        <div
+          *ngFor="let prompt of prompts"
+          class="nav-item"
+          [class.active]="
+            currentView.type === 'prompt' && currentPromptKey === prompt.id
+          "
+          (click)="showPrompt(prompt.id)"
+        >
+          <div class="nav-icon">
+            <i class="pi pi-file-edit"></i>
+          </div>
+          <span class="nav-label">{{ prompt.name }}</span>
+          <span class="nav-version" [class.active]="prompt.active">{{
+            prompt.version
+          }}</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Knowledge Section -->
+    <div class="sidebar-section">
+      <div class="sidebar-section-title">Kiến thức</div>
+      <div id="knowledgeNav">
+        <div
+          *ngFor="let item of knowledgeItems"
+          class="nav-item"
+          [class.active]="
+            currentView.type === 'knowledge' && currentPromptKey === item.id
+          "
+          (click)="showKnowledge(item.id)"
+        >
+          <div class="nav-icon">
+            <i class="pi pi-book"></i>
+          </div>
+          <span class="nav-label">{{ item.name }}</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- System Section -->
+    <div class="sidebar-section">
+      <div class="sidebar-section-title">Hệ thống</div>
+      <div class="nav-item" (click)="showOverview()">
+        <div class="nav-icon"><i class="pi pi-sitemap"></i></div>
+        <span class="nav-label">Tổng quan</span>
+      </div>
+
+      <!-- Model Selector -->
+      <div class="nav-item model-selector-item">
+        <div style="display: flex; align-items: center; gap: 10px; width: 100%">
+          <div class="nav-icon"><i class="pi pi-cog"></i></div>
+          <span class="nav-label">Model AI</span>
+        </div>
+        <p-dropdown
+          [options]="aiModelOptions"
+          [(ngModel)]="selectedModel"
+          (onChange)="onModelChange()"
+          optionLabel="label"
+          optionValue="value"
+          [style]="{ width: '100%' }"
+        >
+        </p-dropdown>
+        <div class="model-status">
+          {{ selectedModel === "claude" ? "→ Claude" : "→ Gemini" }}
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Content -->
+  <div class="content" id="contentArea">
+    <!-- ===== OVERVIEW ===== -->
+    <ng-container *ngIf="currentView.type === 'overview'">
+      <div class="content-header">
+        <div>
+          <h2>Tổng quan cấu hình prompt</h2>
+          <div class="meta">
+            {{ prompts.length }} mẫu prompt &middot;
+            {{ knowledgeItems.length }} khối kiến thức
+          </div>
+        </div>
+      </div>
+      <p-table [value]="prompts" styleClass="p-datatable-sm overview-table">
+        <ng-template pTemplate="header">
+          <tr>
+            <th>Tên</th>
+            <th>Mã</th>
+            <th>Phiên bản đang dùng</th>
+            <th>Biến</th>
+            <th>Nguồn</th>
+            <th></th>
+          </tr>
+        </ng-template>
+        <ng-template pTemplate="body" let-prompt>
+          <tr>
+            <td>
+              <strong>{{ prompt.name }}</strong>
+            </td>
+            <td>
+              <code style="color: var(--accent2); font-size: 12px">{{
+                prompt.id
+              }}</code>
+            </td>
+            <td>
+              <p-tag
+                *ngIf="prompt.active"
+                [value]="'v' + prompt.active_version"
+                severity="success"
+              ></p-tag>
+              <p-tag
+                *ngIf="!prompt.active"
+                value="tệp"
+                severity="warning"
+              ></p-tag>
+            </td>
+            <td>
+              <span *ngFor="let v of prompt.variables" class="var-chip">{{
+                v
+              }}</span>
+            </td>
+            <td>{{ prompt.active ? "CSDL" : "mặc định" }}</td>
+            <td>
+              <p-button
+                label="Sửa"
+                icon="pi pi-pencil"
+                styleClass="p-button-sm p-button-secondary"
+                (onClick)="showPrompt(prompt.id)"
+              ></p-button>
+            </td>
+          </tr>
+        </ng-template>
+      </p-table>
+      <p-table
+        [value]="knowledgeItems"
+        styleClass="p-datatable-sm overview-table"
+        [style]="{ 'margin-top': '16px' }"
+      >
+        <ng-template pTemplate="header">
+          <tr>
+            <th>Tên</th>
+            <th>Mã</th>
+            <th></th>
+            <th>Nguồn</th>
+            <th></th>
+          </tr>
+        </ng-template>
+        <ng-template pTemplate="body" let-item>
+          <tr>
+            <td>
+              <strong>{{ item.name }}</strong>
+            </td>
+            <td>
+              <code style="color: var(--accent2); font-size: 12px">{{
+                item.id
+              }}</code>
+            </td>
+            <td><p-tag value="kiến thức" severity="info"></p-tag></td>
+            <td>{{ item.content ? "CSDL" : "mặc định" }}</td>
+            <td>
+              <p-button
+                label="Sửa"
+                icon="pi pi-pencil"
+                styleClass="p-button-sm p-button-secondary"
+                (onClick)="showKnowledge(item.id)"
+              ></p-button>
+            </td>
+          </tr>
+        </ng-template>
+      </p-table>
+    </ng-container>
+
+    <!-- ===== PROMPT EDITOR ===== -->
+    <ng-container *ngIf="currentView.type === 'prompt' && currentPromptKey">
+      <div class="content-header">
+        <div>
+          <h2>{{ currentPromptName }}</h2>
+          <div class="meta">
+            {{ currentPromptDesc }} &middot; mã:
+            <code style="color: var(--accent2)">{{ currentPromptKey }}</code>
+          </div>
+        </div>
+        <div class="actions">
+          <p-button
+            label="Lưu thay đổi"
+            icon="pi pi-save"
+            styleClass="p-button-primary"
+            (onClick)="savePromptChanges()"
+          ></p-button>
+          <p-button
+            label="Tạo bản nháp mới"
+            icon="pi pi-copy"
+            styleClass="p-button-secondary"
+            (onClick)="createNewVersion(false)"
+          ></p-button>
+          <p-button
+            label="Tạo & kích hoạt"
+            icon="pi pi-check-circle"
+            styleClass="p-button-secondary"
+            (onClick)="createNewVersion(true)"
+          ></p-button>
+          <p-button
+            label="Dùng bản này"
+            icon="pi pi-check"
+            styleClass="p-button-secondary"
+            (onClick)="activateVersion()"
+            [disabled]="!canActivateVersion()"
+          ></p-button>
+        </div>
+      </div>
+
+      <!-- Version bar -->
+      <div class="version-bar">
+        <label>Phiên bản:</label>
+        <p-dropdown
+          *ngIf="!fileMode"
+          [options]="promptVersionOptions"
+          [(ngModel)]="selectedVersion"
+          (onChange)="onVersionChange()"
+          optionLabel="label"
+          optionValue="value"
+          [style]="{ width: '300px' }"
+        >
+        </p-dropdown>
+        <select *ngIf="fileMode" class="model-select" disabled>
+          <option>Ghi vào tệp mặc định (không có phiên bản trong CSDL)</option>
+        </select>
+        <p-button
+          label="Xóa phiên bản"
+          icon="pi pi-trash"
+          styleClass="p-button-sm p-button-danger p-button-outlined"
+          (onClick)="deleteVersion()"
+          [disabled]="!canDeleteVersion()"
+        ></p-button>
+        <div class="version-meta">
+          {{ runtimeVersionLabel }}
+        </div>
+      </div>
+
+      <div class="editor-hint" style="margin-top: -6px; margin-bottom: 10px">
+        <strong>Lưu thay đổi</strong> — ghi đè đúng số v đang chọn.
+        <strong>Tạo bản nháp mới</strong> — v+1, chưa kích hoạt.
+        <strong>Tạo &amp; kích hoạt</strong> — v+1 và runtime dùng luôn bản đó.
+        <strong>Dùng bản này</strong> — chỉ đổi runtime sang v đang chọn.
+      </div>
+
+      <!-- Variables chips -->
+      <div class="editor-hint">
+        Biến trong mẫu (bấm chip để chèn hoặc xem bảng kiến thức):
+      </div>
+      <div class="variables-row">
+        <ng-container *ngFor="let v of availableVariables">
+          <span
+            *ngIf="isKnowledgeVar(v)"
+            class="var-chip var-chip--knowledge"
+            (click)="showKnowledge(varToKb[v])"
+            [title]="kbVarLabels[v] + ' - Bấm để xem/sửa bảng'"
+          >
+            <span class="chip-icon">&#128203;</span>
+            <span class="chip-name"
+              >{{ "{" }}{{ "{" }}{{ v }}{{ "}" }}{{ "}" }}</span
+            >
+            <span class="chip-ref">{{ kbNames[v] }}</span>
+          </span>
+          <span
+            *ngIf="!isKnowledgeVar(v)"
+            class="var-chip var-chip--prompt"
+            (click)="insertVariable(v)"
+            [title]="kbVarLabels[v] || ''"
+          >
+            <span class="chip-icon">&#123;&#125;</span>
+            <span class="chip-name"
+              >{{ "{" }}{{ "{" }}{{ v }}{{ "}" }}{{ "}" }}</span
+            >
+          </span>
+        </ng-container>
+      </div>
+
+      <!-- Note input -->
+      <input
+        type="text"
+        pInputText
+        [(ngModel)]="selectedNote"
+        placeholder="Ghi chú thay đổi, ví dụ: thêm quy tắc ren UNC-2B…"
+        [style]="{ width: '100%', height: '32px' }"
+        class="save-note"
+      />
+
+      <!-- Editor -->
+      <div class="editor-hint">
+        Nội dung prompt (cú pháp {{ "{" }}{{ "{" }}TEN_BIEN{{ "}" }}{{ "}" }}):
+      </div>
+      <div class="editor-wrap">
+        <textarea
+          pTextarea
+          [(ngModel)]="editorContent"
+          (ngModelChange)="markDirty()"
+          [rows]="18"
+          [style]="{ width: '100%', 'font-family': 'monospace' }"
+          autoResize="false"
+          class="editor"
+        ></textarea>
+      </div>
+    </ng-container>
+
+    <!-- ===== KNOWLEDGE EDITOR ===== -->
+    <ng-container
+      *ngIf="currentView.type === 'knowledge' && selectedKnowledgeKey"
+    >
+      <div class="content-header">
+        <div>
+          <h2>{{ selectedKnowledgeName }}</h2>
+          <div class="meta">
+            {{ selectedKnowledgeDesc }} &middot; mã:
+            <code style="color: var(--accent2)">{{
+              selectedKnowledgeKey
+            }}</code>
+            &middot;
+            <p-tag
+              [value]="knowledgeRows.length + ' dòng'"
+              severity="info"
+            ></p-tag>
+          </div>
+        </div>
+        <div class="actions">
+          <p-button
+            label="Import CSV"
+            icon="pi pi-upload"
+            styleClass="p-button-secondary"
+            (onClick)="triggerImportCsv()"
+          ></p-button>
+          <p-button
+            label="Export CSV"
+            icon="pi pi-download"
+            styleClass="p-button-secondary"
+            (onClick)="exportCsv()"
+          ></p-button>
+          <p-button
+            label="Lưu"
+            icon="pi pi-save"
+            styleClass="p-button-primary"
+            (onClick)="saveKnowledge()"
+          ></p-button>
+        </div>
+      </div>
+
+      <!-- Table container -->
+      <div class="kb-table-container">
+        <div class="kb-table-toolbar">
+          <p-button
+            label="+ Thêm dòng"
+            icon="pi pi-plus"
+            styleClass="p-button-secondary"
+            (onClick)="addKnowledgeRow()"
+          ></p-button>
+          <span class="kb-table-info">{{ knowledgeRows.length }} dòng</span>
+        </div>
+
+        <p-table
+          [value]="knowledgeRows"
+          styleClass="kb-table p-datatable-sm"
+          [scrollable]="true"
+          scrollHeight="calc(100vh - 195px)"
+        >
+          <ng-template pTemplate="header">
+            <tr>
+              <th style="width: 50px"></th>
+              <th
+                *ngFor="let header of knowledgeHeaders; let i = index"
+                style="width: 25%"
+              >
+                {{ header }}
+              </th>
+              <th style="width: 80px">Xóa</th>
+            </tr>
+          </ng-template>
+          <ng-template pTemplate="body" let-row let-i="rowIndex">
+            <tr>
+              <td>
+                <span style="color: var(--muted); font-size: 11px">{{
+                  i + 1
+                }}</span>
+              </td>
+              <td>
+                <input
+                  type="text"
+                  pInputText
+                  [(ngModel)]="row.group"
+                  class="cell-input"
+                  style="width: 100%"
+                />
+              </td>
+              <td>
+                <input
+                  type="text"
+                  pInputText
+                  [(ngModel)]="row.from"
+                  class="cell-input"
+                  style="width: 100%"
+                />
+              </td>
+              <td>
+                <input
+                  type="text"
+                  pInputText
+                  [(ngModel)]="row.to"
+                  class="cell-input"
+                  style="width: 100%"
+                />
+              </td>
+              <td>
+                <input
+                  type="text"
+                  pInputText
+                  [(ngModel)]="row.note"
+                  class="cell-input"
+                  style="width: 100%"
+                />
+              </td>
+              <td>
+                <p-button
+                  icon="pi pi-trash"
+                  styleClass="p-button-danger p-button-text p-button-sm"
+                  (onClick)="deleteKnowledgeRow(i)"
+                ></p-button>
+              </td>
+            </tr>
+          </ng-template>
+          <ng-template pTemplate="emptymessage">
+            <tr>
+              <td
+                [attr.colspan]="knowledgeHeaders.length + 2"
+                style="text-align: center; color: var(--muted); padding: 24px"
+              >
+                Chưa có dữ liệu. Bấm <strong>+ Thêm dòng</strong> để bắt đầu.
+              </td>
+            </tr>
+          </ng-template>
+        </p-table>
+      </div>
+
+      <div
+        *ngIf="knowledgeUpdatedAt"
+        style="font-size: 11px; color: var(--muted); margin-top: 8px"
+      >
+        Cập nhật lần cuối: {{ knowledgeUpdatedAtFormatted }}
+      </div>
+    </ng-container>
+
+    <!-- Empty state -->
+    <ng-container *ngIf="currentView.type === 'prompt' && !currentPromptKey">
+      <div class="empty-state">
+        <p>Chọn một prompt hoặc kiến thức từ sidebar để chỉnh sửa.</p>
+      </div>
+    </ng-container>
+  </div>
+</div>
+
+<!-- Toast -->
+<p-toast position="top-right"></p-toast>
+
+<!-- Hidden file input for CSV import -->
+<input
+  type="file"
+  #csvInput
+  accept=".csv,.txt"
+  style="display: none"
+  (change)="importCsv($event)"
+/>

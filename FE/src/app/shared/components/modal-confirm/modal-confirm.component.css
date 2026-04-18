@@ -1,0 +1,20 @@
+.modal-confirm__title {
+  text-align: center;
+  font-size: 16px;
+  font-weight: 700;
+  padding: 12px;
+  color: #244a64;
+}
+
+.modal-confirm__hint {
+  padding: 8px 10px 12px 10px;
+  background-color: rgba(207, 241, 255, 0.2);
+  border-left: 4px solid #244a64;
+  margin-bottom: 16px;
+}
+
+.modal-confirm__hint-label {
+  font-size: 12px;
+  font-weight: 700;
+  color: #244a64;
+}
