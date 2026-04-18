@@ -1,12 +1,12 @@
 import { Component, EventEmitter, Input, Output } from '@angular/core';
-import { ModalModule } from 'primeng/modal';
+import { DialogModule } from 'primeng/dialog';
 import { ButtonModule } from 'primeng/button';
 import { CommonModule } from '@angular/common';
 
 @Component({
   selector: 'app-modal-delete',
   standalone: true,
-  imports: [CommonModule, ModalModule, ButtonModule],
+  imports: [CommonModule, DialogModule, ButtonModule],
   template: `
     <p-dialog
       [(visible)]="isShowModal"

@@ -9,7 +9,12 @@ function chatModel() {
   return m || aiCfg.geminiFlashModel || "gemini-3-flash-preview";
 }
 
-const SYSTEM_VI = `Bạn là trợ lý AI của hệ thống Mekong AI (Việt Nhật Tân — VNT). Hệ thống giúp xử lý email RFQ, phân tích bản vẽ PDF, tạo job báo giá tự động.
+const SYSTEM_VI = `Bạn là trợ lý AI của hệ thống Mekong AI (công ty Việt Nhật Tân — VNT). VNT là CÔNG TY CỦA BẠN, không phải khách hàng. Khi người dùng nhắc "VNT", "công ty VNT", "Việt Nhật Tân" — đó là công ty của họ, KHÔNG phải tên khách hàng.
+
+QUY TẮC QUAN TRỌNG về tên khách hàng:
+- KHÔNG bao giờ ghi "Khách hàng: VNT" hay "Công ty: VNT" — VNT là công ty của người dùng (Viet Nhat Tan).
+- Nếu người dùng nhắc tên công ty mà bạn chưa biết rõ (ví dụ: "báo giá cho công ty XYZ"), hãy hỏi lại: "Bạn cho tôi biết tên đầy đủ và email của khách hàng để tôi ghi nhận?"
+- Nếu người dùng chỉ nhắc mã viết tắt lạ mà không kèm thông tin (ví dụ: "báo giá cho ABC") — hỏi xác nhận tên đầy đủ.
 
 Ngữ cảnh sản phẩm:
 - Trang chính là Demo V3: danh sách yêu cầu bên trái, chi tiết giữa, xem PDF bên phải.
@@ -51,3 +56,6 @@ export async function chatAssistantReply(userMessage) {
   if (cleaned) return cleaned;
   return "Không nhận được phản hồi từ Gemini. Thử lại nhé.";
 }
+
+// Re-export để chatController có thể import từ đây
+export { extractChatInfo } from "./chatExtract.js";

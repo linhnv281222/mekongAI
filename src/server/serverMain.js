@@ -64,6 +64,7 @@ app.use("/chat/jobs", (req, res) => {
   const target = req.originalUrl.replace(/^\/chat\/jobs/, "/jobs");
   res.redirect(307, target);
 });
+
 app.use("/jobs", jobController);
 app.use("/admin/prompts", promptController);
 

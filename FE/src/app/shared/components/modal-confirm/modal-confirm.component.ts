@@ -1,12 +1,12 @@
 import { Component, EventEmitter, Input, Output } from '@angular/core';
-import { ModalModule } from 'primeng/modal';
+import { DialogModule } from 'primeng/dialog';
 import { ButtonModule } from 'primeng/button';
 import { CommonModule } from '@angular/common';
 
 @Component({
   selector: 'app-modal-confirm',
   standalone: true,
-  imports: [CommonModule, ModalModule, ButtonModule],
+  imports: [CommonModule, DialogModule, ButtonModule],
   template: `
     <p-dialog
       [(visible)]="isShowModal"
@@ -51,6 +51,7 @@ export class ModalConfirmComponent {
   @Input() contentModal = '';
   @Input() headerContent = '';
   @Input() warningContent = 'Lưu ý';
+  @Input() okType: 'danger' | 'primary' = 'primary';
   @Output() isConfirmDelete = new EventEmitter<boolean>();
   @Output() isCancelDelete = new EventEmitter<boolean>();
 

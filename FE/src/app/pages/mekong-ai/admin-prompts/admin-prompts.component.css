@@ -760,3 +760,259 @@
   border-color: var(--v3-brand, #4f46e5) !important;
   outline: none !important;
 }
+
+/* ── Test panel ──────────────────────────────────────── */
+.test-panel {
+  background: var(--v3-surface, #ffffff);
+  border: 1px solid var(--v3-line, #e2e8f0);
+  border-radius: 8px;
+  padding: 16px;
+  margin-top: 16px;
+  margin-bottom: 16px;
+}
+
+.test-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--v3-ink, #0f172a);
+  margin: 0 0 12px 0;
+}
+
+.test-row {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+.test-field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.test-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--v3-brand2, #4338ca);
+  font-family: monospace;
+}
+
+.test-textarea {
+  width: 100%;
+  background: #fafbfd;
+  border: 1px solid var(--v3-line2, #cbd5e1);
+  border-radius: 5px;
+  color: var(--v3-ink, #0f172a);
+  font-family: monospace;
+  font-size: 12px;
+  line-height: 1.5;
+  padding: 8px;
+  resize: vertical;
+  outline: none;
+  box-sizing: border-box;
+}
+
+.test-textarea:focus {
+  border-color: var(--v3-brand, #4f46e5);
+}
+
+.test-output {
+  background: #1e293b;
+  color: #e2e8f0;
+  font-family: monospace;
+  font-size: 12px;
+  line-height: 1.6;
+  padding: 12px;
+  border-radius: 6px;
+  white-space: pre-wrap;
+  word-break: break-word;
+  max-height: 200px;
+  overflow-y: auto;
+  margin-top: 8px;
+}
+
+/* ── Knowledge guide panel ────────────────────────────── */
+.knowledge-guide {
+  background: var(--v3-surface, #ffffff);
+  border: 1px solid var(--v3-line, #e2e8f0);
+  border-radius: 8px;
+  margin-bottom: 12px;
+  overflow: hidden;
+}
+
+.guide-summary {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 14px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--v3-ink, #0f172a);
+  cursor: pointer;
+  user-select: none;
+  list-style: none;
+}
+
+.guide-summary::-webkit-details-marker {
+  display: none;
+}
+
+.guide-summary::before {
+  content: '▶';
+  font-size: 8px;
+  transition: transform 0.2s;
+}
+
+details[open] .guide-summary::before {
+  transform: rotate(90deg);
+}
+
+.guide-icon {
+  font-size: 14px;
+}
+
+.guide-body {
+  padding: 0 14px 12px;
+}
+
+.guide-body p {
+  font-size: 12px;
+  color: var(--v3-muted, #64748b);
+  margin: 0 0 8px 0;
+  line-height: 1.5;
+}
+
+.guide-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+  margin-bottom: 8px;
+}
+
+.guide-table th {
+  text-align: left;
+  font-weight: 600;
+  color: var(--v3-muted, #64748b);
+  padding: 6px 8px;
+  border-bottom: 1px solid var(--v3-line, #e2e8f0);
+  background: var(--v3-surf, #f5f7fa);
+}
+
+.guide-table td {
+  padding: 6px 8px;
+  border-bottom: 1px solid var(--v3-line, #e2e8f0);
+  color: var(--v3-ink, #0f172a);
+}
+
+.guide-table td code {
+  font-family: monospace;
+  font-size: 11px;
+  background: #f1f5f9;
+  padding: 1px 4px;
+  border-radius: 3px;
+}
+
+.guide-tip {
+  font-size: 11px;
+  color: var(--v3-muted, #64748b);
+  margin: 0;
+}
+
+.chip-demo {
+  display: inline-block;
+  padding: 1px 6px;
+  border-radius: 3px;
+  font-size: 11px;
+  font-family: monospace;
+}
+
+.chip-knowledge {
+  background: #dbeafe;
+  border: 1px solid #90bef0;
+  color: #1d4ed8;
+}
+
+.chip-prompt {
+  background: #e8f2fc;
+  border: 1px solid #90bef0;
+  color: #1d4ed8;
+}
+
+/* ── Inline header edit ──────────────────────────────── */
+.th-inner {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.th-label {
+  flex: 1;
+}
+
+.th-edit-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 2px 4px;
+  font-size: 11px;
+  color: var(--v3-muted, #64748b);
+  opacity: 0;
+  transition: opacity 0.15s;
+  flex-shrink: 0;
+}
+
+th:hover .th-edit-btn {
+  opacity: 1;
+}
+
+.th-edit-input {
+  width: 100%;
+  height: 26px;
+  padding: 0 6px;
+  font-size: 12px;
+  border: 1px solid var(--v3-brand, #4f46e5);
+  border-radius: 4px;
+  outline: none;
+  box-sizing: border-box;
+  font-family: inherit;
+}
+
+/* ── Chip variants ───────────────────────────────────── */
+.var-chip--knowledge {
+  background: #dbeafe;
+  border-color: #93c5fd;
+  color: #1e40af;
+}
+
+.var-chip--knowledge:hover {
+  background: #bfdbfe;
+  border-color: #60a5fa;
+}
+
+.var-chip--schema {
+  background: #fef3c7;
+  border-color: #fcd34d;
+  color: #92400e;
+}
+
+.var-chip .chip-icon {
+  margin-right: 4px;
+}
+
+.var-chip .chip-name {
+  font-weight: 600;
+}
+
+.var-chip .chip-ref {
+  font-size: 10px;
+  margin-left: 4px;
+  opacity: 0.7;
+}
+
+/* ── Checkbox column alignment ───────────────────────── */
+.kb-row-check {
+  cursor: pointer;
+  width: 16px;
+  height: 16px;
+}

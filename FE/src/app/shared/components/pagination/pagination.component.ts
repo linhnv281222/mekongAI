@@ -1,14 +1,14 @@
 import { Component, EventEmitter, Input, Output } from '@angular/core';
 import { PaginatorModule } from 'primeng/paginator';
 import { InputTextModule } from 'primeng/inputtext';
-import { SelectModule } from 'primeng/select';
+import { SelectButtonModule } from 'primeng/selectbutton';
 import { FormsModule } from '@angular/forms';
 import { CommonModule } from '@angular/common';
 
 @Component({
   selector: 'app-pagination',
   standalone: true,
-  imports: [CommonModule, FormsModule, PaginatorModule, InputTextModule, SelectModule],
+  imports: [CommonModule, FormsModule, PaginatorModule, InputTextModule, SelectButtonModule],
   template: `
     <div class="pagination-bar">
       <div class="pagination-bar__size">

@@ -1,34 +1,5 @@
 <!-- Header -->
-<header class="app-header">
-  <div class="app-brand-mark" aria-hidden="true">M</div>
-  <div class="app-brand-text">
-    <div class="app-brand-title">Mekong AI</div>
-    <div class="app-brand-sub">Soạn thảo báo giá từ email tự động</div>
-  </div>
-  <div class="app-header-spacer"></div>
-  <div class="app-live" id="apiStatus">
-    <span
-      class="app-live-dot"
-      [class.app-live-dot--err]="apiStatus === 'offline'"
-      aria-hidden="true"
-    ></span>
-    <span>{{ apiStatus === "online" ? "Đang kết nối" : "Không kết nối" }}</span>
-  </div>
-  <nav class="app-nav" aria-label="Điều hướng">
-    <a routerLink="/mekong-ai/rfq" class="nav-link" title="Phiếu báo giá RFQ">
-      <i class="pi pi-inbox"></i>
-      Phiếu báo giá
-    </a>
-    <a
-      routerLink="/mekong-ai/admin/prompts"
-      class="nav-link nav-link--active"
-      title="Cấu hình prompt & kiến thức AI"
-    >
-      <i class="pi pi-sliders-h"></i>
-      Cấu hình AI
-    </a>
-  </nav>
-</header>
+<app-header [apiStatus]="apiStatus"></app-header>
 
 <!-- Main Layout -->
 <div class="layout">
@@ -101,7 +72,7 @@
         >
         </p-dropdown>
         <div class="model-status">
-          {{ selectedModel === "claude" ? "→ Claude" : "→ Gemini" }}
+          → {{ selectedModel === 'claude' ? '💬 Claude' : '☁ Gemini' }}
         </div>
       </div>
     </div>
@@ -158,7 +129,7 @@
                 v
               }}</span>
             </td>
-            <td>{{ prompt.active ? "CSDL" : "mặc định" }}</td>
+            <td>{{ prompt.active ? 'CSDL' : 'mặc định' }}</td>
             <td>
               <p-button
                 label="Sửa"
@@ -195,7 +166,7 @@
               }}</code>
             </td>
             <td><p-tag value="kiến thức" severity="info"></p-tag></td>
-            <td>{{ item.content ? "CSDL" : "mặc định" }}</td>
+            <td>{{ item.content ? 'CSDL' : 'mặc định' }}</td>
             <td>
               <p-button
                 label="Sửa"
@@ -220,6 +191,12 @@
           </div>
         </div>
         <div class="actions">
+          <p-button
+            label="Thử"
+            icon="pi pi-play"
+            styleClass="p-button-secondary"
+            (onClick)="toggleTestPanel()"
+          ></p-button>
           <p-button
             label="Lưu thay đổi"
             icon="pi pi-save"
@@ -283,6 +260,31 @@
         <strong>Dùng bản này</strong> — chỉ đổi runtime sang v đang chọn.
       </div>
 
+      <!-- Knowledge guide panel -->
+      <div class="knowledge-guide" id="kbGuidePanel">
+        <details>
+          <summary class="guide-summary">
+            <span class="guide-icon">📂</span> Hướng dẫn dùng kiến thức trong prompt
+          </summary>
+          <div class="guide-body">
+            <p>Khi AI đọc bản vẽ, nó sẽ <strong>tự tra bảng</strong> để map về mã VNT nội bộ. Chèn biến kiến thức vào vị trí phù hợp trong prompt:</p>
+            <table class="guide-table">
+              <thead>
+                <tr><th>Biến</th><th>Bảng kiến thức</th><th>Mục đích</th></tr>
+              </thead>
+              <tbody>
+                <tr><td><code>{{ '{{' }}MATERIAL{{ '}}' }}</code></td><td>Nguyên vật liệu</td><td>Map AISI 1045 → S45C, EN AW-6061 → A6061…</td></tr>
+                <tr><td><code>{{ '{{' }}HEAT_TREAT{{ '}}' }}</code></td><td>Xử lý nhiệt</td><td>Map 焼入れ焼戻し → Nhiệt toàn phần [HRC...]…</td></tr>
+                <tr><td><code>{{ '{{' }}SURFACE{{ '}}' }}</code></td><td>Xử lý bề mặt</td><td>Map 白アルマイト → Anod trang, Hard Anodize…</td></tr>
+                <tr><td><code>{{ '{{' }}SHAPE{{ '}}' }}</code></td><td>Phân loại hình dạng</td><td>Map hình dạng → phương án gia công</td></tr>
+                <tr><td><code>{{ '{{' }}VNT_KNOWLEDGE{{ '}}' }}</code></td><td>Kiến thức nội bộ VNT</td><td>Bảng lượng riêng, mã vật liệu, hình dạng, mã qui trình</td></tr>
+              </tbody>
+            </table>
+            <p class="guide-tip">⚠️ Chip <span class="chip-demo chip-knowledge">xanh dương</span> = biến kiến thức (bấm để xem bảng). Chip <span class="chip-demo chip-prompt">xám</span> = biến prompt thường (bấm để chèn).</p>
+          </div>
+        </details>
+      </div>
+
       <!-- Variables chips -->
       <div class="editor-hint">
         Biến trong mẫu (bấm chip để chèn hoặc xem bảng kiến thức):
@@ -295,10 +297,8 @@
             (click)="showKnowledge(varToKb[v])"
             [title]="kbVarLabels[v] + ' - Bấm để xem/sửa bảng'"
           >
-            <span class="chip-icon">&#128203;</span>
-            <span class="chip-name"
-              >{{ "{" }}{{ "{" }}{{ v }}{{ "}" }}{{ "}" }}</span
-            >
+            <span class="chip-icon">📋</span>
+            <span class="chip-name">{{ '{{' }}{{ v }}{{ '}}' }}</span>
             <span class="chip-ref">{{ kbNames[v] }}</span>
           </span>
           <span
@@ -307,10 +307,8 @@
             (click)="insertVariable(v)"
             [title]="kbVarLabels[v] || ''"
           >
-            <span class="chip-icon">&#123;&#125;</span>
-            <span class="chip-name"
-              >{{ "{" }}{{ "{" }}{{ v }}{{ "}" }}{{ "}" }}</span
-            >
+            <span class="chip-icon">{{ '{}' }}</span>
+            <span class="chip-name">{{ '{{' }}{{ v }}{{ '}}' }}</span>
           </span>
         </ng-container>
       </div>
@@ -327,11 +325,11 @@
 
       <!-- Editor -->
       <div class="editor-hint">
-        Nội dung prompt (cú pháp {{ "{" }}{{ "{" }}TEN_BIEN{{ "}" }}{{ "}" }}):
+        Nội dung prompt (cú pháp {{ '{{' }}TEN_BIEN{{ '}}' }}):
       </div>
       <div class="editor-wrap">
         <textarea
-          pTextarea
+          pTextArea
           [(ngModel)]="editorContent"
           (ngModelChange)="markDirty()"
           [rows]="18"
@@ -339,6 +337,38 @@
           autoResize="false"
           class="editor"
         ></textarea>
+      </div>
+
+      <!-- Test panel -->
+      <div id="testPanel" [style.display]="showTestPanel ? 'block' : 'none'">
+        <div class="test-panel">
+          <h4 class="test-title">Thử kết quả render</h4>
+          <div class="test-row">
+            <ng-container *ngFor="let tv of testVariables">
+              <div class="test-field">
+                <label class="test-label">{{ '{{' }}{{ tv.name }}{{ '}}' }}</label>
+                <textarea
+                  pTextArea
+                  [(ngModel)]="tv.value"
+                  [rows]="2"
+                  [placeholder]="'Nhập giá trị cho ' + tv.name"
+                  class="test-textarea"
+                ></textarea>
+              </div>
+            </ng-container>
+          </div>
+          <p-button
+            label="Chạy thử"
+            icon="pi pi-play"
+            styleClass="p-button-secondary"
+            (onClick)="runTest()"
+            [loading]="isRunningTest"
+          ></p-button>
+          <div style="margin-top: 12px">
+            <div class="test-label">Kết quả sau khi thay biến:</div>
+            <div class="test-output">{{ testOutput || '—' }}</div>
+          </div>
+        </div>
       </div>
     </ng-container>
 
@@ -387,10 +417,17 @@
       <div class="kb-table-container">
         <div class="kb-table-toolbar">
           <p-button
-            label="+ Thêm dòng"
+            label="Thêm dòng"
             icon="pi pi-plus"
             styleClass="p-button-secondary"
             (onClick)="addKnowledgeRow()"
+          ></p-button>
+          <p-button
+            label="Xóa dòng đã chọn"
+            icon="pi pi-trash"
+            styleClass="p-button-secondary"
+            (onClick)="deleteSelectedRows()"
+            [disabled]="selectedRowCount === 0"
           ></p-button>
           <span class="kb-table-info">{{ knowledgeRows.length }} dòng</span>
         </div>
@@ -403,28 +440,58 @@
         >
           <ng-template pTemplate="header">
             <tr>
-              <th style="width: 50px"></th>
+              <th style="width: 50px; text-align: center;">
+                <input
+                  type="checkbox"
+                  [(ngModel)]="selectAllRows"
+                  (ngModelChange)="toggleSelectAll()"
+                  title="Chọn tất cả"
+                />
+              </th>
               <th
                 *ngFor="let header of knowledgeHeaders; let i = index"
                 style="width: 25%"
               >
-                {{ header }}
+                <ng-container *ngIf="editingHeaderIndex !== i; else editHeader">
+                  <div class="th-inner">
+                    <span class="th-label" id="thLabel{{ i }}">{{ header }}</span>
+                    <button
+                      class="th-edit-btn"
+                      (click)="startEditHeader(i, header)"
+                      title="Đổi tên cột"
+                    >✏</button>
+                  </div>
+                </ng-container>
+                <ng-template #editHeader>
+                  <input
+                    type="text"
+                    [(ngModel)]="editingHeaderValue"
+                    (keydown.enter)="saveHeaderEdit()"
+                    (keydown.escape)="cancelHeaderEdit()"
+                    (blur)="saveHeaderEdit()"
+                    class="th-edit-input"
+                    autofocus
+                  />
+                </ng-template>
               </th>
               <th style="width: 80px">Xóa</th>
             </tr>
           </ng-template>
           <ng-template pTemplate="body" let-row let-i="rowIndex">
             <tr>
-              <td>
-                <span style="color: var(--muted); font-size: 11px">{{
-                  i + 1
-                }}</span>
+              <td style="text-align: center;">
+                <input
+                  type="checkbox"
+                  [(ngModel)]="row._selected"
+                  class="kb-row-check"
+                />
               </td>
               <td>
                 <input
                   type="text"
                   pInputText
                   [(ngModel)]="row.group"
+                  (ngModelChange)="onCellChange(i, 0, $event)"
                   class="cell-input"
                   style="width: 100%"
                 />
@@ -434,6 +501,7 @@
                   type="text"
                   pInputText
                   [(ngModel)]="row.from"
+                  (ngModelChange)="onCellChange(i, 1, $event)"
                   class="cell-input"
                   style="width: 100%"
                 />
@@ -443,6 +511,7 @@
                   type="text"
                   pInputText
                   [(ngModel)]="row.to"
+                  (ngModelChange)="onCellChange(i, 2, $event)"
                   class="cell-input"
                   style="width: 100%"
                 />
@@ -452,6 +521,7 @@
                   type="text"
                   pInputText
                   [(ngModel)]="row.note"
+                  (ngModelChange)="onCellChange(i, 3, $event)"
                   class="cell-input"
                   style="width: 100%"
                 />

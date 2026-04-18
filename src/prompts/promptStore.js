@@ -38,6 +38,12 @@ const PROMPT_DEFAULTS = {
     file: "gemini-drawing.txt",
     variables: ["VNT_KNOWLEDGE"],
   },
+  "chat-classify": {
+    name: "Chat Classification — AI Extraction",
+    description: "AI prompt to extract structured info from chat messages (replaces regex)",
+    file: "chat-classify.txt",
+    variables: ["chatMessage"],
+  },
 };
 
 const KNOWLEDGE_DEFAULTS = {

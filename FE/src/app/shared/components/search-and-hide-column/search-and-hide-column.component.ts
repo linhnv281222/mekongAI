@@ -1,6 +1,5 @@
 import { Component, EventEmitter, Input, Output } from '@angular/core';
 import { InputTextModule } from 'primeng/inputtext';
-import { PopoverModule } from 'primeng/popover';
 import { FormsModule } from '@angular/forms';
 import { CommonModule } from '@angular/common';
 import { CheckboxModule } from 'primeng/checkbox';
@@ -8,7 +7,7 @@ import { CheckboxModule } from 'primeng/checkbox';
 @Component({
   selector: 'app-search-and-hide-column',
   standalone: true,
-  imports: [CommonModule, FormsModule, InputTextModule, PopoverModule, CheckboxModule],
+  imports: [CommonModule, FormsModule, InputTextModule, CheckboxModule],
   template: `
     <div
       class="w-100 d-flex"
@@ -23,35 +22,9 @@ import { CheckboxModule } from 'primeng/checkbox';
         [placeholder]="''"
         style="border: none; outline: none; flex: 1; padding: 0 8px; font-size: 13px;"
       />
-      <div style="display: flex; align-items: center; padding: 0 8px; cursor: pointer;"
-           pPopover
-           [popover]="contentTemplate"
-           popoverPlacement="bottomRight"
-           popoverTrigger="click">
+      <div style="display: flex; align-items: center; padding: 0 8px; cursor: pointer;">
         <i class="pi pi-cog" style="color: #bdbdbd; font-size: 0.875rem;"></i>
       </div>
-
-      <ng-template #contentTemplate>
-        <div style="min-width: 160px; padding: 8px 0;">
-          <p-checkbox
-            [(ngModel)]="allChecked"
-            (ngModelChange)="updateAllChecked()"
-            [binary]="true"
-            [label]="'Tất cả'"
-          ></p-checkbox>
-          <br />
-          <ng-container *ngFor="let column of listItem">
-            <ng-container *ngIf="column">
-              <p-checkbox
-                [(ngModel)]="column.check"
-                (ngModelChange)="onClickCheckBox()"
-                [label]="column.keyTitle"
-              ></p-checkbox>
-              <br />
-            </ng-container>
-          </ng-container>
-        </div>
-      </ng-template>
     </div>
   `,
   styles: [`
