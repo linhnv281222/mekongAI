@@ -1,7 +1,12 @@
 import Anthropic from "@anthropic-ai/sdk";
 import fs from "fs";
 import { aiCfg } from "../libs/config.js";
-import { getPrompt, getKnowledgeBlock } from "../prompts/promptStore.js";
+import {
+  getPrompt,
+  getKnowledgeBlock,
+  getKnowledgeTable,
+  renderKnowledgeTable,
+} from "../prompts/promptStore.js";
 
 const client = new Anthropic({ apiKey: aiCfg.anthropicKey });
 
@@ -38,19 +43,32 @@ export async function analyzDrawing(pdfPath) {
   const pdfBuffer = fs.readFileSync(pdfPath);
   const pdfBase64 = pdfBuffer.toString("base64");
 
-  const [systemText, mat, nhiet, bm, hinh] = await Promise.all([
+  const [systemText, matTbl, nhietTbl, bmTbl, hinhTbl] = await Promise.all([
     getPrompt("drawing-system", {}),
-    getKnowledgeBlock("vnt-materials"),
-    getKnowledgeBlock("vnt-heat-treat"),
-    getKnowledgeBlock("vnt-surface"),
-    getKnowledgeBlock("vnt-shapes"),
+    getKnowledgeTable("vnt-materials"),
+    getKnowledgeTable("vnt-heat-treat"),
+    getKnowledgeTable("vnt-surface"),
+    getKnowledgeTable("vnt-shapes"),
   ]);
 
+  const matText = matTbl
+    ? renderKnowledgeTable("BANG QUY DOI VAT LIEU", matTbl.headers, matTbl.rows)
+    : "";
+  const nhietText = nhietTbl
+    ? renderKnowledgeTable("BANG XU LY NHIET", nhietTbl.headers, nhietTbl.rows)
+    : "";
+  const bmText = bmTbl
+    ? renderKnowledgeTable("BANG XU LY BE MAT", bmTbl.headers, bmTbl.rows)
+    : "";
+  const hinhText = hinhTbl
+    ? renderKnowledgeTable("BANG HINH DANG & KIEU PHOI", hinhTbl.headers, hinhTbl.rows)
+    : "";
+
   const resolvedSystem = systemText
-    .replaceAll("{{VNT_MAT}}", mat ?? "")
-    .replaceAll("{{VNT_NHIET}}", nhiet ?? "")
-    .replaceAll("{{VNT_BM}}", bm ?? "")
-    .replaceAll("{{VNT_HINH}}", hinh ?? "");
+    .replaceAll("{{MATERIAL}}", matText)
+    .replaceAll("{{HEAT_TREAT}}", nhietText)
+    .replaceAll("{{SURFACE}}", bmText)
+    .replaceAll("{{SHAPE}}", hinhText);
 
   const response = await client.messages.create({
     model: aiCfg.anthropicModel,

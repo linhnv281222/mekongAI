@@ -1,0 +1,28 @@
+<div
+  class="quick-action-wrap"
+  *ngIf="showQuickAction && hasRole"
+  (mousedown)="onMouseDown($event)"
+  [style.bottom.px]="bottom"
+  [style.right.px]="right"
+>
+  <button
+    *ngIf="action === 'update'"
+    pButton
+    type="button"
+    icon="pi pi-eye"
+    class="p-button-rounded p-button-primary quick-action__btn"
+    pTooltip="Chuyển sang xem chi tiết"
+    tooltipPosition="left"
+    (click)="onButtonClick()"
+  ></button>
+  <button
+    *ngIf="action === 'read'"
+    pButton
+    type="button"
+    icon="pi pi-pencil"
+    class="p-button-rounded p-button-primary quick-action__btn"
+    pTooltip="Chuyển sang chỉnh sửa"
+    tooltipPosition="left"
+    (click)="onButtonClick()"
+  ></button>
+</div>

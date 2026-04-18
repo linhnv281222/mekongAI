@@ -298,13 +298,32 @@ router.get("/knowledge/:key", async (req, res) => {
 
 // PUT /admin/knowledge/:key
 router.put("/knowledge/:key", async (req, res) => {
-  const { content } = req.body;
-  if (!content?.trim()) {
+  const { content, format, headers, rows } = req.body;
+
+  // New table format: { content, format, headers, rows }
+  if (
+    format === "table" &&
+    Array.isArray(headers) &&
+    Array.isArray(rows)
+  ) {
+    try {
+      const payload = { format: "table", headers, rows, content: content || "" };
+      const result = await updateKnowledgeBlock(req.params.key, payload);
+      res.json({ success: true, updated: result.updated });
+    } catch (e) {
+      res.status(500).json({ error: e.message });
+    }
+    return;
+  }
+
+  // Legacy: plain text content
+  const text = typeof content === "string" ? content.trim() : "";
+  if (!text) {
     return res.status(400).json({ error: "content is required" });
   }
 
   try {
-    const result = await updateKnowledgeBlock(req.params.key, content);
+    const result = await updateKnowledgeBlock(req.params.key, text);
     res.json({ success: true, updated: result.updated });
   } catch (e) {
     res.status(500).json({ error: e.message });

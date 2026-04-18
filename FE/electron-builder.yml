@@ -1,0 +1,73 @@
+# ═══════════════════════════════════════════════════════════
+# electron-builder — Cấu hình đóng gói Portable cho Windows
+#
+# Build target "dir":
+#   → Thư mục đầy đủ: Accountant.exe + tất cả dll/locales/resources
+#   → KHỞI ĐỘNG NHANH NHẤT: không giải nén, đọc trực tiếp từ đĩa
+#   → Chạy trực tiếp: chỉ cần copy thư mục dist-electron/ là xong
+#
+# Build target "portable":
+#   → 1 file .exe duy nhất, tiện chia sẻ
+#   → Lần đầu chạy hơi chậm vì tự giải nén vào temp
+#
+# Hai target build cùng lúc: npm run electron:build
+# ═══════════════════════════════════════════════════════════
+
+appId: com.accountant.app
+productName: Accountant
+copyright: Copyright © 2025
+
+# Phiên bản đọc từ package.json
+asar: false
+
+# Không nén asar → đọc trực tiếp, nhanh hơn nhiều
+# Nhưng file lớn hơn. Đây là điều chỉnh quan trọng cho startup speed.
+asarUnpack:
+  - "**/node_modules/**/*.node"
+  - "**/node_modules/**/build/Release/**/*.node"
+
+# ── Windows ───────────────────────────────────────────────
+win:
+  target:
+    # Target chính: thư mục đầy đủ (exe + dll + resources cùng chỗ)
+    - target: dir
+      arch:
+        - x64
+
+  # Icon app (đặt tại electron/icon.png nếu có)
+  # icon: electron/icon.png
+
+  # Thông tin file sinh ra:
+  #   dist-electron/Accountant.exe          ← thư mục đầy đủ
+  #   dist-electron/Accountant-1.0.3.exe    ← portable
+
+# ── Electron binary ────────────────────────────────────────
+# Dùng Electron prebuilt chính thức → đầy đủ locales, dll
+# electronDist: tự dùng cache local nếu có, không tải lại
+electronDownload:
+  cache: .electron-cache
+
+# ── Build metadata ──────────────────────────────────────────
+directories:
+  output: dist-electron
+  buildResources: electron
+
+files:
+  # Electron main/preload scripts
+  - electron/**
+  # Angular build output
+  - dist/accountant/**
+  # API config file (next to .exe in dir build)
+  - .env.electron
+  # Node native modules (nếu có)
+  - "!**/*.map"
+  - "!**/node_modules/*/{CHANGELOG.md,README.md,readme.md,README,readme}"
+  - "!**/node_modules/*/{test,__tests__,tests,powered-test,example,examples}"
+  - "!**/node_modules/*.d.ts"
+  - "!**/node_modules/.bin"
+  - "!**/*.{iml,o,hprof,orig,pyc,pyo,rbc,swp,csproj,sln,xproj}"
+  - "!**/._*"
+  - "!**/{.DS_Store,.git,.hg,.svn,CVS,RCS,SCCS,.gitignore,.gitattributes}"
+  - "!**/{__pycache__,thumbs.db,.flowconfig,.idea,.vs,.nyc_output}"
+  - "!**/{appveyor.yml,.travis.yml,circle.yml}"
+  - "!**/{npm-debug.log,yarn.lock,.yarn-integrity,.yarn-metadata.json}"

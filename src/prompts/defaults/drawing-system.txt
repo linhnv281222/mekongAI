@@ -50,3 +50,12 @@ KT dài > 300mm → QT41x.
 (x = số bề mặt CNC đếm được theo Nguyên tắc số 2).
  
 Yêu cầu đầu ra: Trả về JSON duy nhất, không nội dung markdown, không giải thích ngoài JSON.
+
+[BANG CHUYEN DOI CHO AI]
+{{MATERIAL}}
+
+{{HEAT_TREAT}}
+
+{{SURFACE}}
+
+{{SHAPE}}

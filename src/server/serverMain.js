@@ -3,6 +3,7 @@ import "./setupEnv.js";
 import express from "express";
 import fs from "fs";
 import path from "path";
+import cors from "cors";
 import { fileURLToPath } from "url";
 import { initDB } from "../data/drawRepository.js";
 import { getJob, initJobDB } from "../data/jobStore.js";
@@ -21,6 +22,11 @@ const PROJECT_ROOT = path.resolve(__dirname, "../.."); // mekongAI/
 
 const app = express();
 
+app.use(cors({
+  origin: '*',
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Accept', 'Accept-Language', 'Authorization']
+}));
 app.use(express.json());
 
 /**
@@ -53,6 +59,11 @@ app.use(redirectLegacyJobAttachment);
 // Preview PDF — tên file qua ?f=
 app.get("/jobs/:jobId/attachment-preview", attachmentPreviewHandler);
 app.post("/jobs/:jobId/attachment-preview", attachmentPreviewPostHandler);
+// Catch-all: redirect /chat/jobs/* → /jobs/* (giữ nguyên method qua 307)
+app.use("/chat/jobs", (req, res) => {
+  const target = req.originalUrl.replace(/^\/chat\/jobs/, "/jobs");
+  res.redirect(307, target);
+});
 app.use("/jobs", jobController);
 app.use("/admin/prompts", promptController);
 

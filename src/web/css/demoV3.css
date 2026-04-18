@@ -166,6 +166,24 @@ body {
   color: var(--v3-brand);
 }
 
+.btn-debug {
+  background: var(--v3-surf);
+  border: 1px solid var(--v3-line);
+  border-radius: var(--v3-radius-sm);
+  padding: 4px 10px;
+  font-size: 11.5px;
+  font-weight: 600;
+  color: var(--v3-muted);
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+  white-space: nowrap;
+}
+
+.btn-debug:hover {
+  background: var(--v3-surf2);
+  color: var(--v3-brand);
+}
+
 .nav-link--active {
   background: var(--v3-brand-soft);
   color: var(--v3-brand2);
@@ -737,6 +755,26 @@ body {
 
 .e-header--compact .e-tags {
   margin-top: 0;
+}
+
+.btn-debug-eheader {
+  margin-left: auto;
+  background: var(--v3-surf);
+  border: 1px solid var(--v3-line);
+  border-radius: var(--v3-radius-sm);
+  padding: 3px 10px;
+  font-size: 11.5px;
+  font-weight: 600;
+  color: var(--v3-muted);
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+  align-self: center;
+  flex-shrink: 0;
+}
+
+.btn-debug-eheader:hover {
+  background: var(--v3-surf2);
+  color: var(--v3-brand);
 }
 
 /* Khối nội dung chính: tab + vùng cuộn (gắn với form, không nằm trong header mail) */

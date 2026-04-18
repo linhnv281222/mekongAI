@@ -1,0 +1,435 @@
+<div class="app-shell">
+  <!-- Header -->
+  <header class="app-header">
+    <div class="app-brand-mark" aria-hidden="true">M</div>
+    <div class="app-brand-text">
+      <div class="app-brand-title">Mekong AI</div>
+      <div class="app-brand-sub">Soạn thảo báo giá từ email tự động</div>
+    </div>
+    <div class="app-header-spacer"></div>
+    <div class="app-live">
+      <span class="app-live-dot"></span>
+      <span>Đang kết nối</span>
+    </div>
+    <nav class="app-nav" aria-label="Điều hướng">
+      <a href="#" class="nav-link nav-link--active" title="Phiếu báo giá RFQ">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2"/>
+          <rect x="9" y="3" width="6" height="4" rx="1"/>
+          <path d="M9 12h6M9 16h4"/>
+        </svg>
+        Phiếu báo giá
+      </a>
+      <a href="#" class="nav-link" title="Cấu hình prompt & kiến thức AI">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M12 2L2 7l10 5 10-5-10-5z"/>
+          <path d="M2 17l10 5 10-5M2 12l10 5 10-5"/>
+        </svg>
+        Cấu hình AI
+      </a>
+    </nav>
+  </header>
+
+  <!-- Body -->
+  <div class="app-body app-body--split">
+    <!-- Sidebar -->
+    <aside #sidebarRef class="app-sidebar">
+      <!-- Guide Card -->
+      <div class="guide-card" [class.guide-card--closed]="!guideOpen">
+        <div class="guide-card-hd" (click)="toggleGuide()" (keydown.enter)="toggleGuide()" tabindex="0" role="button" [attr.aria-expanded]="guideOpen">
+          <div class="guide-card-title">
+            <span aria-hidden="true">📬</span>
+            Cách gửi yêu cầu báo giá
+          </div>
+          <span class="guide-chevron" [class.is-open]="guideOpen">▼</span>
+        </div>
+        <div class="guide-card-body" [class.is-collapsed]="!guideOpen">
+          <p class="guide-lead">
+            Gửi email <strong>tới hộp thư</strong> bên dưới. Agent đọc mail,
+            phân loại RFQ và trích xuất dữ liệu bản vẽ — kết quả hiện trong danh
+            sách bên dưới.
+          </p>
+          <div class="guide-email-row">
+            @if (inboxEmail) {
+              <span class="guide-email">{{ inboxEmail }}</span>
+              <button type="button" class="btn-copy" (click)="copyEmail()">Sao chép</button>
+            } @else {
+              <span class="guide-email guide-email-placeholder">Chưa cấu hình GMAIL_USER trên server</span>
+            }
+          </div>
+          <ol class="guide-steps">
+            <li>Đặt tiêu đề rõ ràng (vd: <em>Yêu cầu báo giá — mã chi tiết</em>).</li>
+            <li><strong>Đính kèm PDF bản vẽ</strong> (nhiều file hoặc nhiều trang trong một file đều được).</li>
+            <li>Mail cần <strong>chưa đọc</strong> và có đính kèm. Hệ thống quét định kỳ — thường vài chục giây sẽ thấy mục mới.</li>
+            <li>Gửi đúng địa chỉ <strong>To</strong> như trên (theo cấu hình Gmail nhận).</li>
+          </ol>
+          <p class="guide-footnote">
+            Kiểm tra tab <strong>Thông tin chung</strong> và <strong>Danh sách bản vẽ</strong>, chỉnh sửa nếu cần, rồi xác nhận hoặc Push ERP.
+          </p>
+        </div>
+      </div>
+      <div class="toast-copy" [class.is-on]="toastCopied" role="status">Đã sao chép địa chỉ email</div>
+
+      <!-- Mailbox -->
+      <div class="mailbox">
+        <div class="mb-hd">
+          <div class="mb-title">
+            Yêu cầu gần đây
+            <span class="mb-cnt">{{ unreadCountValue }}</span>
+          </div>
+        </div>
+        <div class="mb-search">
+          <input type="text" placeholder="Tìm email..." [(ngModel)]="searchQuery" (ngModelChange)="filterEmails()" />
+        </div>
+          <div class="mb-list">
+            @for (email of filteredEmails; track email.id) {
+              <div class="ei" [class.active]="selectedEmail?.id === email.id" (click)="selectEmail(email)">
+                <div class="ei-r1">
+                  @if (email.unread) { <div class="ei-dot"></div> }
+                  <div class="ei-from">{{ email.from }}</div>
+                  <div class="ei-time">{{ email.time }}</div>
+                </div>
+                <div class="ei-subj">{{ email.subject }}</div>
+                <div class="ei-prev">{{ email.preview }}</div>
+              <div class="ei-tags">
+                @if (email.classify === 'rfq') {
+                  <span class="tag t-rfq">✓ RFQ</span>
+                } @else {
+                  <span class="tag t-skip">{{ email.classify }}</span>
+                }
+                <span class="tag" [ngClass]="getLanguageTag(email.ngon_ngu).class">{{ getLanguageTag(email.ngon_ngu).label }}</span>
+                @if (email.attachments && email.attachments.length > 0) {
+                  <span class="tag t-pdf">📎 {{ email.attachments.length }}</span>
+                }
+                @if (email._agent) {
+                  <span class="tag t-agent">⚡ Agent</span>
+                }
+              </div>
+            </div>
+          }
+          @empty {
+            <div class="empty-state">
+              <span class="empty-icon">📭</span>
+              <span>Không có yêu cầu nào</span>
+            </div>
+          }
+        </div>
+      </div>
+    </aside>
+
+    <!-- Main Detail -->
+    <main class="app-detail">
+      @if (selectedEmail) {
+        <div class="right">
+          <!-- Email Header -->
+          <div class="e-header e-header--compact">
+            <div class="e-subj">{{ selectedEmail.subject }}</div>
+            <div class="e-meta">
+              <span>Từ: <b>{{ selectedEmail.from }}</b></span>
+              <span class="e-meta-sep">·</span>
+              <span><b>{{ selectedEmail.email }}</b></span>
+              <span class="e-meta-sep">·</span>
+              <span><b>{{ selectedEmail.date }}</b></span>
+              @if (selectedEmail.han_giao) {
+                <span class="e-meta-sep">·</span>
+                <span>Hạn giao: <b style="color: var(--v3-red);">{{ selectedEmail.han_giao }}</b></span>
+              }
+            </div>
+            <div class="e-tags">
+              @if (selectedEmail.classify === 'rfq') {
+                <span class="tag t-rfq">✓ RFQ</span>
+              }
+              <span class="tag" [ngClass]="getLanguageTag(selectedEmail.ngon_ngu).class">{{ getLanguageTag(selectedEmail.ngon_ngu).label }}</span>
+              @for (a of selectedEmail.attachments; track $index) {
+                <button type="button" class="tag tag-pdf-btn" [class.tag-pdf-btn--active]="isAttachmentActive(getAttachmentName(a))" (click)="selectAttachment(getAttachmentName(a))">
+                  {{ isAttachmentActive(getAttachmentName(a)) ? '📖' : '📎' }} {{ getAttachmentName(a) }}
+                </button>
+              }
+              @if (selectedEmail._agent) {
+                <span class="tag t-agent">⚡ Agent</span>
+              }
+              <button class="btn-debug-eheader" (click)="onDebug()" title="Xem raw output AI">Debug</button>
+            </div>
+          </div>
+
+          <!-- Tabs -->
+          <div class="main-panel">
+            <div class="tabs tabs--main" role="tablist" aria-label="Nội dung phiếu">
+              <button type="button" role="tab" [attr.aria-selected]="activeTabIndex === 0" class="tab" [class.active]="activeTabIndex === 0" (click)="activeTabIndex = 0">
+                Thông tin chung
+              </button>
+              <button type="button" role="tab" [attr.aria-selected]="activeTabIndex === 1" class="tab" [class.active]="activeTabIndex === 1" (click)="activeTabIndex = 1">
+                Danh sách bản vẽ{{ drawingCountValue > 0 ? ' (' + drawingCountValue + ')' : '' }}
+              </button>
+            </div>
+
+            <div class="tcontent">
+              <!-- Tab 1: Thông tin chung -->
+              <div [hidden]="activeTabIndex !== 0">
+                <div class="form-wrap">
+                  <!-- Section 1: Thông tin chung -->
+                  <div class="section">
+                    <div class="sec-hd">
+                      <span class="sec-num">1</span>
+                      <span class="sec-title">Thông tin chung</span>
+                    </div>
+                    <div class="sec-body">
+                      <div class="fg fg-2" style="margin-bottom: 12px;">
+                        <div class="f">
+                          <label>Thời điểm nhận yêu cầu <span class="ai-mark">AI</span></label>
+                          <input type="text" class="inp ai" [value]="selectedEmail.date" readonly />
+                        </div>
+                        <div class="f">
+                          <label>Thời hạn báo giá <span class="ai-mark">AI</span></label>
+                          <p-calendar
+                            [(ngModel)]="hanGiaoDate"
+                            [showIcon]="true"
+                            [showButtonBar]="true"
+                            dateFormat="dd/mm/yy"
+                            [placeholder]="'dd/mm/yyyy'"
+                            [style]="{'width':'100%'}"
+                            appendTo="body"
+                          ></p-calendar>
+                        </div>
+                      </div>
+
+                      <div class="fg fg-3" style="margin-bottom: 12px;">
+                        <div class="f">
+                          <label>Vận chuyển <span class="ai-mark">AI</span></label>
+                          <div class="radio-row">
+                            <label>
+                              <input type="radio" [name]="'vc_' + selectedEmail.id" [value]="true" [(ngModel)]="hinh_thuc_giao_vn" />
+                              Có
+                            </label>
+                            <label>
+                              <input type="radio" [name]="'vc_' + selectedEmail.id" [value]="false" [(ngModel)]="hinh_thuc_giao_vn" />
+                              Không
+                            </label>
+                          </div>
+                        </div>
+                        <div class="f">
+                          <label>Xử lý bề mặt <span class="ai-mark">AI</span></label>
+                          <div class="radio-row">
+                            <label>
+                              <input type="radio" [name]="'xlbm_' + selectedEmail.id" [value]="true" [(ngModel)]="xu_ly_be_mat_vn" />
+                              Có
+                            </label>
+                            <label>
+                              <input type="radio" [name]="'xlbm_' + selectedEmail.id" [value]="false" [(ngModel)]="xu_ly_be_mat_vn" />
+                              Không
+                            </label>
+                          </div>
+                        </div>
+                        <div class="f">
+                          <label>VAT</label>
+                          <div class="radio-row">
+                            <label>
+                              <input type="radio" [name]="'vat_' + selectedEmail.id" [value]="true" [(ngModel)]="vatValue" />
+                              Có
+                            </label>
+                            <label>
+                              <input type="radio" [name]="'vat_' + selectedEmail.id" [value]="false" [(ngModel)]="vatValue" />
+                              Không
+                            </label>
+                          </div>
+                        </div>
+                      </div>
+
+                      @if (hasShipping()) {
+                        <div class="f" style="margin-bottom: 0;">
+                          <label>Phương thức vận chuyển <span class="ai-mark">AI</span></label>
+                          <select class="inp ai" [(ngModel)]="selectedEmail.hinh_thuc_giao">
+                            <option value="">— Chọn —</option>
+                            <option value="FedEx International Economy">FedEx International Economy</option>
+                            <option value="FedEx International Priority">FedEx International Priority</option>
+                            <option value="DHL">DHL</option>
+                            <option value="Tự vận chuyển">Tự vận chuyển</option>
+                          </select>
+                        </div>
+                      }
+                    </div>
+                  </div>
+
+                  <!-- Section 2: Thông tin khách hàng -->
+                  <div class="section">
+                    <div class="sec-hd">
+                      <span class="sec-num">2</span>
+                      <span class="sec-title">Thông tin khách hàng</span>
+                    </div>
+                    <div class="sec-body">
+                      <div class="fg fg-2">
+                        <div class="f">
+                          <label>Tên khách hàng <span class="ai-mark">AI</span></label>
+                          <input pInputText class="inp ai" [(ngModel)]="selectedEmail.ten_kh" />
+                        </div>
+                        <div class="f">
+                          <label>Email <span class="ai-mark">AI</span></label>
+                          <input pInputText class="inp ai" [(ngModel)]="selectedEmail.email" />
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <!-- Section 3: Ghi chú -->
+                  <div class="section">
+                    <div class="sec-hd">
+                      <span class="sec-num">3</span>
+                      <span class="sec-title">Ghi chú</span>
+                    </div>
+                    <div class="sec-body">
+                      <div class="fg fg-2">
+                        <div class="f">
+                          <label>Nội dung email <span class="ai-mark">AI</span></label>
+                          <textarea pInputTextarea rows="7" class="ta-field ai" [(ngModel)]="selectedEmail.body"></textarea>
+                        </div>
+                        <div class="f">
+                          <label>Ghi chú nội bộ</label>
+                          <textarea pInputTextarea rows="7" class="ta-field" [(ngModel)]="internalNote"></textarea>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Tab 2: Danh sách bản vẽ -->
+              <div [hidden]="activeTabIndex !== 1">
+                <div class="bv-wrap" [class.bv-wrap--has-table]="selectedEmail.drawings && selectedEmail.drawings.length > 0">
+                  <div class="bv-split" #bvSplitRef>
+                    <!-- Table Panel -->
+                    <div class="bv-split-main">
+                      @if (!selectedEmail.drawings || selectedEmail.drawings.length === 0) {
+                        <div class="upload-zone" (click)="triggerUpload()">
+                          <div class="upload-icon">📄</div>
+                          <div class="upload-title">Upload PDF / ảnh bản vẽ</div>
+                          <div class="upload-hint">PDF nhiều trang — mỗi trang = 1 bản vẽ · ảnh xem trước bên phải</div>
+                          <div class="upload-ai">⚡ AI tự động đọc và bóc tách dữ liệu</div>
+                        </div>
+                      }
+
+                      @if (selectedEmail.drawings && selectedEmail.drawings.length > 0) {
+                        <div class="bv-table-wrap">
+                          <p-table [value]="drawingLines" styleClass="p-datatable-sm p-datatable-gridlines" [scrollable]="true" scrollHeight="flex">
+                            <ng-template pTemplate="header">
+                              <tr>
+                                <th style="width: 40px; text-align: center;">STT</th>
+                                <th style="width: 90px;">Mã bản vẽ</th>
+                                <th style="width: 70px; text-align: right;">SL</th>
+                                <th style="width: 90px;">Hình dạng</th>
+                                <th style="width: 80px;">Dung sai</th>
+                                <th>Vật liệu</th>
+                                <th style="min-width: 110px;">Kích thước</th>
+                                <th style="width: 90px;">Mã QT</th>
+                              </tr>
+                            </ng-template>
+                            <ng-template pTemplate="body" let-line let-i="rowIndex">
+                              <tr>
+                                <td style="text-align: center;">{{ i + 1 }}</td>
+                                <td>
+                                  <div class="cell-btn">
+                                    <button pButton type="button" class="p-button-text p-button-sm p-button-rounded p-button-info" icon="pi pi-file" (click)="selectDrawingByIdx(i)" [pTooltip]="'Trang ' + (line.page || 1)" tooltipPosition="top"></button>
+                                    <input pInputText class="cell-input" [(ngModel)]="line.data.ma_ban_ve" (ngModelChange)="updateDrawingLine(i, 'ma_ban_ve', $event)" />
+                                  </div>
+                                </td>
+                                <td style="text-align: right;">
+                                  <input type="number" class="cell-input cell-input--right" [(ngModel)]="line.data.so_luong" (ngModelChange)="updateDrawingLine(i, 'so_luong', $event)" />
+                                </td>
+                                <td>
+                                  <input pInputText class="cell-input" [(ngModel)]="line.data.hinh_dang" (ngModelChange)="updateDrawingLine(i, 'hinh_dang', $event)" />
+                                </td>
+                                <td>
+                                  <input pInputText class="cell-input cell-input--dungsai" [(ngModel)]="line.data.dung_sai" (ngModelChange)="updateDrawingLine(i, 'dung_sai', $event)" />
+                                </td>
+                                <td>
+                                  <input pInputText class="cell-input cell-input--vatlieu" [(ngModel)]="line.data.vat_lieu" (ngModelChange)="updateDrawingLine(i, 'vat_lieu', $event)" />
+                                </td>
+                                <td>{{ line.data.kich_thuoc || '—' }}</td>
+                                <td>
+                                  <input pInputText class="cell-input cell-input--maqt" [(ngModel)]="line.data.ma_quy_trinh" (ngModelChange)="updateDrawingLine(i, 'ma_quy_trinh', $event)" />
+                                </td>
+                              </tr>
+                            </ng-template>
+                          </p-table>
+                        </div>
+                      }
+                    </div>
+
+                    <!-- Preview Panel -->
+                    <div class="bv-split-preview">
+                      <div class="bv-preview-header">
+                        @if (previewName) {
+                          <span class="bv-preview-filename" title="{{ previewName }}">📄 {{ previewName }}</span>
+                        } @else {
+                          <span class="bv-preview-filename bv-preview-filename--empty">Chưa chọn file</span>
+                        }
+                      </div>
+                      <div class="bv-preview-body">
+                        @if (previewLoading) {
+                          <div class="bv-preview-loading" role="status">
+                            <span class="bv-preview-loading-spin" aria-hidden="true">⟳</span>
+                            <span>Đang tải bản xem trước…</span>
+                          </div>
+                        }
+                        @if (previewSrc) {
+                          <iframe [src]="previewSrc" class="bv-preview-frame" [attr.title]="previewName || 'Xem trước PDF hoặc ảnh'"></iframe>
+                        } @else if (!previewLoading) {
+                          <div class="bv-preview-empty">
+                            <div>
+                              Bấm <strong>📎</strong> trên tag file ở đầu email để xem trực tiếp trên Gmail.<br />
+                              Hoặc <strong>Upload</strong> PDF/ảnh để xem tại đây.
+                            </div>
+                          </div>
+                        }
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Footer -->
+          <div class="footer">
+            <button pButton type="button" label="Lưu phiếu" class="btn btn-p"></button>
+            <button pButton type="button" label="Xác nhận" class="btn btn-g"></button>
+            <button pButton type="button" label="In PBG" class="btn btn-o"></button>
+            @if (selectedEmail && selectedEmail.jobId) {
+              <button pButton type="button" label="Push ERP" class="btn btn-p btn-erp" (click)="pushToErp()"></button>
+            }
+            <button pButton type="button" label="Hủy" class="btn btn-o" [ngStyle]="{'color': 'var(--v3-red)'}"></button>
+          </div>
+        </div>
+      } @else {
+        <!-- Empty State -->
+        <div class="empty">
+          <div class="empty-icon" aria-hidden="true">✉</div>
+          <div class="empty-title">Chọn một yêu cầu</div>
+          <div class="empty-hint">
+            Hoặc gửi email RFQ kèm PDF tới hộp thư đã hướng dẫn ở cột trái — mục mới thường xuất hiện sau vài chục giây.
+          </div>
+        </div>
+      }
+      <!-- Debug Modal -->
+      @if (debugModalOpen) {
+        <div class="debug-modal" (click)="debugModalClose($event)" role="dialog" aria-modal="true" aria-label="Debug — Raw AI Output">
+          <div class="debug-modal-content">
+            <div class="debug-modal-hd">
+              <span>Debug — Raw AI Output</span>
+              <button (click)="debugModalOpen = false" aria-label="Đóng">×</button>
+            </div>
+            <div class="debug-modal-body">
+              <div class="debug-section">
+                <div>Thông tin chung (classify_output)</div>
+                <pre class="debug-pre">{{ getClassifyRaw() }}</pre>
+              </div>
+              <div class="debug-section">
+                <div>Bản vẽ (drawings)</div>
+                <pre class="debug-pre">{{ getDrawingsRaw() }}</pre>
+              </div>
+            </div>
+          </div>
+        </div>
+      }
+    </main>
+  </div>
+</div>

@@ -1754,7 +1754,7 @@ function Tab2({
 }
 
 // ── RIGHT PANEL ───────────────────────────────────────────────────────────────
-function Right({ email, setEmails, classifyUiSchema }) {
+function Right({ email, setEmails, classifyUiSchema, onDebug }) {
   const [tab, setTab] = useState(0);
   const [lines, setLines] = useState([]);
   const [processing, setProcessing] = useState(false);
@@ -2154,6 +2154,13 @@ function Right({ email, setEmails, classifyUiSchema }) {
             );
           })}
           {email._agent && <span className="tag t-agent">⚡ Agent</span>}
+          <button
+            className="btn-debug-eheader"
+            onClick={onDebug}
+            title="Xem raw output AI"
+          >
+            Debug
+          </button>
         </div>
       </div>
 
@@ -2242,11 +2249,126 @@ function Right({ email, setEmails, classifyUiSchema }) {
 }
 
 // ── APP ───────────────────────────────────────────────────────────────────────
+function DebugModal({ email, onClose }) {
+  const classifyRaw = email?.classify_output != null
+    ? JSON.stringify(email.classify_output, null, 2)
+    : "(không có classify_output)";
+  const drawingsRaw = email?.drawings != null
+    ? JSON.stringify(email.drawings, null, 2)
+    : "(không có drawings)";
+
+  return (
+    <div
+      style={{
+        position: "fixed",
+        inset: 0,
+        zIndex: 9999,
+        background: "rgba(0,0,0,0.75)",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        padding: 24,
+      }}
+      onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
+    >
+      <div
+        style={{
+          background: "#fff",
+          color: "#1a1a2e",
+          borderRadius: 10,
+          width: "100%",
+          maxWidth: 900,
+          maxHeight: "90vh",
+          display: "flex",
+          flexDirection: "column",
+          boxShadow: "0 20px 60px rgba(0,0,0,0.5)",
+          fontFamily: "Menlo, Consolas, 'Courier New', monospace",
+          fontSize: 12,
+          overflow: "hidden",
+        }}
+      >
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            padding: "14px 18px",
+            borderBottom: "1px solid #ddd",
+            background: "#f5f5f5",
+            borderRadius: "10px 10px 0 0",
+            flexShrink: 0,
+          }}
+        >
+          <span style={{ fontFamily: "system-ui, sans-serif", fontWeight: 700, fontSize: 14, color: "#1a1a2e" }}>
+            Debug — Raw AI Output
+          </span>
+          <button
+            onClick={onClose}
+            style={{
+              background: "none",
+              border: "none",
+              cursor: "pointer",
+              fontSize: 20,
+              color: "#888",
+              lineHeight: 1,
+              padding: "0 4px",
+              borderRadius: 4,
+            }}
+          >
+            ×
+          </button>
+        </div>
+        <div style={{ overflowY: "auto", flex: 1 }}>
+          <div style={{ padding: "14px 18px", borderBottom: "1px solid #ddd" }}>
+            <div style={{ fontFamily: "system-ui, sans-serif", fontWeight: 600, fontSize: 13, marginBottom: 8, color: "#1a1a2e" }}>
+              Thông tin chung (classify_output)
+            </div>
+            <pre
+              style={{
+                background: "#1a1a2e",
+                color: "#e8e8e8",
+                padding: 14,
+                borderRadius: 6,
+                overflowX: "auto",
+                margin: 0,
+                fontSize: 11.5,
+                lineHeight: 1.6,
+              }}
+            >
+              {classifyRaw}
+            </pre>
+          </div>
+          <div style={{ padding: "14px 18px" }}>
+            <div style={{ fontFamily: "system-ui, sans-serif", fontWeight: 600, fontSize: 13, marginBottom: 8, color: "#1a1a2e" }}>
+              Bản vẽ (drawings)
+            </div>
+            <pre
+              style={{
+                background: "#1a1a2e",
+                color: "#e8e8e8",
+                padding: 14,
+                borderRadius: 6,
+                overflowX: "auto",
+                margin: 0,
+                fontSize: 11.5,
+                lineHeight: 1.6,
+              }}
+            >
+              {drawingsRaw}
+            </pre>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function App() {
   const [emails, setEmails] = useState([]);
   const [active, setActive] = useState(null);
   const [inboxHint, setInboxHint] = useState("");
   const [classifyUiSchema, setClassifyUiSchema] = useState(null);
+  const [debugModalOpen, setDebugModalOpen] = useState(false);
   const sidebarRef = useRef(null);
   const mainRef = useRef(null);
   const splitPaneRef = useRef(null);
@@ -2515,9 +2637,14 @@ function App() {
             email={active}
             setEmails={setEmails}
             classifyUiSchema={classifyUiSchema}
+            onDebug={() => setDebugModalOpen(true)}
           />
         </div>
       </div>
+
+      {debugModalOpen && (
+        <DebugModal email={active} onClose={() => setDebugModalOpen(false)} />
+      )}
     </div>
   );
 }

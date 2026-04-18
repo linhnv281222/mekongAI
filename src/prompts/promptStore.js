@@ -18,7 +18,7 @@ const PROMPT_DEFAULTS = {
     name: "Drawing Analysis — System Prompt",
     description: "Primary system prompt for Claude Sonnet 4.6 drawing analysis",
     file: "drawing-system.txt",
-    variables: ["VNT_MAT", "VNT_NHIET", "VNT_BM", "VNT_HINH"],
+    variables: ["MATERIAL", "HEAT_TREAT", "SURFACE", "SHAPE"],
   },
   "drawing-correction": {
     name: "Drawing Correction — System Prompt",
@@ -164,39 +164,268 @@ export async function getPrompt(key, variables = {}) {
 }
 
 /**
- * Get a knowledge block by key.
- * Order: knowledge cache → DB → default file → null
+ * Get a knowledge block by key (text-only, backward-compatible).
+ * Uses the same cache as getKnowledgeTable.
  *
  * @param {string} key — e.g. "vnt-materials"
  * @returns {string|null}
  */
 export async function getKnowledgeBlock(key) {
+  // Delegate to getKnowledgeTable and return content
+  const table = await getKnowledgeTable(key);
+  return table?.content ?? null;
+}
+
+// ─── Knowledge table helpers ───────────────────────────────────────────────────
+
+const KNOWLEDGE_VAR_MAP = {
+  vnt_materials: "MATERIAL",
+  vnt_heat_treat: "HEAT_TREAT",
+  vnt_surface: "SURFACE",
+  vnt_shapes: "SHAPE",
+};
+
+/**
+ * Render a knowledge table ({headers, rows}) into plain text for AI prompt.
+ * @param {string} title — e.g. "BANG QUY DOI VAT LIEU"
+ * @param {string[]} headers
+ * @param {object[]} rows — [{from, to, note, group}]
+ * @returns {string}
+ */
+export function renderKnowledgeTable(title, headers, rows) {
+  if (!rows || !rows.length) return "";
+
+  const lines = [`[${title}]`, ""];
+  lines.push(headers.join(" | "));
+  lines.push(headers.map(() => "---").join(" | "));
+  for (const r of rows) {
+    const vals = headers.map((h, ci) => {
+      if (ci === 0) return r.group || "";
+      if (ci === 1) return r.from || "";
+      if (ci === 2) return r.to || "";
+      return r.note || "";
+    });
+    lines.push(vals.join(" | "));
+  }
+  return lines.join("\n");
+}
+
+/**
+ * Get knowledge block as structured table data.
+ * Order: cache → DB → defaults file
+ *
+ * @param {string} key — e.g. "vnt-materials"
+ * @returns {{ headers: string[], rows: object[], format: string, content: string }|null}
+ */
+export async function getKnowledgeTable(key) {
   // 1. Check cache
   const cached = _knowledgeCache.get(key);
   if (cached && Date.now() - cached.ts < CACHE_TTL_MS) {
-    return cached.content;
+    return { headers: cached.headers, rows: cached.rows, format: cached.format, content: cached.content };
   }
 
   // 2. Try DB
   const result = await dbQuery(
-    "SELECT content FROM knowledge_blocks WHERE key = $1",
+    `SELECT content, format, headers, kb_rows
+     FROM knowledge_blocks WHERE key = $1`,
     [key]
   );
 
   if (result?.rows?.length) {
-    const content = result.rows[0].content;
-    _knowledgeCache.set(key, { content, ts: Date.now() });
-    return content;
+    const row = result.rows[0];
+    const format = row.format || "text";
+    // pg tự động parse JSONB → object, không cần JSON.parse
+    const headers = row.headers || ["Mã gốc", "Mã VNT"];
+    const rows = row.kb_rows || [];
+    const content =
+      row.content ||
+      renderKnowledgeTable(
+        KNOWLEDGE_DEFAULTS[key]?.name || key,
+        headers,
+        rows
+      );
+    _knowledgeCache.set(key, { content, headers, rows, format, ts: Date.now() });
+    return { headers, rows, format, content };
   }
 
-  // 3. Fallback to defaults
+  // 3. Fallback: load file defaults, try to parse existing text → rows
   const def = loadFromDefaults(key, KNOWLEDGE_DEFAULTS);
   if (def) {
-    _knowledgeCache.set(key, { content: def.content, ts: Date.now() });
-    return def.content;
+    // Try to extract rows from text format (pipe-separated "A|B|C→D")
+    const rows = parseKnowledgeTextToRows(def.content, key);
+    const headers =
+      rows.length && rows[0]
+        ? Object.keys(rows[0])
+        : ["Mã gốc", "Mã VNT"];
+    _knowledgeCache.set(key, {
+      content: def.content,
+      headers,
+      rows,
+      format: "text",
+      ts: Date.now(),
+    });
+    return { headers, rows, format: "text", content: def.content };
   }
 
   return null;
+}
+
+/**
+ * Parse legacy pipe-text format into structured rows.
+ * Handles: "A|B|C→D" or "A/B/C→D" patterns
+ */
+function parseKnowledgeTextToRows(text, key) {
+  if (key === "vnt-knowledge") return parseVntKnowledgeRows(text);
+
+  const rows = [];
+  const lines = (text || "").split("\n");
+  for (const line of lines) {
+    const trimmed = line.trim();
+    if (!trimmed || trimmed.startsWith("#") || trimmed.startsWith("BANG")) continue;
+    const arrowIdx = trimmed.indexOf("→");
+    if (arrowIdx === -1) continue;
+    const left = trimmed.substring(0, arrowIdx).trim();
+    const right = trimmed.substring(arrowIdx + 1).trim();
+    if (!left || !right) continue;
+    const froms = left.split(/[|/]/).map((s) => s.trim()).filter(Boolean);
+    const group =
+      key === "vnt-materials"
+        ? guessMaterialGroup(froms[0])
+        : key === "vnt-surface"
+        ? guessSurfaceGroup(froms[0])
+        : "";
+    for (const from of froms) {
+      rows.push({ from, to: right, group, note: "" });
+    }
+  }
+  return rows;
+}
+
+function parseVntKnowledgeRows(text) {
+  const rows = [];
+  const lines = (text || "").split("\n");
+
+  const blLine = lines.find((l) => l.trim().startsWith("BANGLUONGRIENG:"));
+  if (blLine) {
+    const part = blLine.replace("BANGLUONGRIENG:", "").trim();
+    const entries = part.split(",").map((e) => e.trim()).filter(Boolean);
+    for (const entry of entries) {
+      const eqIdx = entry.indexOf("=");
+      if (eqIdx === -1) continue;
+      rows.push({
+        group: "Bảng lượng riêng",
+        from: entry.slice(0, eqIdx).trim(),
+        to: entry.slice(eqIdx + 1).trim(),
+        note: "",
+      });
+    }
+  }
+
+  const vlLine = lines.find((l) => l.trim().startsWith("VATLIEU:"));
+  if (vlLine) {
+    const part = vlLine.replace("VATLIEU:", "").trim();
+    const entries = part.split("|").map((e) => e.trim()).filter(Boolean);
+    for (const entry of entries) {
+      const arrowIdx = entry.indexOf("→");
+      if (arrowIdx === -1) continue;
+      const fromPart = entry.slice(0, arrowIdx).trim();
+      const to = entry.slice(arrowIdx + 1).trim();
+      const froms = fromPart.split("/").map((s) => s.trim());
+      for (const from of froms) {
+        rows.push({ group: "Bảng vật liệu", from, to, note: "" });
+      }
+    }
+  }
+
+  const hdLine = lines.find((l) => l.trim().startsWith("HINHDANG:"));
+  if (hdLine) {
+    const part = hdLine.replace("HINHDANG:", "").trim();
+    const entries = part.split("|").map((e) => e.trim()).filter(Boolean);
+    for (const entry of entries) {
+      const arrowIdx = entry.indexOf("→");
+      if (arrowIdx === -1) continue;
+      rows.push({
+        group: "Hình dạng",
+        from: entry.slice(0, arrowIdx).trim(),
+        to: entry.slice(arrowIdx + 1).trim(),
+        note: "",
+      });
+    }
+  }
+
+  const mqLine = lines.find((l) => l.trim().startsWith("MAQT:"));
+  if (mqLine) {
+    const part = mqLine.replace("MAQT:", "").trim();
+    const entries = part.split("|").map((e) => e.trim()).filter(Boolean);
+    for (const entry of entries) {
+      const eqIdx = entry.indexOf("=");
+      if (eqIdx === -1) continue;
+      rows.push({
+        group: "Mã qui trình",
+        from: entry.slice(0, eqIdx).trim(),
+        to: entry.slice(eqIdx + 1).trim(),
+        note: "",
+      });
+    }
+  }
+
+  return rows;
+}
+
+function guessMaterialGroup(code) {
+  const c = (code || "").toUpperCase();
+  if (c.includes("AL") || c.includes("AW-") || /^\d+/.test(c)) return "Nhôm";
+  if (c.includes("SUS") || c.includes("INOX")) return "Inox";
+  if (c.includes("CU") || c.includes("BRASS") || c.includes("C1100") || c.includes("C3604"))
+    return "Đồng";
+  if (c.includes("POM") || c.includes("PMMA") || c.includes("TEFLON")) return "Nhựa";
+  if (c.includes("S45C") || c.includes("AISI 10") || c.includes("SCM4"))
+    return "Thép";
+  if (c.includes("SKD") || c.includes("SKT")) return "Thép dụng cụ";
+  return "Thép";
+}
+
+function guessSurfaceGroup(code) {
+  const c = (code || "").toLowerCase();
+  if (c.includes("アルマイト") || c.includes("anod")) return "Anod nhôm";
+  if (c.includes("ニッケル") || c.includes("niken")) return "Mạ";
+  if (c.includes("染め") || c.includes("soob")) return "Nhuộm đen";
+  return "Không xử lý";
+}
+
+/**
+ * Update a knowledge block with table format.
+ * @param {string} key
+ * @param {string[]} headers
+ * @param {object[]} rows
+ * @param {string} [textContent] — optional text backup
+ */
+export async function updateKnowledgeBlockTable(key, headers, rows, textContent) {
+  const content =
+    textContent ||
+    renderKnowledgeTable(KNOWLEDGE_DEFAULTS[key]?.name || key, headers, rows);
+
+  if (!isDbAvailable()) {
+    const def = KNOWLEDGE_DEFAULTS[key];
+    if (def) {
+      const filePath = path.join(DEFAULTS_DIR, def.file);
+      fs.writeFileSync(filePath, content, "utf8");
+      invalidateCache(key);
+    }
+    return;
+  }
+
+  await pool.query(
+    `UPDATE knowledge_blocks SET
+       content = $1,
+       format = 'table',
+       headers = $2,
+       kb_rows = $3,
+       updated_at = NOW()
+     WHERE key = $4`,
+    [content, JSON.stringify(headers), JSON.stringify(rows), key]
+  );
+  invalidateCache(key);
 }
 
 /**
@@ -374,34 +603,69 @@ export async function savePromptVersion(
 
 /**
  * Update a knowledge block (insert-or-update).
+ * Supports both legacy text format and new table format.
  *
  * @param {string} key
- * @param {string} content
+ * @param {string|object} contentOrPayload — plain text string OR object {format, headers, rows, content}
  * @returns {{ updated: boolean }}
  */
-export async function updateKnowledgeBlock(key, content) {
-  if (!isDbAvailable()) {
+export async function updateKnowledgeBlock(key, contentOrPayload) {
+  // Normalize payload
+  let format = "text";
+  let headers = null;
+  let rows = null;
+  let textContent = "";
+
+  if (typeof contentOrPayload === "object" && contentOrPayload !== null && !Array.isArray(contentOrPayload)) {
+    format = contentOrPayload.format || "text";
+    headers = contentOrPayload.headers || null;
+    rows = contentOrPayload.rows || null;
+    textContent =
+      contentOrPayload.content ||
+      (rows
+        ? renderKnowledgeTable(KNOWLEDGE_DEFAULTS[key]?.name || key, headers, rows)
+        : "");
+  } else {
+    textContent = String(contentOrPayload || "");
+  }
+
+  const dbAvailable = isDbAvailable();
+  if (!dbAvailable) {
+    console.warn(`[promptStore] DB unavailable for key "${key}" — falling back to file`);
     const def = KNOWLEDGE_DEFAULTS[key];
     if (def) {
       const filePath = path.join(DEFAULTS_DIR, def.file);
-      fs.writeFileSync(filePath, content, "utf8");
+      fs.writeFileSync(filePath, textContent, "utf8");
       invalidateCache(key);
+      console.log(`[promptStore] Written to file: ${filePath}`);
     }
-    return { updated: false };
+    return { updated: false, fallback: "file" };
   }
 
   try {
     await pool.query(
-      `INSERT INTO knowledge_blocks (key, name, content, updated_at)
-         VALUES ($1, $2, $3, NOW())
-       ON CONFLICT (key) DO UPDATE SET content = $3, updated_at = NOW()`,
-      [key, KNOWLEDGE_DEFAULTS[key]?.name ?? key, content]
+      `INSERT INTO knowledge_blocks (key, name, content, format, headers, kb_rows, knowledge_key, updated_at)
+         VALUES ($1, $2, $3, $4, $5, $6, $1, NOW())
+       ON CONFLICT (key) DO UPDATE SET
+         content = $3,
+         format = $4,
+         headers = COALESCE($5, knowledge_blocks.headers),
+         kb_rows = COALESCE($6, knowledge_blocks.kb_rows),
+         updated_at = NOW()`,
+      [
+        key,
+        KNOWLEDGE_DEFAULTS[key]?.name ?? key,
+        textContent,
+        format,
+        headers ? JSON.stringify(headers) : null,
+        rows ? JSON.stringify(rows) : null,
+      ]
     );
     invalidateCache(key);
     return { updated: true };
   } catch (e) {
     console.error("[promptStore] updateKnowledgeBlock error:", e.message);
-    return { updated: false };
+    return { updated: false, error: e.message };
   }
 }
 
@@ -613,22 +877,34 @@ export async function listKnowledgeBlocks() {
       name: def.name,
       description: def.description,
       content: null,
+      format: null,
+      headers: null,
+      rows: null,
     }));
   }
 
   const result = await pool.query(
-    "SELECT key, name, description, content, updated_at FROM knowledge_blocks ORDER BY key"
+    `SELECT key, name, description, content, format, headers, kb_rows, updated_at
+     FROM knowledge_blocks ORDER BY key`
   );
 
   if (!result.rows.length) return null;
 
-  return result.rows.map((row) => ({
-    key: row.key,
-    name: row.name,
-    description: row.description,
-    content: row.content,
-    updated_at: row.updated_at,
-  }));
+  return result.rows.map((row) => {
+    // pg tự động parse JSONB → object
+    const headers = row.headers || null;
+    const rows = row.kb_rows || null;
+    return {
+      key: row.key,
+      name: row.name,
+      description: row.description,
+      content: row.content,
+      format: row.format || "text",
+      headers,
+      rows,
+      updated_at: row.updated_at,
+    };
+  });
 }
 
 /**

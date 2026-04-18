@@ -1,0 +1,12 @@
+.hide-input {
+  border: none;
+}
+.hide-input:focus {
+  box-shadow: 0 0 0 2px #fff;
+}
+.hide-input:hover {
+  box-shadow: 0 0 0 2px #fff;
+}
+.hide-input:focus-within {
+  box-shadow: 0 0 0 2px #fff;
+}
