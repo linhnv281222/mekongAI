@@ -18,18 +18,9 @@ function chatModel() {
  * @returns {Promise<{ten_cong_ty:string, ten_nguoi_lien_he:string, email_khach_hang:string, so_luong:string, ngon_ngu:string, co_yeu_cau_bao_gia:boolean, loi_nhan:string}>}
  */
 export async function extractChatInfo(message) {
-  if (!aiCfg.geminiKey) {
-    throw new Error("GEMINI_API_KEY chưa được cấu hình.");
-  }
-
-  const rawPrompt = await getPrompt("chat-classify", {
+  const promptText = await getPrompt("chat-classify", {
     chatMessage: message || "",
   });
-
-  // Fallback: if prompt is null, use default
-  const promptText = rawPrompt || `Phân tích tin nhắn và trích xuất thông tin:
-"${message || ""}"
-Trả về JSON với: ten_cong_ty, ten_nguoi_lien_he, email_khach_hang, so_luong, ngon_ngu, co_yeu_cau_bao_gia, loi_nhan`;
 
   const response = await generateContentWithRetry(
     ai,
@@ -41,21 +32,11 @@ Trả về JSON với: ten_cong_ty, ten_nguoi_lien_he, email_khach_hang, so_luon
   );
 
   const raw = response.text ?? "";
-  const cleaned = raw.replace(/^```json\s*/m, "").replace(/```\s*$/m, "").trim();
-
-  try {
-    return JSON.parse(cleaned);
-  } catch {
-    return {
-      ten_cong_ty: "unknown",
-      ten_nguoi_lien_he: "unknown",
-      email_khach_hang: "unknown",
-      so_luong: "unknown",
-      ngon_ngu: "vi",
-      co_yeu_cau_bao_gia: true,
-      loi_nhan: message.slice(0, 200),
-    };
-  }
+  const cleaned = raw
+    .replace(/^```json\s*/m, "")
+    .replace(/```\s*$/m, "")
+    .trim();
+  return JSON.parse(cleaned);
 }
 
 /**
@@ -64,18 +45,9 @@ Trả về JSON với: ten_cong_ty, ten_nguoi_lien_he, email_khach_hang, so_luon
  * @returns {Promise<{data: object, raw: string, request_payload: object}>}
  */
 export async function extractChatInfoWithPayload(message) {
-  if (!aiCfg.geminiKey) {
-    throw new Error("GEMINI_API_KEY chưa được cấu hình.");
-  }
-
-  const rawPrompt = await getPrompt("chat-classify", {
+  const promptText = await getPrompt("chat-classify", {
     chatMessage: message || "",
   });
-
-  // Fallback: if prompt is null, use default
-  const promptText = rawPrompt || `Phân tích tin nhắn và trích xuất thông tin:
-"${message || ""}"
-Trả về JSON với: ten_cong_ty, ten_nguoi_lien_he, email_khach_hang, so_luong, ngon_ngu, co_yeu_cau_bao_gia, loi_nhan`;
 
   const requestPayload = {
     model: chatModel(),
@@ -84,36 +56,18 @@ Trả về JSON với: ten_cong_ty, ten_nguoi_lien_he, email_khach_hang, so_luon
 
   const response = await generateContentWithRetry(
     ai,
-    {
-      model: chatModel(),
-      contents: [{ role: "user", parts: [{ text: promptText }] }],
-    },
+    requestPayload,
     "ChatExtract"
   );
 
   const raw = response.text ?? "";
-  const cleaned = raw.replace(/^```json\s*/m, "").replace(/```\s*$/m, "").trim();
+  const cleaned = raw
+    .replace(/^```json\s*/m, "")
+    .replace(/```\s*$/m, "")
+    .trim();
+  const data = JSON.parse(cleaned);
 
-  let data;
-  try {
-    data = JSON.parse(cleaned);
-  } catch {
-    data = {
-      ten_cong_ty: "unknown",
-      ten_nguoi_lien_he: "unknown",
-      email_khach_hang: "unknown",
-      so_luong: "unknown",
-      ngon_ngu: "vi",
-      co_yeu_cau_bao_gia: true,
-      loi_nhan: message.slice(0, 200),
-    };
-  }
-
-  return {
-    data,
-    raw,
-    request_payload: requestPayload,
-  };
+  return { data, raw, request_payload: requestPayload };
 }
 
 /**
@@ -125,17 +79,25 @@ export async function chatAssistantReply(userMessage) {
   const text = (userMessage || "").trim();
   if (!text) return "Bạn hãy nhập nội dung cần hỏi.";
 
-  if (!aiCfg.geminiKey) {
-    throw new Error("GEMINI_API_KEY chưa được cấu hình.");
-  }
-
   const response = await generateContentWithRetry(
     ai,
     {
       model: chatModel(),
       contents: [
-        { role: "user", parts: [{ text: "Bạn là trợ lý AI của hệ thống Mekong AI. Trả lời bằng tiếng Việt, ngắn gọn, dùng **in đậm** cho từ khóa quan trọng. Không dùng markdown code block." }] },
-        { role: "model", parts: [{ text: "Tôi đã hiểu. Tôi sẵn sàng trả lời bạn bằng tiếng Việt." }] },
+        {
+          role: "user",
+          parts: [
+            {
+              text: "Bạn là trợ lý AI của hệ thống Mekong AI. Trả lời bằng tiếng Việt, ngắn gọn, dùng **in đậm** cho từ khóa quan trọng. Không dùng markdown code block.",
+            },
+          ],
+        },
+        {
+          role: "model",
+          parts: [
+            { text: "Tôi đã hiểu. Tôi sẵn sàng trả lời bạn bằng tiếng Việt." },
+          ],
+        },
         { role: "user", parts: [{ text: text.slice(0, 12000) }] },
       ],
     },
@@ -143,8 +105,9 @@ export async function chatAssistantReply(userMessage) {
   );
 
   const raw = response.text ?? "";
-  const cleaned = raw.replace(/^```json\s*/m, "").replace(/```\s*$/m, "").trim();
-
-  if (cleaned) return cleaned;
-  return "Không nhận được phản hồi từ Gemini. Thử lại nhé.";
+  const cleaned = raw
+    .replace(/^```json\s*/m, "")
+    .replace(/```\s*$/m, "")
+    .trim();
+  return cleaned || "Không nhận được phản hồi từ Gemini. Thử lại nhé.";
 }

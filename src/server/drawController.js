@@ -18,14 +18,12 @@ import {
 } from "../libs/drawingNormalize.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const PROJECT_ROOT = path.resolve(__dirname, '../..');
-const UPLOADS_DIR = path.join(PROJECT_ROOT, 'uploads');
+const PROJECT_ROOT = path.resolve(__dirname, "../..");
+const UPLOADS_DIR = path.join(PROJECT_ROOT, "uploads");
 const AI_CONFIG_FILE = path.join(PROJECT_ROOT, "data", "ai-model-config.json");
 
 /** Ghi phản hồi nguyên bản từ AI vào file log (data/ai-drawing-log/YYYY-MM-DD.jsonl) */
-function logAiRaw({ filename, provider, raw, page }) {
-  console.log(`[LogAI] ⏳ ${filename} (${provider}) — raw length: ${raw?.length ?? 0}`);
-}
+function logAiRaw({ filename, provider, raw, page }) {}
 
 function loadAiConfig() {
   try {
@@ -93,22 +91,30 @@ async function splitPdfLocal(buffer) {
 // ─── POST /drawings — Doc 1 file ───────────────────────────────────────────
 
 router.post("/", upload.single("file"), async (req, res) => {
-  console.log("[DrawController] POST /drawings — nhan yeu cau!");
   if (!req.file) return res.status(400).json({ error: "Thieu file PDF" });
 
   try {
     const providerHint = req.query.provider || null;
     const { fn: analyzer, label: provider } = selectAnalyzer(providerHint);
     const result = await analyzer(req.file.path);
-    console.log("[DrawController] analyzer xong, result.success:", result?.success);
+
     if (!result.success) return res.status(422).json({ error: result.error });
 
     logAiRaw({ filename: req.file.originalname, provider, raw: result.raw });
     const flat = normalizeDrawingToFlat(result.data);
     const id = await saveDrawing(req.file.originalname, flat);
-    res.json({ id, data: flat, filename: req.file.originalname });
+    res.json({
+      id,
+      data: flat,
+      filename: req.file.originalname,
+      request_payload: result.request_payload,
+    });
   } catch (e) {
-    console.error("[DrawController] EXCEPTION:", e.message, e.stack?.split("\n")[1] ?? "");
+    console.error(
+      "[DrawController] EXCEPTION:",
+      e.message,
+      e.stack?.split("\n")[1] ?? ""
+    );
     res.status(500).json({ error: e.message });
   } finally {
     fs.unlink(req.file.path, () => {});
@@ -133,22 +139,28 @@ router.post("/batch", upload.single("file"), async (req, res) => {
     return res.status(500).json({ error: "Tach trang that bai: " + e.message });
   }
 
-  console.log(`[Batch] Tach duoc ${pages.length} trang (${provider})`);
-
   const results = [];
   for (const pg of pages) {
-    console.log(`[Batch] Doc trang ${pg.page}/${pg.total}...`);
     try {
       const result = await analyzer(pg.path);
       if (result.success) {
         const flat = normalizeDrawingToFlat(result.data);
         if (!drawingHasMinimalData(flat)) {
-          console.log(`[Batch] Trang ${pg.page} khong co du lieu → bo qua`);
           continue;
         }
-        logAiRaw({ filename: `trang_${pg.page}.pdf`, provider, raw: result.raw, page: pg.page });
+        logAiRaw({
+          filename: `trang_${pg.page}.pdf`,
+          provider,
+          raw: result.raw,
+          page: pg.page,
+        });
         const id = await saveDrawing(`trang_${pg.page}.pdf`, flat);
-        results.push({ page: pg.page, id, data: flat });
+        results.push({
+          page: pg.page,
+          id,
+          data: flat,
+          request_payload: result.request_payload,
+        });
         console.log(
           `[Batch] ✓ Trang ${pg.page}: ${flat.ma_ban_ve} — ${flat.vat_lieu}`
         );
@@ -185,7 +197,11 @@ router.post("/:id/correct", async (req, res) => {
     const result = await correctDrawing(drawing.full_data, message);
     if (!result.success) return res.status(422).json({ error: result.error });
 
-    logAiRaw({ filename: `correct_${drawing.id}`, provider: "claude", raw: result.raw });
+    logAiRaw({
+      filename: `correct_${drawing.id}`,
+      provider: "claude",
+      raw: result.raw,
+    });
 
     await reviewDrawing(drawing.id, {
       status: "reviewed",

@@ -58,7 +58,12 @@ export async function analyzeDrawingGemini(pdfPath, model = null) {
           if (p.inlineData) {
             return {
               ...p,
-              inlineData: { ...p.inlineData, data: `[FILE: ${pdfPath ? path.basename(pdfPath) : "corrected"}]` },
+              inlineData: {
+                ...p.inlineData,
+                data: `[FILE: ${
+                  pdfPath ? path.basename(pdfPath) : "corrected"
+                }]`,
+              },
             };
           }
           return p;
@@ -81,9 +86,20 @@ export async function analyzeDrawingGemini(pdfPath, model = null) {
     let parsed = JSON.parse(cleaned);
     parsed = enrichWithF7F8(parsed);
 
-    return { success: true, data: parsed, raw, usage: {}, request_payload: debugPayload };
+    return {
+      success: true,
+      data: parsed,
+      raw,
+      usage: {},
+      request_payload: debugPayload,
+    };
   } catch (e) {
-    return { success: false, error: e.message, raw: "", request_payload: debugPayload };
+    return {
+      success: false,
+      error: e.message,
+      raw: "",
+      request_payload: debugPayload,
+    };
   }
 }
 
@@ -92,4 +108,74 @@ export async function analyzeDrawingGemini(pdfPath, model = null) {
  */
 export async function correctDrawingGemini(currentData, userMessage) {
   return analyzeDrawingGemini(null, aiCfg.geminiFlashModel);
+}
+
+/**
+ * Debug prompt: send pre-rendered system prompt + user message to Gemini and return response.
+ * Used by admin prompt debug panel.
+ *
+ * @param {string} systemPrompt — already-rendered system prompt (with knowledge blocks)
+ * @param {string} userMessage — raw user input text
+ * @param {string} schema — optional JSON schema for structured output
+ * @returns {object} { success, data, raw, usage, request_payload }
+ */
+export async function debugPromptGemini(
+  systemPrompt,
+  userMessage,
+  schema = ""
+) {
+  if (!aiCfg.geminiKey) {
+    return { success: false, error: "GEMINI_API_KEY not set" };
+  }
+
+  const modelName = aiCfg.geminiModel;
+
+  const instruction = schema
+    ? `Phan tich yeu cau ben duoi va tra ve JSON theo schema:\n${schema}\n\nLuu y: Tra ve JSON thuan tuy, khong markdown, khong giai thich.`
+    : "";
+
+  const fullUserMessage = schema
+    ? `${userMessage}\n\n${instruction}`
+    : userMessage;
+
+  const requestPayload = {
+    model: modelName,
+    contents: [{ parts: [{ text: fullUserMessage }] }],
+    systemInstruction: { parts: [{ text: systemPrompt }] },
+  };
+
+  try {
+    const response = await generateContentWithRetry(
+      geminiAi,
+      requestPayload,
+      "debugPromptGemini"
+    );
+    const raw = response.text ?? "";
+
+    let data;
+    try {
+      const cleaned = raw
+        .replace(/^```json\s*/m, "")
+        .replace(/```\s*$/m, "")
+        .trim();
+      data = JSON.parse(cleaned);
+    } catch {
+      data = raw;
+    }
+
+    return {
+      success: true,
+      data,
+      raw,
+      usage: {},
+      request_payload: requestPayload,
+    };
+  } catch (e) {
+    return {
+      success: false,
+      error: e.message,
+      raw: "",
+      request_payload: requestPayload,
+    };
+  }
 }

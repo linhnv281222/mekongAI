@@ -19,4 +19,3 @@ c = c.replace(
 );
 
 fs.writeFileSync(f, c, "utf8");
-console.log("Patched OK, size:", c.length);

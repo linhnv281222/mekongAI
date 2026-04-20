@@ -1,5 +1,6 @@
 import Anthropic from "@anthropic-ai/sdk";
 import fs from "fs";
+import path from "path";
 import { aiCfg } from "../libs/config.js";
 import {
   getPrompt,
@@ -10,69 +11,22 @@ import {
 
 const client = new Anthropic({ apiKey: aiCfg.anthropicKey });
 
-// ─── SCHEMA mô tả đầu ra mong muốn ───────────────────────────────────────
-// Schema phẳng — flat, không lồng nhau, đúng như prompt phân tích bản vẽ
-const DRAWING_SCHEMA = `
-{
-  "ma_ban_ve": "string — mã số bản vẽ trong khung tên (VD: M1024, DW-2024-001)",
-  "vat_lieu": "string — mã vật liệu ghi trên bản vẽ (VD: AL6061-T6, S45C, SUS304). Nếu không ghi → 'Không ghi trên bản vẽ'",
-  "so_luong": "number — số lượng sản xuất (VD: 1, 5, 10)",
-  "xu_ly_be_mat": "string — xử lý bề mặt ghi trên bản vẽ (VD: Ra 1.6, Ni 10um). Nếu không ghi → 'Không ghi trên bản vẽ'",
-  "xu_ly_nhiet": "string — xử lý nhiệt luyện ghi trên bản vẽ (VD: T6, HRC 58-62). Nếu không ghi → 'Không ghi trên bản vẽ'",
-  "dung_sai_chung": "string — tiêu chuẩn dung sai chung ghi trên khung tên (VD: JIS B 0405, ISO 2768-m). Nếu không ghi → 'Không ghi trên bản vẽ'",
-  "hinh_dang": "string — phân loại hình dạng: 'Tròn xoay' | 'Hình tấm' | 'Khối phức tạp'",
-  "kich_thuoc": "string — kích thước bao tổng thể (VD: Ø35×74.5, 80×50×10, 150×90×15 mm). Giữ nguyên đơn vị gốc",
-  "so_be_mat_cnc": "number — số bề mặt CNC (số lần gá đặt). Quy tắc: x=1 nếu tất cả đặc điểm hoàn thành từ 1 hướng; x=2 chỉ khi có blind features ở 2 mặt đối diện. Hình tấm chỉ lỗ thông suốt + chamfer → x=1. Hình tấm mặc định x=2 (trên+dưới) trừ khi có yêu cầu đặc biệt mặt bên",
-  "dung_sai_chat_nhat": "string — dung sai vị trí nhỏ nhất có trên bản vẽ (VD: ±0.02, 0.05, H7, js6). Nếu không ghi → 'Không ghi trên bản vẽ'",
-  "co_gdt": "boolean — true nếu bản vẽ có ký hiệu GD&T (gd_t, true position, profile tolerance...)",
-  "ma_quy_trinh": "string — mã quy trình gia công theo bảng tra ①②③④⑤: QTxxx (VD: QT111, QT612, QT213). VD: Hình tấm + thép + KT 50-300mm + x=2 → QT612",
-  "ly_giai_qt": "string — giải thích ngắn gọn từng bước logic để ra mã QT (①②③④⑤), ví dụ: '① Hình tấm → bỏ qua ②③④ → ⑤ Thép + KT 50-300mm + x=2 → QT612'"
-}`;
-
-// Knowledge blocks are loaded from promptStore at call time (DB or file fallback).
-// Prompt is loaded from DB via promptStore with variable substitution.
-
-// ─── HAM CHINH: Doc ban ve PDF ───────────────────────────────────────────
+// ─── CORE: gui PDF + resolved system prompt cho Claude ────────────────────
 
 /**
- * Doc ban ve PDF = Claude Sonnet 4.6.
- * @param {string} pdfPath — duong dan file PDF
+ * Core analysis: send PDF + resolved system prompt to Claude, return structured result.
+ * Used by both analyzDrawing (saves to DB) and debugDrawingClaude (returns raw result).
+ *
+ * @param {Buffer} pdfBuffer — PDF file as Buffer
+ * @param {string} resolvedSystem — system prompt with knowledge blocks already injected
+ * @param {string} pdfBasename — file name for debug logs
  * @returns {object} { success, data, raw, usage, request_payload }
  */
-export async function analyzDrawing(pdfPath) {
-  const pdfBuffer = fs.readFileSync(pdfPath);
+async function _analyzeDrawingCore(pdfBuffer, resolvedSystem, pdfBasename) {
   const pdfBase64 = pdfBuffer.toString("base64");
 
-  const [systemText, matTbl, nhietTbl, bmTbl, hinhTbl] = await Promise.all([
-    getPrompt("drawing-system", {}),
-    getKnowledgeTable("vnt-materials"),
-    getKnowledgeTable("vnt-heat-treat"),
-    getKnowledgeTable("vnt-surface"),
-    getKnowledgeTable("vnt-shapes"),
-  ]);
-
-  const matText = matTbl
-    ? renderKnowledgeTable("BANG QUY DOI VAT LIEU", matTbl.headers, matTbl.rows)
-    : "";
-  const nhietText = nhietTbl
-    ? renderKnowledgeTable("BANG XU LY NHIET", nhietTbl.headers, nhietTbl.rows)
-    : "";
-  const bmText = bmTbl
-    ? renderKnowledgeTable("BANG XU LY BE MAT", bmTbl.headers, bmTbl.rows)
-    : "";
-  const hinhText = hinhTbl
-    ? renderKnowledgeTable("BANG HINH DANG & KIEU PHOI", hinhTbl.headers, hinhTbl.rows)
-    : "";
-
-  const resolvedSystem = systemText
-    .replaceAll("{{MATERIAL}}", matText)
-    .replaceAll("{{HEAT_TREAT}}", nhietText)
-    .replaceAll("{{SURFACE}}", bmText)
-    .replaceAll("{{SHAPE}}", hinhText);
-
-  const instructionText = `Phan tich ban ve ky thuat nay va tra ve JSON theo schema phang sau:\n${DRAWING_SCHEMA}\n\nLuu y:\n- Tra ve JSON thuan tuy, khong markdown, khong giai thich\n- "Khong ghi tren ban ve" khi thong tin khong co tren ban ve\n- Tu dinh nghia ma_quy_trinh + ly_giai_qt dua tren bieu mau ①②③④⑤\n- so_be_mat_cnc: chi dem so lan ga dat (setups), khong dem so lo/dien tich`;
-
-  // Build request payload for debug
+  // Instruction text is embedded in the system prompt by the caller (from DB).
+  // Only the PDF document is sent as user content.
   const requestPayload = {
     model: aiCfg.anthropicModel,
     max_tokens: 8192,
@@ -95,11 +49,6 @@ export async function analyzDrawing(pdfPath) {
               data: pdfBase64,
             },
           },
-          {
-            type: "text",
-            text: instructionText,
-            cache_control: { type: "ephemeral" },
-          },
         ],
       },
     ],
@@ -107,7 +56,6 @@ export async function analyzDrawing(pdfPath) {
 
   const response = await client.messages.create(requestPayload);
 
-  // Debug payload: thay base64 bằng tên file để hiển thị (không ảnh hưởng request thật)
   const debugPayload = {
     ...requestPayload,
     messages: requestPayload.messages.map((msg) => ({
@@ -116,7 +64,7 @@ export async function analyzDrawing(pdfPath) {
         if (c.type === "document") {
           return {
             ...c,
-            source: { ...c.source, data: `[FILE: ${path.basename(pdfPath)}]` },
+            source: { ...c.source, data: `[FILE: ${pdfBasename}]` },
           };
         }
         return c;
@@ -125,60 +73,125 @@ export async function analyzDrawing(pdfPath) {
   };
 
   const raw = response.content[0].text;
-
   const cleaned = raw
     .replace(/^```json\s*/m, "")
     .replace(/```\s*$/m, "")
     .trim();
-
   const u = response.usage;
-  const cacheHitRatio = u.cache_read_input_tokens
-    ? (
-        (u.cache_read_input_tokens /
-          (u.input_tokens + u.cache_read_input_tokens)) *
-        100
-      ).toFixed(1)
-    : "0";
 
   console.log(
-    `  tokens — input: ${u.input_tokens} | cache_write: ${
-      u.cache_creation_input_tokens ?? 0
-    }` +
-      ` | cache_hit: ${
-        u.cache_read_input_tokens ?? 0
-      } (${cacheHitRatio}%) | output: ${u.output_tokens}`
+    `  tokens — input: ${u.input_tokens} | output: ${u.output_tokens}`
   );
 
   try {
-    let parsed = JSON.parse(cleaned);
-    // enrichWithF7F8 bo sung F7/F8 cho schema cu (nested). Schema moi (flat) da co
-    // ma_quy_trinh tu AI roi, khong can go lai enrich.
-    // if (parsed) {
-    //   try { parsed = enrichWithF7F8(parsed); } catch(e) { console.warn("enrich:", e.message); }
-    // }
-
+    const data = JSON.parse(cleaned);
     return {
       success: true,
-      data: parsed,
+      data,
       raw,
-      usage: {
-        input_tokens: u.input_tokens,
-        output_tokens: u.output_tokens,
-        cache_write_tokens: u.cache_creation_input_tokens ?? 0,
-        cache_read_tokens: u.cache_read_input_tokens ?? 0,
-        cache_hit_ratio_pct: parseFloat(cacheHitRatio),
-      },
+      usage: { input_tokens: u.input_tokens, output_tokens: u.output_tokens },
       request_payload: debugPayload,
     };
-  } catch (e) {
-    console.error("[ClaudeAnalyzer] EXCEPTION:", e.message, e.stack?.split("\n")[1] ?? "");
+  } catch {
     return {
       success: false,
-      error: e.message,
-      raw: "",
+      error: "Parse JSON loi: " + cleaned.slice(0, 200),
+      raw,
       request_payload: debugPayload,
     };
   }
+}
+
+/**
+ * Doc ban ve PDF = Claude Sonnet 4.6 (save to DB).
+ * @param {string} pdfPath — duong dan file PDF
+ * @returns {object} { success, data, raw, usage, request_payload }
+ */
+export async function analyzDrawing(pdfPath) {
+  const pdfBuffer = fs.readFileSync(pdfPath);
+
+  const [systemText, matTbl, nhietTbl, bmTbl, hinhTbl] = await Promise.all([
+    getPrompt("drawing-system", {}),
+    getKnowledgeTable("vnt-materials"),
+    getKnowledgeTable("vnt-heat-treat"),
+    getKnowledgeTable("vnt-surface"),
+    getKnowledgeTable("vnt-shapes"),
+  ]);
+
+  const matText = matTbl
+    ? renderKnowledgeTable("BANG QUY DOI VAT LIEU", matTbl.headers, matTbl.rows)
+    : "";
+  const nhietText = nhietTbl
+    ? renderKnowledgeTable("BANG XU LY NHIET", nhietTbl.headers, nhietTbl.rows)
+    : "";
+  const bmText = bmTbl
+    ? renderKnowledgeTable("BANG XU LY BE MAT", bmTbl.headers, bmTbl.rows)
+    : "";
+  const hinhText = hinhTbl
+    ? renderKnowledgeTable(
+        "BANG HINH DANG & KIEU PHOI",
+        hinhTbl.headers,
+        hinhTbl.rows
+      )
+    : "";
+
+  const resolvedSystem = systemText
+    .replaceAll("{{MATERIAL}}", matText)
+    .replaceAll("{{HEAT_TREAT}}", nhietText)
+    .replaceAll("{{SURFACE}}", bmText)
+    .replaceAll("{{SHAPE}}", hinhText);
+
+  return await _analyzeDrawingCore(
+    pdfBuffer,
+    resolvedSystem,
+    path.basename(pdfPath)
+  );
+}
+
+/**
+ * Debug: phan tich PDF cho admin prompts (khong luu vao DB).
+ * @param {string} pdfPath — duong dan file PDF
+ * @returns {object} { success, data, raw, usage, request_payload }
+ */
+export async function debugDrawingClaude(pdfPath) {
+  const pdfBuffer = fs.readFileSync(pdfPath);
+
+  const [systemText, matTbl, nhietTbl, bmTbl, hinhTbl] = await Promise.all([
+    getPrompt("drawing-system", {}),
+    getKnowledgeTable("vnt-materials"),
+    getKnowledgeTable("vnt-heat-treat"),
+    getKnowledgeTable("vnt-surface"),
+    getKnowledgeTable("vnt-shapes"),
+  ]);
+
+  const matText = matTbl
+    ? renderKnowledgeTable("BANG QUY DOI VAT LIEU", matTbl.headers, matTbl.rows)
+    : "";
+  const nhietText = nhietTbl
+    ? renderKnowledgeTable("BANG XU LY NHIET", nhietTbl.headers, nhietTbl.rows)
+    : "";
+  const bmText = bmTbl
+    ? renderKnowledgeTable("BANG XU LY BE MAT", bmTbl.headers, bmTbl.rows)
+    : "";
+  const hinhText = hinhTbl
+    ? renderKnowledgeTable(
+        "BANG HINH DANG & KIEU PHOI",
+        hinhTbl.headers,
+        hinhTbl.rows
+      )
+    : "";
+
+  const resolvedSystem = systemText
+    .replaceAll("{{MATERIAL}}", matText)
+    .replaceAll("{{HEAT_TREAT}}", nhietText)
+    .replaceAll("{{SURFACE}}", bmText)
+    .replaceAll("{{SHAPE}}", hinhText);
+
+  return await _analyzeDrawingCore(
+    pdfBuffer,
+    resolvedSystem,
+    path.basename(pdfPath)
+  );
 }
 
 // ─── DOC FILE STEP 3D ─────────────────────────────────────────────────────
@@ -236,8 +249,8 @@ export async function analyzeDrawingWithStep(pdfPath, stepPath) {
   const pdfResult = await analyzDrawing(pdfPath);
   if (!pdfResult.success) return pdfResult;
 
-// STEP analysis still works for dimension extraction; result is kept separate.
-// STEP merge is disabled for flat schema (no kich_thuoc_bao wrapper).
+  // STEP analysis still works for dimension extraction; result is kept separate.
+  // STEP merge is disabled for flat schema (no kich_thuoc_bao wrapper).
 
   return pdfResult;
 }
@@ -296,10 +309,15 @@ Tra ve JSON da cap nhat, giu nguyen toan bo cau truc.`;
       data: JSON.parse(cleaned),
       raw,
       usage: { input_tokens: u.input_tokens, output_tokens: u.output_tokens },
-      request_payload: debugPayload,
+      request_payload: requestPayload,
     };
   } catch {
-    return { success: false, error: "Parse JSON loi", raw, request_payload: requestPayload };
+    return {
+      success: false,
+      error: "Parse JSON loi",
+      raw,
+      request_payload: requestPayload,
+    };
   }
 }
 
@@ -308,4 +326,63 @@ function _classifySize(dim) {
   if (dim < 50) return "Nho (<50mm)";
   if (dim < 200) return "Trung binh (50-200mm)";
   return "Lon (>200mm)";
+}
+
+/**
+ * Debug prompt: send pre-rendered system prompt + user message to Claude and return response.
+ * Used by admin prompt debug panel.
+ *
+ * @param {string} systemPrompt — already-rendered system prompt (with knowledge blocks)
+ * @param {string} userMessage — raw user input text
+ * @param {string} schema — optional JSON schema for structured output
+ * @returns {object} { success, data, raw, usage, request_payload }
+ */
+export async function debugPromptClaude(
+  systemPrompt,
+  userMessage,
+  schema = ""
+) {
+  const instruction = schema
+    ? `Phan tich yeu cau ben duoi va tra ve JSON theo schema:\n${schema}\n\nLuu y: Tra ve JSON thuan tuy, khong markdown, khong giai thich.`
+    : "";
+
+  const userContent = schema ? `${userMessage}\n\n${instruction}` : userMessage;
+
+  const requestPayload = {
+    model: aiCfg.anthropicModel,
+    max_tokens: 8192,
+    system: systemPrompt,
+    messages: [{ role: "user", content: userContent }],
+  };
+
+  try {
+    const response = await client.messages.create(requestPayload);
+    const raw = response.content[0].text;
+    const u = response.usage;
+
+    let data;
+    try {
+      const cleaned = raw
+        .replace(/^```json\s*/m, "")
+        .replace(/```\s*$/m, "")
+        .trim();
+      data = JSON.parse(cleaned);
+    } catch {
+      data = raw;
+    }
+
+    return {
+      success: true,
+      data,
+      raw,
+      usage: { input_tokens: u.input_tokens, output_tokens: u.output_tokens },
+      request_payload: requestPayload,
+    };
+  } catch (e) {
+    return {
+      success: false,
+      error: e.message,
+      request_payload: requestPayload,
+    };
+  }
 }
