@@ -62,7 +62,8 @@ async function loadAttachmentPdfBuffer(jobId, filename, res) {
   }
 
   const job = getJob(jobId);
-  if (!job) return { ok: false, status: 404, body: { error: "Khong tim thay job" } };
+  if (!job)
+    return { ok: false, status: 404, body: { error: "Khong tim thay job" } };
 
   // ── 1. Thử lấy từ thư mục uploads (chat uploads / agent uploads) ──
   const PROJECT_ROOT = path.resolve(__dirname, "../..");
@@ -83,10 +84,12 @@ async function loadAttachmentPdfBuffer(jobId, filename, res) {
     if (fs.existsSync(filePath)) {
       try {
         const buf = fs.readFileSync(filePath);
-          if (buf.length > 0) {
-            return { ok: true, buf };
+        if (buf.length > 0) {
+          return { ok: true, buf };
         }
-      } catch (_) { /* thử path khác */ }
+      } catch (_) {
+        /* thử path khác */
+      }
     }
   }
 
@@ -99,9 +102,7 @@ async function loadAttachmentPdfBuffer(jobId, filename, res) {
     : null;
 
   // ── 3. Thử Gmail (chỉ cho job từ email, có gmail_id) ──
-  const isGmailJob =
-    !!(job.gmail_id || job.gmailId) &&
-    job.source !== "chat";
+  const isGmailJob = !!(job.gmail_id || job.gmailId) && job.source !== "chat";
   if ((!att || typeof att === "string") && isGmailJob) {
     try {
       const gmail = makeGmail();
@@ -122,7 +123,11 @@ async function loadAttachmentPdfBuffer(jobId, filename, res) {
   }
 
   if (!att || typeof att === "string" || !att.attachmentId) {
-    return { ok: false, status: 404, body: { error: "Khong tim thay attachment" } };
+    return {
+      ok: false,
+      status: 404,
+      body: { error: "Khong tim thay attachment" },
+    };
   }
 
   try {
@@ -196,8 +201,8 @@ function dedupeJobsByGmail(rows) {
         typeof raw === "number"
           ? raw
           : raw != null
-            ? new Date(raw).getTime()
-            : 0;
+          ? new Date(raw).getTime()
+          : 0;
       const safeT = Number.isNaN(t) ? 0 : t;
       return pages * 1e15 + safeT;
     };
@@ -279,7 +284,7 @@ router.post("/:id/push-erp", (req, res) => {
   if (!job) return res.status(404).json({ error: "Khong tim thay" });
 
   updateJob(job.id, { status: "pushed", pushed_at: Date.now() });
-  console.log(`[ERP Push] Job ${job.id} — ${job.drawings?.length || 0} ban ve`);
+
   res.json({ ok: true, job_id: job.id, message: "Push ERP thanh cong" });
 });
 

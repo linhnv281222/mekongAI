@@ -9,7 +9,7 @@ const pool = new Pool({
 
 export async function initDB() {
   if (!dbCfg.hasDb) {
-    console.log("[DrawRepo] Khong co DATABASE_URL — bo qua khoi tao DB");
+    
     return;
   }
   await pool.query(`
@@ -64,7 +64,7 @@ export async function initDB() {
       updated_at  TIMESTAMPTZ DEFAULT NOW()
     );
   `);
-  console.log("[DrawRepo] DB initialized");
+  
 }
 
 /**

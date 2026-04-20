@@ -21,13 +21,13 @@ async function init() {
   const [, user, pass, host, port, dbname] = match;
 
   // 1. Thu ket noi truc tiep vao database target (bo qua buoc tao DB)
-  console.log(`[InitDB] Ket noi PostgreSQL tai ${host}:${port}...`);
+
   const admin = new Client({ connectionString: dbUrl });
   try {
     await admin.connect();
   } catch {
     // Neu ket noi that bai, thu ket noi vao database mac dinh "postgres"
-    console.log("[InitDB] Khong ket noi duoc DB chinh — thu postgres...");
+
     const fallbackUrl = `postgresql://${user}:${pass}@${host}:${port}/postgres`;
     const fallback = new Client({ connectionString: fallbackUrl });
     await fallback.connect();
@@ -36,11 +36,8 @@ async function init() {
       [dbname]
     );
     if (rows.length === 0) {
-      console.log(`[InitDB] Tao database "${dbname}"...`);
       await fallback.query(`CREATE DATABASE "${dbname}"`);
-      console.log(`[InitDB] Da tao database "${dbname}"`);
     } else {
-      console.log(`[InitDB] Database "${dbname}" da ton tai`);
     }
     await fallback.end();
     // Thu ket noi lai vao database target sau khi tao xong
@@ -48,7 +45,6 @@ async function init() {
   }
 
   // 2. Chay init cho tung module
-  console.log("[InitDB] Khoi tao bang du lieu...");
 
   const { initDB } = await import("../data/drawRepository.js");
   await initDB();
@@ -56,7 +52,6 @@ async function init() {
   const { initJobDB } = await import("../data/jobStore.js");
   await initJobDB();
 
-  console.log("[InitDB] Hoan tat!");
   process.exit(0);
 }
 

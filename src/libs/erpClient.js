@@ -87,8 +87,7 @@ export async function createQuoteHeader(emailData, classify) {
 
   if (erpCfg.isMock) {
     const mockCode = "VNTAGENT" + Date.now().toString().slice(-6);
-    console.log(`[ERP MOCK] Tao phieu BG: ${mockCode}`);
-    console.log("[ERP MOCK] Payload:", JSON.stringify(payload, null, 2));
+
     return { quota_code: mockCode, id: mockCode, mock: true };
   }
 
@@ -102,7 +101,6 @@ export async function createQuoteHeader(emailData, classify) {
   if (!res.ok)
     throw new Error("ERP tao phieu that bai: " + JSON.stringify(data));
 
-  console.log(`[ERP] Tao phieu BG: ${data.quota_code || data.id}`);
   return data;
 }
 
@@ -136,7 +134,6 @@ export async function pushAllLinesToERP(quoteCode, drawingResults) {
   });
 
   if (erpCfg.isMock) {
-    console.log(`[ERP MOCK] Push ${items.length} items vao phieu ${quoteCode}`);
     items.forEach((it, i) =>
       console.log(
         `  [${i + 1}] ${it.fileNameOld} — ${it.ma_nvl || "?"} — ${
@@ -162,7 +159,6 @@ export async function pushAllLinesToERP(quoteCode, drawingResults) {
   if (!res.ok)
     throw new Error("ERP push items that bai: " + JSON.stringify(data));
 
-  console.log(`[ERP] Push ${items.length} ban ve vao phieu ${quoteCode} ✓`);
   return data;
 }
 

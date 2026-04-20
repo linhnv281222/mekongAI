@@ -32,16 +32,11 @@ function makeJobId(msgId) {
 // ─── PIPELINE CHINH ───────────────────────────────────────────────────────
 
 async function processEmail(gmail, msgId) {
-  console.log(`\n${"─".repeat(60)}`);
-  console.log(`[Agent] Xu ly: ${msgId}`);
-
   // 1. Da xu ly chua?
   if (await isJobProcessed(msgId)) {
-    console.log("[Agent] Da xu ly → bo qua");
     return;
   }
   if (inflightMsgIds.has(msgId)) {
-    console.log("[Agent] Dang xu ly (in-flight) → bo qua");
     return;
   }
   inflightMsgIds.add(msgId);
@@ -55,8 +50,6 @@ async function processEmail(gmail, msgId) {
       return;
     }
 
-    console.log(`[Agent] Subject: "${emailData.subject}"`);
-    console.log(`[Agent] From: ${emailData.from}`);
     console.log(
       `[Agent] PDFs: ${
         emailData.attachments.map((a) => a.name).join(", ") || "khong co"
@@ -64,7 +57,7 @@ async function processEmail(gmail, msgId) {
     );
 
     // 3. Classify = Haiku
-    console.log("[Classify] Goi Haiku...");
+
     const classify = await classifyEmail(emailData);
     console.log(
       `[Classify] → ${classify.loai} | ${classify.ngon_ngu} | ${classify.ly_do}`
@@ -116,7 +109,6 @@ async function processEmail(gmail, msgId) {
     }
 
     if (!emailData.attachments.length) {
-      console.log("[Agent] RFQ nhung khong co PDF → can lien he KH xin ban ve");
       await saveJob({
         id: makeJobId(msgId),
         gmail_id: msgId,
@@ -145,7 +137,6 @@ async function processEmail(gmail, msgId) {
     const allResults = [];
 
     for (const att of emailData.attachments) {
-      console.log(`\n[PDF] Xu ly: ${att.name}`);
       let pdfBuffer;
       try {
         pdfBuffer = await downloadAttachment(
@@ -176,19 +167,22 @@ async function processEmail(gmail, msgId) {
 
       // Doc tung trang = AI
       for (const pg of pages) {
-        console.log(`[BV] Doc trang ${pg.page}/${pages.length}: ${pg.name}`);
         try {
           const result = await analyzeDrawingApi(pg.path, pg.name);
           const d = result.data;
           const flat = normalizeDrawingToFlat(d);
 
           if (!drawingHasMinimalData(flat)) {
-            console.log(`[BV] Trang ${pg.page} khong co du lieu → bo qua`);
             continue;
           }
 
           console.log(
-            `[BV] ✓ ${flat.ma_ban_ve} | ${flat.vat_lieu} | SL:${flat.so_luong} | QT:${flat.ma_quy_trinh} | ${String(flat.ly_giai_qt).slice(0, 80)}`
+            `[BV] ✓ ${flat.ma_ban_ve} | ${flat.vat_lieu} | SL:${
+              flat.so_luong
+            } | QT:${flat.ma_quy_trinh} | ${String(flat.ly_giai_qt).slice(
+              0,
+              80
+            )}`
           );
           allResults.push({
             ...result,
@@ -209,7 +203,9 @@ async function processEmail(gmail, msgId) {
     const jobId = makeJobId(msgId);
 
     // Extract drawing AI payloads
-    const drawingAiPayloads = allResults.map(r => r.request_payload).filter(Boolean);
+    const drawingAiPayloads = allResults
+      .map((r) => r.request_payload)
+      .filter(Boolean);
 
     const jobData = {
       id: jobId,
@@ -241,11 +237,6 @@ async function processEmail(gmail, msgId) {
     await saveJob(jobData);
 
     const reviewUrl = `${agentCfg.banveApiUrl}/src/web/demoV3.html`;
-    console.log("\n" + "═".repeat(60));
-    console.log(`[Agent] ✓ Xong: ${allResults.length} ban ve`);
-    console.log(`[Agent] → Co the review tai: ${reviewUrl}`);
-    console.log("(Tab demoV3 hien tai se tu dong cap nhat sau 8s)");
-    console.log("═".repeat(60));
 
     await updateJob(jobId, {
       gmail_id: msgId,
@@ -272,7 +263,7 @@ async function analyzeDrawingApi(pdfPath, filename) {
     baseUrl: agentCfg.banveApiUrl,
     provider: "gemini",
   });
-  console.log(`[analyzeDrawingApi] OK: ${filename}`);
+
   return data;
 }
 
@@ -296,18 +287,12 @@ async function scanOnce(gmail) {
       }
       await new Promise((r) => setTimeout(r, 2000));
     }
-    console.log(`[Scan] Xong. Cho ${gmailCfg.scanIntervalSec} giay...`);
   } catch (e) {
     console.error("[Scan] Loi:", e.message);
   }
 }
 
 async function run() {
-  console.log("\n" + "═".repeat(60));
-  console.log("  Mekong AI Email Agent");
-  console.log("  " + new Date().toLocaleString("vi-VN"));
-  console.log("═".repeat(60));
-
   // Kiem tra config bat buoc
   const required = [
     "ANTHROPIC_API_KEY",

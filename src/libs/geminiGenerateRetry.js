@@ -34,7 +34,9 @@ export async function generateContentWithRetry(ai, params, logTag = "Gemini") {
         ) {
           const delay = BASE_DELAY_MS * Math.pow(2, attempt - 1);
           console.log(
-            `[${logTag}] response.error ${code} — retry ${attempt + 1}/${MAX_RETRIES} sau ${delay}ms`
+            `[${logTag}] response.error ${code} — retry ${
+              attempt + 1
+            }/${MAX_RETRIES} sau ${delay}ms`
           );
           await new Promise((r) => setTimeout(r, delay));
           continue;
@@ -46,7 +48,9 @@ export async function generateContentWithRetry(ai, params, logTag = "Gemini") {
       if (attempt < MAX_RETRIES && isRetryableGeminiHttpError(e)) {
         const delay = BASE_DELAY_MS * Math.pow(2, attempt - 1);
         console.log(
-          `[${logTag}] HTTP tạm thời — retry ${attempt + 1}/${MAX_RETRIES} sau ${delay}ms:`,
+          `[${logTag}] HTTP tạm thời — retry ${
+            attempt + 1
+          }/${MAX_RETRIES} sau ${delay}ms:`,
           (e.message || "").slice(0, 160)
         );
         await new Promise((r) => setTimeout(r, delay));

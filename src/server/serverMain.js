@@ -23,11 +23,18 @@ const PROJECT_ROOT = path.resolve(__dirname, "../.."); // mekongAI/
 const app = express();
 
 // CORS + JSON — ĐẶT TRƯỚC TẤT CẢ ROUTE ĐỂ OPTIONS PREFLIGHT KHÔNG BỊ 405
-app.use(cors({
-  origin: '*',
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Accept', 'Accept-Language', 'Authorization']
-}));
+app.use(
+  cors({
+    origin: "*",
+    methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    allowedHeaders: [
+      "Content-Type",
+      "Accept",
+      "Accept-Language",
+      "Authorization",
+    ],
+  })
+);
 app.use(express.json());
 
 /**
@@ -191,7 +198,6 @@ async function start() {
   await seedDefaults();
 
   app.listen(serverCfg.port, () => {
-    console.log(`\nMekong AI Server: http://localhost:${serverCfg.port}`);
     console.log(
       `Demo V3 (mặc định /): http://localhost:${serverCfg.port}/src/web/demoV3.html`
     );
@@ -201,7 +207,6 @@ async function start() {
     console.log(
       `Admin Prompts:    http://localhost:${serverCfg.port}/src/web/admin-prompts.html`
     );
-    console.log(`[Ready]`);
   });
 }
 

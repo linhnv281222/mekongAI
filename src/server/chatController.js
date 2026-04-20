@@ -12,7 +12,10 @@ import {
 } from "../libs/drawingNormalize.js";
 import { agentCfg, aiCfg } from "../libs/config.js";
 import { saveJob } from "../data/jobStore.js";
-import { chatAssistantReply, extractChatInfoWithPayload } from "../ai/chatAssistant.js";
+import {
+  chatAssistantReply,
+  extractChatInfoWithPayload,
+} from "../ai/chatAssistant.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const PROJECT_ROOT = path.resolve(__dirname, "../..");
@@ -51,7 +54,7 @@ const chatUpload = multer({
   limits: { fileSize: 100 * 1024 * 1024 }, // 100MB
 });
 
-      // ── GỌI API ĐỌC BẢN VẼ (tái sử dụng từ emailAgent) ───────────────────────
+// ── GỌI API ĐỌC BẢN VẼ (tái sử dụng từ emailAgent) ───────────────────────
 async function analyzeDrawingApi(pdfPath, filename) {
   return postPdfToDrawingsApi({
     pdfPath,
@@ -63,28 +66,42 @@ async function analyzeDrawingApi(pdfPath, filename) {
 
 function logChatUrl() {
   const url = `${agentCfg.banveApiUrl}/drawings?provider=gemini`;
-  console.log(`[ChatBaoGia] analyzeDrawingApi → POST ${url}`);
 }
 
 // ─── TẠO JOB ID ─────────────────────────────────────────────────────────────
 
 function makeJobId() {
-  return "chat_" + Date.now().toString(36) + "_" + Math.random().toString(36).slice(2, 6);
+  return (
+    "chat_" +
+    Date.now().toString(36) +
+    "_" +
+    Math.random().toString(36).slice(2, 6)
+  );
 }
 
 // ─── PHÁT HIỆN LOẠI TÍNH NĂNG ─────────────────────────────────────────────
 
 const BAO_GIA_KEYWORDS = [
-  "báo giá", "báo_giá", "bao gia", "bao_giá",
-  "报价", "見積", "見積書",
-  "quote", "quotation", "报价单",
-  "rfq", "request for quote",
+  "báo giá",
+  "báo_giá",
+  "bao gia",
+  "bao_giá",
+  "报价",
+  "見積",
+  "見積書",
+  "quote",
+  "quotation",
+  "报价单",
+  "rfq",
+  "request for quote",
   "ценовое предложение",
 ];
 
 function isBaoGiaIntent(message, files) {
   const text = (message || "").toLowerCase();
-  const hasKeyword = BAO_GIA_KEYWORDS.some((kw) => text.includes(kw.toLowerCase()));
+  const hasKeyword = BAO_GIA_KEYWORDS.some((kw) =>
+    text.includes(kw.toLowerCase())
+  );
   const hasFiles = Array.isArray(files) && files.length > 0;
   const hasEmailSig = detectEmailSignature(message || "");
   return hasKeyword || hasFiles || hasEmailSig;
@@ -99,7 +116,9 @@ function detectEmailSignature(text) {
       text
     );
   const hasContact = /\b(Tel|Fax|Mobile|HP)\s*[:.]/i.test(text);
-  const hasContactWord = /\b(Thanks|Best Regards|Trân trọng|Kính gửi)/i.test(text);
+  const hasContactWord = /\b(Thanks|Best Regards|Trân trọng|Kính gửi)/i.test(
+    text
+  );
   return hasCompany && (hasContact || hasContactWord);
 }
 
@@ -125,7 +144,10 @@ function parseEmailContent(text) {
     const m = text.match(customerKeywordRe);
     if (m) {
       // Lấy phần tên — cắt ngắn ở newline hoặc nhiều khoảng trắng
-      const candidate = m[1].trim().split(/[\n\r]+/)[0].trim();
+      const candidate = m[1]
+        .trim()
+        .split(/[\n\r]+/)[0]
+        .trim();
       if (candidate && candidate.length >= 2) {
         result.ten_cong_ty = candidate.slice(0, 80);
       }
@@ -247,10 +269,7 @@ async function handleBaoGiaChat(message, files, senderEmail, jobId) {
       if (ext.endsWith(".pdf")) {
         let pages;
         try {
-          pages = await splitPdf(
-            fs.readFileSync(file.path),
-            file.originalname
-          );
+          pages = await splitPdf(fs.readFileSync(file.path), file.originalname);
         } catch (e) {
           const tmpPath = path.join(
             UPLOADS_DIR,
@@ -269,9 +288,7 @@ async function handleBaoGiaChat(message, files, senderEmail, jobId) {
 
             if (!drawingHasMinimalData(flat)) {
               console.log(
-                "[ChatBaoGia] Trang " +
-                  pg.page +
-                  " không có dữ liệu -> bỏ qua"
+                "[ChatBaoGia] Trang " + pg.page + " không có dữ liệu -> bỏ qua"
               );
               continue;
             }
@@ -295,12 +312,7 @@ async function handleBaoGiaChat(message, files, senderEmail, jobId) {
           } catch (e) {
             const msg = e.message || String(e);
             console.error(
-              "[ChatBaoGia] Lỗi trang " +
-                pg.page +
-                " (" +
-                pg.name +
-                "): " +
-                msg
+              "[ChatBaoGia] Lỗi trang " + pg.page + " (" + pg.name + "): " + msg
             );
             fileErrors.push(
               file.originalname + " trang " + pg.page + ": " + msg
@@ -327,7 +339,6 @@ async function handleBaoGiaChat(message, files, senderEmail, jobId) {
     const extractResult = await extractChatInfoWithPayload(message || "");
     chatInfo = extractResult.data;
     classifyAiPayload = extractResult.request_payload;
-    console.log("[ChatBaoGia] AI extract:", JSON.stringify(chatInfo));
   } catch (e) {
     console.warn("[ChatBaoGia] extractChatInfo failed:", e.message);
   }
@@ -339,9 +350,16 @@ async function handleBaoGiaChat(message, files, senderEmail, jobId) {
   const emailInfo = parseEmailContent(message || "");
 
   // ── Validation: không có thông tin khách hàng và không có bản vẽ → hỏi lại ──
-  const aiCompany = chatInfo && chatInfo.ten_cong_ty && chatInfo.ten_cong_ty !== "unknown"
-    ? chatInfo.ten_cong_ty : "";
-  const hasCustomer = !!(aiCompany || emailInfo.ten_cong_ty || emailInfo.sender_email || emailInfo.sender_name);
+  const aiCompany =
+    chatInfo && chatInfo.ten_cong_ty && chatInfo.ten_cong_ty !== "unknown"
+      ? chatInfo.ten_cong_ty
+      : "";
+  const hasCustomer = !!(
+    aiCompany ||
+    emailInfo.ten_cong_ty ||
+    emailInfo.sender_email ||
+    emailInfo.sender_name
+  );
   if (!hasCustomer && allResults.length === 0) {
     return {
       isBotReply: true,
@@ -359,19 +377,28 @@ async function handleBaoGiaChat(message, files, senderEmail, jobId) {
   const jobData = {
     id: jobId,
     gmail_id: "chat_" + jobId,
-    subject: chatInfo && chatInfo.loi_nhan && chatInfo.loi_nhan !== "unknown"
-      ? chatInfo.loi_nhan.slice(0, 80)
-      : (emailInfo.noi_dung
-          ? emailInfo.noi_dung
-              .slice(0, 80)
-              .replaceAll("\n", " ")
-              .trim() || "Chat báo giá"
-          : "Chat báo giá"),
+    subject:
+      chatInfo && chatInfo.loi_nhan && chatInfo.loi_nhan !== "unknown"
+        ? chatInfo.loi_nhan.slice(0, 80)
+        : emailInfo.noi_dung
+        ? emailInfo.noi_dung.slice(0, 80).replaceAll("\n", " ").trim() ||
+          "Chat báo giá"
+        : "Chat báo giá",
     sender: companyName,
-    sender_email: (chatInfo && chatInfo.email_khach_hang && chatInfo.email_khach_hang !== "unknown"
-      ? chatInfo.email_khach_hang : emailInfo.sender_email) || senderEmail || "",
-    sender_name: (chatInfo && chatInfo.ten_nguoi_lien_he && chatInfo.ten_nguoi_lien_he !== "unknown"
-      ? chatInfo.ten_nguoi_lien_he : emailInfo.sender_name) || "",
+    sender_email:
+      (chatInfo &&
+      chatInfo.email_khach_hang &&
+      chatInfo.email_khach_hang !== "unknown"
+        ? chatInfo.email_khach_hang
+        : emailInfo.sender_email) ||
+      senderEmail ||
+      "",
+    sender_name:
+      (chatInfo &&
+      chatInfo.ten_nguoi_lien_he &&
+      chatInfo.ten_nguoi_lien_he !== "unknown"
+        ? chatInfo.ten_nguoi_lien_he
+        : emailInfo.sender_name) || "",
     sender_company: companyName,
     classify: "rfq",
     ngon_ngu: (chatInfo && chatInfo.ngon_ngu) || emailInfo.ngon_ngu || "vi",
@@ -400,7 +427,10 @@ async function handleBaoGiaChat(message, files, senderEmail, jobId) {
     chat_info: chatInfo,
     // AI Debug payloads
     classify_ai_payload: classifyAiPayload,
-    drawing_ai_payload: allResults.length > 0 ? allResults.map(r => r.request_payload).filter(Boolean) : null,
+    drawing_ai_payload:
+      allResults.length > 0
+        ? allResults.map((r) => r.request_payload).filter(Boolean)
+        : null,
   };
 
   await saveJob(jobData);
@@ -411,13 +441,21 @@ async function handleBaoGiaChat(message, files, senderEmail, jobId) {
   if (companyName) {
     reply += "Công ty: " + companyName + "\n";
   }
-  const senderName = (chatInfo && chatInfo.ten_nguoi_lien_he && chatInfo.ten_nguoi_lien_he !== "unknown"
-    ? chatInfo.ten_nguoi_lien_he : emailInfo.sender_name);
+  const senderName =
+    chatInfo &&
+    chatInfo.ten_nguoi_lien_he &&
+    chatInfo.ten_nguoi_lien_he !== "unknown"
+      ? chatInfo.ten_nguoi_lien_he
+      : emailInfo.sender_name;
   if (senderName) {
     reply += "Người liên hệ: " + senderName + "\n";
   }
-  const extractedEmail = (chatInfo && chatInfo.email_khach_hang && chatInfo.email_khach_hang !== "unknown"
-    ? chatInfo.email_khach_hang : emailInfo.sender_email);
+  const extractedEmail =
+    chatInfo &&
+    chatInfo.email_khach_hang &&
+    chatInfo.email_khach_hang !== "unknown"
+      ? chatInfo.email_khach_hang
+      : emailInfo.sender_email;
   if (extractedEmail) {
     reply += "Email: " + extractedEmail + "\n";
   }
@@ -447,13 +485,10 @@ async function handleBaoGiaChat(message, files, senderEmail, jobId) {
         (r.data.ma_quy_trinh || "?") +
         "\n";
     }
-    reply +=
-      "\nJob " + jobId + " đã được tạo trong hệ thống. Xem tại DemoV3.";
+    reply += "\nJob " + jobId + " đã được tạo trong hệ thống. Xem tại DemoV3.";
   } else {
-    reply +=
-      "\nKhông tìm thấy bản vẽ PDF để phân tích.\n\n";
-    reply +=
-      "Đã ghi nhận thông tin báo giá từ nội dung tin nhắn.\n";
+    reply += "\nKhông tìm thấy bản vẽ PDF để phân tích.\n\n";
+    reply += "Đã ghi nhận thông tin báo giá từ nội dung tin nhắn.\n";
     reply +=
       "Job " +
       jobId +
@@ -474,65 +509,58 @@ async function handleBaoGiaChat(message, files, senderEmail, jobId) {
 
 // ─── POST /chat/message ──────────────────────────────────────────────────────
 
-router.post(
-  "/message",
-  chatUpload.array("files", 20),
-  async (req, res) => {
-    const message = req.body.message || req.body.text || "";
-    const files = req.files || [];
-    const senderEmail = req.body.email || req.body.sender || "";
+router.post("/message", chatUpload.array("files", 20), async (req, res) => {
+  const message = req.body.message || req.body.text || "";
+  const files = req.files || [];
+  const senderEmail = req.body.email || req.body.sender || "";
 
-    console.log(
-      "[ChatController] \"" +
-        message.slice(0, 80) +
-        "\" | files=" +
-        files.length
-    );
+  console.log(
+    '[ChatController] "' + message.slice(0, 80) + '" | files=' + files.length
+  );
 
-    // Tạo jobId TRƯỚC xử lý để đặt tên file đúng pattern
-    const jobId = makeJobId();
+  // Tạo jobId TRƯỚC xử lý để đặt tên file đúng pattern
+  const jobId = makeJobId();
 
-    // Đổi tên file từ multer → {jobId}_{originalName} để jobController tìm được khi preview
-    for (const file of files) {
-      if (!file.path) continue;
-      // file.originalname đã có đuôi (.pdf), dùng trực tiếp làm safeName
-      const safeName = file.originalname.replace(/[^a-zA-Z0-9_\-. ]/g, "_");
-      const newPath = path.join(UPLOADS_DIR, jobId + "_" + safeName);
-      try {
-        fs.renameSync(file.path, newPath);
-        file.path = newPath;
-        file.destination = UPLOADS_DIR;
-      } catch (e) {
-        // Nếu rename thất bại (file đang dùng), copy rồi xóa gốc
-        fs.copyFileSync(file.path, newPath);
-        fs.unlinkSync(file.path);
-        file.path = newPath;
-        file.destination = UPLOADS_DIR;
-      }
-    }
-
+  // Đổi tên file từ multer → {jobId}_{originalName} để jobController tìm được khi preview
+  for (const file of files) {
+    if (!file.path) continue;
+    // file.originalname đã có đuôi (.pdf), dùng trực tiếp làm safeName
+    const safeName = file.originalname.replace(/[^a-zA-Z0-9_\-. ]/g, "_");
+    const newPath = path.join(UPLOADS_DIR, jobId + "_" + safeName);
     try {
-      const intent = isBaoGiaIntent(message, files);
-
-      // Không phải báo giá -> gọi AI
-      if (!intent) {
-        const result = await handleNormalChat(message);
-        return res.json(result);
-      }
-
-      // Có intent báo giá -> phân tích
-      const result = await handleBaoGiaChat(message, files, senderEmail, jobId);
-      return res.json(result);
+      fs.renameSync(file.path, newPath);
+      file.path = newPath;
+      file.destination = UPLOADS_DIR;
     } catch (e) {
-      console.error("[ChatController] EXCEPTION:", e.message);
-      res.status(500).json({
-        error: e.message,
-        isBotReply: true,
-        reply: "Đã xảy ra lỗi khi xử lý. Vui lòng thử lại.",
-      });
+      // Nếu rename thất bại (file đang dùng), copy rồi xóa gốc
+      fs.copyFileSync(file.path, newPath);
+      fs.unlinkSync(file.path);
+      file.path = newPath;
+      file.destination = UPLOADS_DIR;
     }
   }
-);
+
+  try {
+    const intent = isBaoGiaIntent(message, files);
+
+    // Không phải báo giá -> gọi AI
+    if (!intent) {
+      const result = await handleNormalChat(message);
+      return res.json(result);
+    }
+
+    // Có intent báo giá -> phân tích
+    const result = await handleBaoGiaChat(message, files, senderEmail, jobId);
+    return res.json(result);
+  } catch (e) {
+    console.error("[ChatController] EXCEPTION:", e.message);
+    res.status(500).json({
+      error: e.message,
+      isBotReply: true,
+      reply: "Đã xảy ra lỗi khi xử lý. Vui lòng thử lại.",
+    });
+  }
+});
 
 // ─── GET /chat/history ──────────────────────────────────────────────────────
 

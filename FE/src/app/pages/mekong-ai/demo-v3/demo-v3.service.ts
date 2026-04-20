@@ -31,7 +31,10 @@ export class DemoV3Service implements OnDestroy {
 
   // ── Polling ─────────────────────────────────────────────────
 
-  startPolling(onJobs: (emails: EmailRow[]) => void, _onUpdate: (email: EmailRow) => void): void {
+  startPolling(
+    onJobs: (emails: EmailRow[]) => void,
+    _onUpdate: (email: EmailRow) => void
+  ): void {
     this.stopPolling();
     this.poll(onJobs);
     this.pollingSub = interval(JOBS_POLL_MS)
@@ -50,7 +53,7 @@ export class DemoV3Service implements OnDestroy {
         onJobs([]);
         return;
       }
-      const agentEmails = data.data.map(j => mapJobRowToEmail(j));
+      const agentEmails = data.data.map((j) => mapJobRowToEmail(j));
       onJobs(agentEmails);
     } catch {
       // silent fail polling
@@ -81,7 +84,8 @@ export class DemoV3Service implements OnDestroy {
       body: job.ghi_chu || (partial.classify_output as any)?.ghi_chu || '',
       attachments: job.attachments || [],
       date: fmtDDMMHHmm(job.created_at ?? partial.date),
-      han_giao: job.han_giao != null && job.han_giao !== '' ? job.han_giao : null,
+      han_giao:
+        job.han_giao != null && job.han_giao !== '' ? job.han_giao : null,
       hinh_thuc_giao: job.hinh_thuc_giao || null,
       xu_ly_be_mat: job.xu_ly_be_mat ?? null,
       vat_lieu_chung_nhan: job.vat_lieu_chung_nhan ?? null,
@@ -109,10 +113,14 @@ export class DemoV3Service implements OnDestroy {
 
     try {
       const response = await firstValueFrom(
-        this.http.post<{ results: Drawing[] }>(`${this.path}/drawings/batch`, form, {
-          headers: new HttpHeaders({}),
-          observe: 'response',
-        })
+        this.http.post<{ results: Drawing[] }>(
+          `${this.path}/drawings/batch`,
+          form,
+          {
+            headers: new HttpHeaders({}),
+            observe: 'response',
+          }
+        )
       );
 
       const results = response.body?.results || [];
@@ -120,7 +128,7 @@ export class DemoV3Service implements OnDestroy {
         const r = results[i];
         onLine(drawingToLine(r, i));
         onProgress(Math.round(20 + ((i + 1) / results.length) * 75));
-        await new Promise(resolve => setTimeout(resolve, 60));
+        await new Promise((resolve) => setTimeout(resolve, 60));
       }
       onProgress(100);
     } catch (err) {
@@ -141,7 +149,10 @@ export class DemoV3Service implements OnDestroy {
           `${this.path}/jobs/${jobId}/attachment-preview`,
           { f: fileName },
           {
-            headers: new HttpHeaders({ 'Content-Type': 'application/json', Accept: 'application/json' }),
+            headers: new HttpHeaders({
+              'Content-Type': 'application/json',
+              Accept: 'application/json',
+            }),
             observe: 'response',
           }
         )
@@ -217,10 +228,14 @@ export class DemoV3Service implements OnDestroy {
 
   async pushToErp(jobId: number | string): Promise<void> {
     await firstValueFrom(
-      this.http.post(`${this.path}/jobs/${jobId}/push-erp`, {}, {
-        headers: this.jsonHeaders(),
-        observe: 'response',
-      })
+      this.http.post(
+        `${this.path}/jobs/${jobId}/push-erp`,
+        {},
+        {
+          headers: this.jsonHeaders(),
+          observe: 'response',
+        }
+      )
     );
   }
 

@@ -42,8 +42,7 @@ export const aiCfg = {
   anthropicModel: process.env.ANTHROPIC_MODEL || "claude-sonnet-4-6",
   geminiKey: process.env.GEMINI_API_KEY || "",
   geminiModel: process.env.GEMINI_MODEL || "gemini-3.1-pro-preview",
-  geminiFlashModel:
-    process.env.GEMINI_FLASH_MODEL || "gemini-3-flash-preview",
+  geminiFlashModel: process.env.GEMINI_FLASH_MODEL || "gemini-3-flash-preview",
 };
 
 // ─── DATABASE CONFIG ────────────────────────────────────────────────────────
