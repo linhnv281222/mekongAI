@@ -112,6 +112,7 @@ export async function saveJob(jobData) {
         drawing_ai_payload=EXCLUDED.drawing_ai_payload,
         ghi_chu=EXCLUDED.ghi_chu,
         updated_at=NOW()
+      WHERE agent_jobs.status NOT IN ('pending_review', 'pushed')
     `,
       [
         job.gmail_id || job.gmailId || null,
@@ -122,7 +123,7 @@ export async function saveJob(jobData) {
         job.classify || null,
         job.ngon_ngu || job.ngonNgu || null,
         job.status || "new",
-        Array.isArray(job.drawings) ? job.drawings.length : (job.lines_count || 0),
+        parseInt(Array.isArray(job.drawings) ? job.drawings.length : (job.lines_count || 0), 10),
         job.error || null,
         JSON.stringify(job.raw || {}),
         JSON.stringify({}),
@@ -150,6 +151,7 @@ export async function saveJob(jobData) {
  * Cap nhat job theo DB id hoac gmail_id (chi ghi vao DB).
  * Goi kieu 1: updateJob(jobDbId, { status: "pushed", ... })
  * Goi kieu 2: updateJob({ gmail_id: "xxx", status: "pending_review", ... })
+ * Tra ve true neu update thanh cong, false neu bi skip (job da final).
  */
 export async function updateJob(idOrFields, fields) {
   let jobDbId;
@@ -163,23 +165,32 @@ export async function updateJob(idOrFields, fields) {
     updates = idOrFields;
   }
 
-  if (!pool) return;
+  if (!pool) return true;
 
   try {
     if (jobDbId && !Number.isNaN(jobDbId)) {
-      await pool.query(
-        `UPDATE mekongai.agent_jobs SET ${Object.keys(updates).map((k, i) => `${k}=$${i + 2}`).join(",")}, updated_at=NOW() WHERE id=$${Object.keys(updates).length + 1}`,
+      const result = await pool.query(
+        `UPDATE mekongai.agent_jobs
+         SET ${Object.keys(updates).map((k, i) => `${k}=$${i + 2}`).join(",")}, updated_at=NOW()
+         WHERE id=$${Object.keys(updates).length + 1}
+           AND status NOT IN ('pending_review', 'pushed')`,
         [...Object.values(updates), jobDbId]
       );
+      return (result.rowCount ?? 0) > 0;
     } else if (updates.gmail_id) {
-      await pool.query(
-        `UPDATE mekongai.agent_jobs SET ${Object.keys(updates).map((k, i) => `${k}=$${i + 2}`).join(",")}, updated_at=NOW() WHERE gmail_id=$${Object.keys(updates).length + 1}`,
+      const result = await pool.query(
+        `UPDATE mekongai.agent_jobs
+         SET ${Object.keys(updates).map((k, i) => `${k}=$${i + 2}`).join(",")}, updated_at=NOW()
+         WHERE gmail_id=$${Object.keys(updates).length + 1}
+           AND status NOT IN ('pending_review', 'pushed')`,
         [...Object.values(updates), updates.gmail_id]
       );
+      return (result.rowCount ?? 0) > 0;
     }
   } catch (e) {
     console.error("[JobDB] updateJob error:", e.message);
   }
+  return false;
 }
 
 /**
@@ -237,13 +248,18 @@ export async function getJobsAsync() {
 
 /**
  * Check email da duoc xu ly chua (chi kiem tra DB).
+ * Tra ve true chi khi job da xu ly xong (pending_review hoac pushed).
  */
 export async function isJobProcessed(gmailId) {
   if (!pool || !gmailId) return false;
   try {
-    const r = await pool.query("SELECT id FROM mekongai.agent_jobs WHERE gmail_id=$1", [
-      gmailId,
-    ]);
+    const r = await pool.query(
+      `SELECT id FROM mekongai.agent_jobs
+       WHERE gmail_id = $1
+         AND status IN ('pending_review', 'pushed')
+       LIMIT 1`,
+      [gmailId]
+    );
     return r.rows.length > 0;
   } catch (e) {
     console.error("[JobDB] isJobProcessed error:", e.message);
