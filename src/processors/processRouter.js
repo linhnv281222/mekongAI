@@ -368,63 +368,62 @@ export function chonQuyTrinh(
 export function enrichWithF7F8(aiData) {
   if (!aiData) return aiData;
 
-  const d = aiData;
-  const kt = d.kich_thuoc_bao || {};
-  const vl = d.vat_lieu || {};
-  const hd = d.hinh_dang || {};
+  const dims = aiData.kich_thuoc_bao || {};
+  const material = aiData.vat_lieu || {};
+  const shape = aiData.hinh_dang || {};
 
   // ── F7: Khoi luong ──
-  const kl = tinhKhoiLuong(
-    hd.kieu_phoi || hd.loai,
+  const khoiLuong = tinhKhoiLuong(
+    shape.kieu_phoi || shape.loai,
     {
-      dai: kt.dai,
-      rong: kt.rong,
-      cao_hoac_duong_kinh: kt.cao_hoac_duong_kinh,
-      phi_lon: kt.phi_lon,
-      phi_nho: kt.phi_nho,
+      dai: dims.dai,
+      rong: dims.rong,
+      cao_hoac_duong_kinh: dims.cao_hoac_duong_kinh,
+      phi_lon: dims.phi_lon,
+      phi_nho: dims.phi_nho,
     },
-    vl.ma
+    material.ma
   );
-  d.khoi_luong = kl;
+  aiData.khoi_luong = khoiLuong;
 
   // ── F8: Ma quy trinh ──
   const kichThuocMax = (() => {
-    const c = kt.don_vi === "inch" ? 25.4 : 1;
-    const vals = [kt.dai, kt.rong, kt.cao_hoac_duong_kinh, kt.phi_lon]
+    const inchFactor = dims.don_vi === "inch" ? 25.4 : 1;
+    const vals = [dims.dai, dims.rong, dims.cao_hoac_duong_kinh, dims.phi_lon]
       .filter(Boolean)
-      .map((v) => v * c);
+      .map((v) => v * inchFactor);
     return vals.length ? Math.max(...vals) : 0;
   })();
 
   const soMat =
-    (d.nguyen_cong_cnc || []).filter((nc) => {
-      const ten = (nc.ten || "").toLowerCase();
+    (aiData.nguyen_cong_cnc || []).filter((nguyenCong) => {
+      const ten = (nguyenCong.ten || "").toLowerCase();
       return (
         ten.includes("phay") || ten.includes("tiện") || ten.includes("mặt")
       );
     }).length ||
-    Math.ceil((d.nguyen_cong_cnc || []).length / 2) ||
+    Math.ceil((aiData.nguyen_cong_cnc || []).length / 2) ||
     1;
 
-  const soLoRen = (d.be_mat_gia_cong || []).filter((b) => {
-    const l = (b.loai || "").toLowerCase();
-    return l.includes("ren") || l.includes("taro");
+  const soLoRen = (aiData.be_mat_gia_cong || []).filter((beMat) => {
+    const loaiLower = (beMat.loai || "").toLowerCase();
+    return loaiLower.includes("ren") || loaiLower.includes("taro");
   }).length;
 
-  const qt = chonQuyTrinh(
-    hd.kieu_phoi || hd.loai,
-    vl.loai,
+  const quyTrinh = chonQuyTrinh(
+    shape.kieu_phoi || shape.loai,
+    material.loai,
     kichThuocMax,
     soMat,
     soLoRen
   );
-  d.ma_quy_trinh = qt.maQt;
-  d.quy_trinh_chi_tiet = qt;
+  aiData.ma_quy_trinh = quyTrinh.maQt;
+  aiData.quy_trinh_chi_tiet = quyTrinh;
 
   // ── F9: Do phuc tap ──
-  d.phan_tich_do_phuc_tap = phanTichDoPhucTap(d);
+  aiData.phan_tich_do_phuc_tap = phanTichDoPhucTap(aiData);
 
-  return d;
+  return aiData;
 }
 
 // ─── OPERATION INFO (don gia / thoi gian) ─────────────────────────────────
@@ -544,58 +543,58 @@ function lookupBang(bang, giaTri) {
 }
 
 function phanLoaiVL(maVl, loaiVl) {
-  const ma = (maVl || "").toUpperCase();
-  const loai = (loaiVl || "").toLowerCase();
+  const maVlUpper = (maVl || "").toUpperCase();
+  const loaiLower = (loaiVl || "").toLowerCase();
 
   if (
-    ["POM", "MIKA", "TEFLON"].some((x) => ma.includes(x)) ||
-    loai.includes("nhựa")
+    ["POM", "MIKA", "TEFLON"].some((x) => maVlUpper.includes(x)) ||
+    loaiLower.includes("nhựa")
   )
     return HE_SO_VL["Nhua"];
   if (
-    ["C1100", "C3604", "C3609"].some((x) => ma.includes(x)) ||
-    loai.includes("đồng")
+    ["C1100", "C3604", "C3609"].some((x) => maVlUpper.includes(x)) ||
+    loaiLower.includes("đồng")
   )
     return HE_SO_VL["Dong"];
   if (
     ["A5052", "A5056", "A5083", "A6060", "A6061", "A6063", "A6082"].some((x) =>
-      ma.includes(x)
+      maVlUpper.includes(x)
     )
   )
     return HE_SO_VL["Nhom"];
-  if (["A7075", "A2017", "A2024"].some((x) => ma.includes(x)))
+  if (["A7075", "A2017", "A2024"].some((x) => maVlUpper.includes(x)))
     return { loai: "Nhom HK", heSo: 1.0 };
-  if (["SUS316", "SUS316L", "SUS440"].some((x) => ma.includes(x)))
+  if (["SUS316", "SUS316L", "SUS440"].some((x) => maVlUpper.includes(x)))
     return HE_SO_VL["Inox DB"];
-  if (["SUS", "INOX"].some((x) => ma.includes(x)) || loai.includes("inox"))
+  if (["SUS", "INOX"].some((x) => maVlUpper.includes(x)) || loaiLower.includes("inox"))
     return HE_SO_VL["Inox"];
-  if (["SKD", "SKS", "SCM", "SK2", "SK3", "NAK"].some((x) => ma.includes(x)))
+  if (["SKD", "SKS", "SCM", "SK2", "SK3", "NAK"].some((x) => maVlUpper.includes(x)))
     return HE_SO_VL["Thep HK"];
-  if (["S45C", "S50C", "S55C"].some((x) => ma.includes(x)))
+  if (["S45C", "S50C", "S55C"].some((x) => maVlUpper.includes(x)))
     return HE_SO_VL["Thep Carbon"];
   return HE_SO_VL["Thep Thuong"];
 }
 
 function phanLoaiDungSai(beMatGiaCong) {
-  const bm = beMatGiaCong || [];
+  const beMat = beMatGiaCong || [];
   let cap = 5;
 
-  for (const b of bm) {
-    const ds = (b.dung_sai || "").toLowerCase();
-    const loai = (b.loai || "").toLowerCase();
-    const qc = (b.quy_cach || "").toLowerCase();
+  for (const beMatItem of beMat) {
+    const dungSaiLower = (beMatItem.dung_sai || "").toLowerCase();
+    const loaiLower = (beMatItem.loai || "").toLowerCase();
+    const quyCachLower = (beMatItem.quy_cach || "").toLowerCase();
 
-    if (/h[45]|js[45]|g6/.test(ds) || /h[45]|js[45]/.test(qc)) {
+    if (/h[45]|js[45]|g6/.test(dungSaiLower) || /h[45]|js[45]/.test(quyCachLower)) {
       cap = Math.min(cap, 1);
     } else if (
-      /h7|k6|n6|m6/.test(ds) ||
-      /h7/.test(qc) ||
-      loai.includes("lắp ghép")
+      /h7|k6|n6|m6/.test(dungSaiLower) ||
+      /h7/.test(quyCachLower) ||
+      loaiLower.includes("lắp ghép")
     ) {
       cap = Math.min(cap, 2);
-    } else if (/[±0][.,]0[1-2]/.test(ds)) {
+    } else if (/[±0][.,]0[1-2]/.test(dungSaiLower)) {
       cap = Math.min(cap, 3);
-    } else if (/[±0][.,]0[3-5]/.test(ds)) {
+    } else if (/[±0][.,]0[3-5]/.test(dungSaiLower)) {
       cap = Math.min(cap, 4);
     }
   }
@@ -605,25 +604,25 @@ function phanLoaiDungSai(beMatGiaCong) {
 }
 
 function phanLoaiDoKho(hinhDang, nguyenCongCnc, beMatGiaCong) {
-  const hd = (hinhDang?.loai || hinhDang?.kieu_phoi || "").toLowerCase();
-  const bm = beMatGiaCong || [];
-  const nc = nguyenCongCnc || [];
+  const shapeLower = (hinhDang?.loai || hinhDang?.kieu_phoi || "").toLowerCase();
+  const beMat = beMatGiaCong || [];
+  const nguyenCong = nguyenCongCnc || [];
 
-  const coH7 = bm.some((b) =>
+  const coH7 = beMat.some((b) =>
     /h7|h6|lắp ghép/.test(
       (b.dung_sai || b.loai || b.quy_cach || "").toLowerCase()
     )
   );
-  const coPocket = bm.some((b) =>
+  const coPocket = beMat.some((b) =>
     /pocket|rãnh|groove|slot|profile/.test(
       (b.loai || b.quy_cach || b.ghi_chu || "").toLowerCase()
     )
   );
   const soMat =
-    nc.filter((n) => (n.ten || "").toLowerCase().includes("mặt")).length ||
-    Math.ceil(nc.length / 2);
-  const laTron = /tròn|xoay|ống/.test(hd);
-  const laHonHop = /hỗn hợp/.test(hd);
+    nguyenCong.filter((nc) => (nc.ten || "").toLowerCase().includes("mặt")).length ||
+    Math.ceil(nguyenCong.length / 2);
+  const laTron = /tròn|xoay|ống/.test(shapeLower);
+  const laHonHop = /hỗn hợp/.test(shapeLower);
 
   let diem = 0;
   if (laTron && !coH7 && !coPocket) diem = 0;
@@ -673,42 +672,42 @@ function phatHienNCDacBiet(nguyenCongCnc, beMatGiaCong) {
 export function phanTichDoPhucTap(aiData) {
   if (!aiData) return null;
 
-  const kt = aiData.kich_thuoc_bao || {};
-  const vl = aiData.vat_lieu || {};
-  const kl = aiData.khoi_luong || {};
-  const hd = aiData.hinh_dang || {};
-  const nc = aiData.nguyen_cong_cnc || [];
-  const bm = aiData.be_mat_gia_cong || [];
-  const sl = aiData.san_xuat?.so_luong || 1;
+  const dims = aiData.kich_thuoc_bao || {};
+  const material = aiData.vat_lieu || {};
+  const khoiLuong = aiData.khoi_luong || {};
+  const shape = aiData.hinh_dang || {};
+  const nguyenCong = aiData.nguyen_cong_cnc || [];
+  const beMat = aiData.be_mat_gia_cong || [];
+  const soLuong = aiData.san_xuat?.so_luong || 1;
 
-  const c = kt.don_vi === "inch" ? 25.4 : 1;
+  const inchFactor = dims.don_vi === "inch" ? 25.4 : 1;
   const ktMax = Math.max(
-    (kt.dai || 0) * c,
-    (kt.rong || 0) * c,
-    (kt.cao_hoac_duong_kinh || 0) * c,
-    (kt.phi_lon || 0) * c
+    (dims.dai || 0) * inchFactor,
+    (dims.rong || 0) * inchFactor,
+    (dims.cao_hoac_duong_kinh || 0) * inchFactor,
+    (dims.phi_lon || 0) * inchFactor
   );
 
   const rKt = lookupBang(BANG_KICH_THUOC, ktMax);
-  const rKl = lookupBang(BANG_KHOI_LUONG, kl.klPhoiKg || 0);
-  const rVl = phanLoaiVL(vl.ma, vl.loai);
-  const rDs = phanLoaiDungSai(bm);
-  const rHd = phanLoaiDoKho(hd, nc, bm);
-  const rSl = lookupBang(BANG_SO_LUONG, sl);
+  const rKl = lookupBang(BANG_KHOI_LUONG, khoiLuong.klPhoiKg || 0);
+  const rVl = phanLoaiVL(material.ma, material.loai);
+  const rDs = phanLoaiDungSai(beMat);
+  const rHd = phanLoaiDoKho(shape, nguyenCong, beMat);
+  const rSl = lookupBang(BANG_SO_LUONG, soLuong);
 
-  const coHan = nc.some((n) =>
-    /hàn|weld|ha-/.test((n.ten || "").toLowerCase())
+  const coHan = nguyenCong.some((nc) =>
+    /hàn|weld|ha-/.test((nc.ten || "").toLowerCase())
   );
   const rHan = coHan ? BANG_HAN["DON GIAN"] : BANG_HAN["KO"];
 
-  const ncDacBiet = phatHienNCDacBiet(nc, bm);
+  const ncDacBiet = phatHienNCDacBiet(nguyenCong, beMat);
 
   const heSoTong =
     rKt.heSo * rKl.heSo * rVl.heSo * rDs.heSo * rHd.heSo * rHan.heSo;
 
   return {
     kich_thuoc: { giaTri: Math.round(ktMax), loai: rKt.loai, heSo: rKt.heSo },
-    khoi_luong: { giaTri: kl.klPhoiKg, loai: rKl.loai, heSo: rKl.heSo },
+    khoi_luong: { giaTri: khoiLuong.klPhoiKg, loai: rKl.loai, heSo: rKl.heSo },
     loai_vat_lieu: { loai: rVl.loai, heSo: rVl.heSo },
     nguyen_cong_han: { loai: rHan.loai, heSo: rHan.heSo },
     do_kho_dung_sai: { cap: rDs.tenCap, heSo: rDs.heSo },
@@ -718,7 +717,7 @@ export function phanTichDoPhucTap(aiData) {
       tgSentup: rHd.tgSentup,
       heSo: rHd.heSo,
     },
-    so_luong: { giaTri: sl, loai: rSl.loai, heSo: rSl.heSo },
+    so_luong: { giaTri: soLuong, loai: rSl.loai, heSo: rSl.heSo },
     nc_dac_biet: ncDacBiet,
     he_so_phuc_tap: Math.round(heSoTong * 100) / 100,
   };

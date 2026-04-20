@@ -273,13 +273,13 @@ const DELETE_ERR_VI = {
 
 // DELETE /admin/prompts/:key/versions/:v
 router.delete("/:key/versions/:v", async (req, res) => {
-  const v = parseInt(req.params.v, 10);
-  if (Number.isNaN(v) || v < 1) {
+  const versionNum = parseInt(req.params.v, 10);
+  if (Number.isNaN(versionNum) || versionNum < 1) {
     return res.status(400).json({ error: DELETE_ERR_VI.bad_version });
   }
 
   try {
-    const result = await deletePromptVersion(req.params.key, v);
+    const result = await deletePromptVersion(req.params.key, versionNum);
     if (result.ok) {
       return res.json({ success: true });
     }
@@ -428,11 +428,11 @@ router.post("/debug", async (req, res) => {
         body = "";
       let section = "body";
       for (const line of lines) {
-        const lc = line.toLowerCase();
-        if (lc.startsWith("from:")) {
+        const lineLower = line.toLowerCase();
+        if (lineLower.startsWith("from:")) {
           from = line.slice(5).trim();
           section = "from";
-        } else if (lc.startsWith("subject:")) {
+        } else if (lineLower.startsWith("subject:")) {
           subject = line.slice(8).trim();
           section = "subject";
         } else if (lc.startsWith("body:")) {

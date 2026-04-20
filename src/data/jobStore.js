@@ -91,7 +91,7 @@ export async function saveJob(jobData) {
 
   // DB if available
   if (pool) {
-    const j = jobData;
+    const job = jobData;
     try {
       await pool.query(
         `
@@ -128,29 +128,29 @@ export async function saveJob(jobData) {
           updated_at=NOW()
       `,
         [
-          j.gmail_id || j.gmailId || null,
-          j.subject || null,
-          j.sender_email || j.senderEmail || null,
-          j.sender_name || j.senderName || null,
-          j.sender_company || j.senderCompany || null,
-          j.classify || null,
-          j.ngon_ngu || j.ngonNgu || null,
-          j.status || "new",
-          Array.isArray(j.drawings) ? j.drawings.length : (j.lines_count || 0),
-          j.error || null,
-          JSON.stringify(j.raw || {}),
+          job.gmail_id || job.gmailId || null,
+          job.subject || null,
+          job.sender_email || job.senderEmail || null,
+          job.sender_name || job.senderName || null,
+          job.sender_company || job.senderCompany || null,
+          job.classify || null,
+          job.ngon_ngu || job.ngonNgu || null,
+          job.status || "new",
+          Array.isArray(job.drawings) ? job.drawings.length : (job.lines_count || 0),
+          job.error || null,
+          JSON.stringify(job.raw || {}),
           JSON.stringify({}),
-          j.attachments ? JSON.stringify(j.attachments) : "[]",
-          j.ten_cong_ty || null,
-          j.han_giao || j.han_giao_hang || null,
-          j.hinh_thuc_giao || null,
-          j.xu_ly_be_mat ?? null,
-          j.vat_lieu_chung_nhan || null,
-          j.drawings ? JSON.stringify(j.drawings) : "[]",
-          j.classify_output ? JSON.stringify(j.classify_output) : null,
-          j.classify_ai_payload ? JSON.stringify(j.classify_ai_payload) : null,
-          j.drawing_ai_payload ? JSON.stringify(j.drawing_ai_payload) : null,
-          j.ghi_chu || null,
+          job.attachments ? JSON.stringify(job.attachments) : "[]",
+          job.ten_cong_ty || null,
+          job.han_giao || job.han_giao_hang || null,
+          job.hinh_thuc_giao || null,
+          job.xu_ly_be_mat ?? null,
+          job.vat_lieu_chung_nhan || null,
+          job.drawings ? JSON.stringify(job.drawings) : "[]",
+          job.classify_output ? JSON.stringify(job.classify_output) : null,
+          job.classify_ai_payload ? JSON.stringify(job.classify_ai_payload) : null,
+          job.drawing_ai_payload ? JSON.stringify(job.drawing_ai_payload) : null,
+          job.ghi_chu || null,
         ]
       );
     } catch (e) {
@@ -181,10 +181,10 @@ export function getJob(id) {
 export async function getJobsFromDb() {
   if (!pool) return [];
   try {
-    const r = await pool.query(
+    const result = await pool.query(
       "SELECT * FROM mekongai.agent_jobs ORDER BY created_at DESC"
     );
-    return r.rows.map(normalizeDbRow);
+    return result.rows.map(normalizeDbRow);
   } catch (e) {
     console.error("[JobDB] getJobsFromDb error:", e.message);
     return [];
@@ -198,7 +198,7 @@ export async function getJobFromDb(id) {
   if (!pool) return null;
   try {
     const isNum = String(id).match(/^\d+$/);
-    const r = isNum
+    const result = isNum
       ? await pool.query(
           "SELECT * FROM mekongai.agent_jobs WHERE id=$1 LIMIT 1",
           [id]
@@ -207,7 +207,7 @@ export async function getJobFromDb(id) {
           "SELECT * FROM mekongai.agent_jobs WHERE gmail_id=$1 LIMIT 1",
           [String(id)]
         );
-    return r.rows[0] ? normalizeDbRow(r.rows[0]) : null;
+    return result.rows[0] ? normalizeDbRow(result.rows[0]) : null;
   } catch (e) {
     console.error("[JobDB] getJobFromDb error:", e.message);
     return null;
@@ -245,8 +245,8 @@ export async function getJobsAsync() {
     const score = (x) => {
       const pages = Array.isArray(x.drawings) ? x.drawings.length : 0;
       const raw = x.created_at;
-      const t = typeof raw === "number" ? raw : raw ? new Date(raw).getTime() : 0;
-      return pages * 1e15 + (Number.isNaN(t) ? 0 : t);
+      const timestampMs = typeof raw === "number" ? raw : raw ? new Date(raw).getTime() : 0;
+      return pages * 1e15 + (Number.isNaN(timestampMs) ? 0 : timestampMs);
     };
     if (score(j) >= score(prev)) seen.set(key, j);
   }
