@@ -73,9 +73,9 @@ function lyGiaiFromLegacy(d) {
 }
 
 function xuLyBeMatFromLegacy(d) {
-  const xu = d.xu_ly;
-  if (xu && Array.isArray(xu.be_mat) && xu.be_mat.length) {
-    return xu.be_mat
+  const xuLy = d.xu_ly;
+  if (xuLy && Array.isArray(xuLy.be_mat) && xuLy.be_mat.length) {
+    return xuLy.be_mat
       .map((b) => (b && typeof b === "object" ? b.ten || b.tieu_chuan : b))
       .filter(Boolean)
       .join("; ");

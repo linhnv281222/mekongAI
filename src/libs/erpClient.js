@@ -166,9 +166,9 @@ export async function pushAllLinesToERP(quoteCode, drawingResults) {
  * Queue 1 dong (giu lai cho tuong thich).
  */
 export async function addQuoteLine(quoteId, stt, drawingResult) {
-  const d = drawingResult.data;
+  const drawingData = drawingResult.data;
   console.log(
-    `[ERP] Queue dong ${stt}: ${d?.ban_ve?.ma_ban_ve} — ${d?.vat_lieu?.ma} — ${d?.khoi_luong?.klPhoiKg}kg`
+    `[ERP] Queue dong ${stt}: ${drawingData?.ban_ve?.ma_ban_ve} — ${drawingData?.vat_lieu?.ma} — ${drawingData?.khoi_luong?.klPhoiKg}kg`
   );
   return { queued: true };
 }

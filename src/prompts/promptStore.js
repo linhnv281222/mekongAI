@@ -380,10 +380,10 @@ function parseVntKnowledgeRows(text) {
       const arrowIdx = entry.indexOf("→");
       if (arrowIdx === -1) continue;
       const fromPart = entry.slice(0, arrowIdx).trim();
-      const to = entry.slice(arrowIdx + 1).trim();
+      const templateValue = entry.slice(arrowIdx + 1).trim();
       const froms = fromPart.split("/").map((s) => s.trim());
       for (const from of froms) {
-        rows.push({ group: "Bảng vật liệu", from, to, note: "" });
+        rows.push({ group: "Bảng vật liệu", from, to: templateValue, note: "" });
       }
     }
   }

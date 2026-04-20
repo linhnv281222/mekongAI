@@ -18,8 +18,8 @@ function loadAiConfig() {
           ? raw.provider.trim().toLowerCase()
           : "";
       if (!provider && raw?.model != null && String(raw.model).trim() !== "") {
-        const m = String(raw.model).trim().toLowerCase();
-        provider = m.startsWith("gemini") ? "gemini" : "claude";
+        const model = String(raw.model).trim().toLowerCase();
+        provider = model.startsWith("gemini") ? "gemini" : "claude";
       }
       if (provider !== "claude" && provider !== "gemini") {
         provider = "claude";

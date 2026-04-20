@@ -77,10 +77,10 @@ async function _analyzeDrawingCore(pdfBuffer, resolvedSystem, pdfBasename) {
     .replace(/^```json\s*/m, "")
     .replace(/```\s*$/m, "")
     .trim();
-  const u = response.usage;
+  const usage = response.usage;
 
   console.log(
-    `  tokens — input: ${u.input_tokens} | output: ${u.output_tokens}`
+    `  tokens — input: ${usage.input_tokens} | output: ${usage.output_tokens}`
   );
 
   try {

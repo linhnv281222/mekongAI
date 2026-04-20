@@ -432,8 +432,8 @@ function LTag({ lg }) {
     vi: ["🇻🇳 Việt", "t-vi"],
     en: ["🇺🇸 Anh", "t-en"],
   };
-  const [l, c] = m[lg] || ["?", "t-skip"];
-  return <span className={`tag ${c}`}>{l}</span>;
+  const [label, cssClass] = m[lg] || ["?", "t-skip"];
+  return <span className={`tag ${cssClass}`}>{label}</span>;
 }
 
 function GuidePanel({ inboxEmail }) {
