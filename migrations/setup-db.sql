@@ -149,3 +149,25 @@ COMMIT;
 --
 -- INSERT INTO mekongai.schema_migrations (name) VALUES ('seed-knowledge') ON CONFLICT DO NOTHING;
 -- ============================================================
+-- ============================================================
+-- 6b. Add missing columns to agent_jobs (chay sau khi da tao table)
+-- ============================================================
+
+ALTER TABLE mekongai.agent_jobs
+  ADD COLUMN IF NOT EXISTS attachments    JSONB DEFAULT '[]',
+  ADD COLUMN IF NOT EXISTS ten_cong_ty     TEXT,
+  ADD COLUMN IF NOT EXISTS han_giao       TEXT,
+  ADD COLUMN IF NOT EXISTS hinh_thuc_giao TEXT,
+  ADD COLUMN IF NOT EXISTS xu_ly_be_mat   BOOLEAN,
+  ADD COLUMN IF NOT EXISTS vat_lieu_chung_nhan TEXT,
+  ADD COLUMN IF NOT EXISTS drawings        JSONB DEFAULT '[]',
+  ADD COLUMN IF NOT EXISTS classify_output JSONB,
+  ADD COLUMN IF NOT EXISTS classify_ai_payload JSONB,
+  ADD COLUMN IF NOT EXISTS drawing_ai_payload JSONB,
+  ADD COLUMN IF NOT EXISTS ghi_chu        TEXT,
+  ADD COLUMN IF NOT EXISTS pushed_at      TIMESTAMPTZ;
+
+-- Chi so cho query thuong
+CREATE INDEX IF NOT EXISTS idx_agent_jobs_status ON mekongai.agent_jobs(status);
+CREATE INDEX IF NOT EXISTS idx_agent_jobs_created ON mekongai.agent_jobs(created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_agent_jobs_gmail ON mekongai.agent_jobs(gmail_id) WHERE gmail_id IS NOT NULL;

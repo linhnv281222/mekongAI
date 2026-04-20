@@ -6,7 +6,7 @@ import path from "path";
 import cors from "cors";
 import { fileURLToPath } from "url";
 import { initDB } from "../data/drawRepository.js";
-import { getJob, initJobDB } from "../data/jobStore.js";
+import { getJobAsync, initJobDB } from "../data/jobStore.js";
 import { serverCfg } from "../libs/config.js";
 import { seedDefaults } from "../prompts/promptStore.js";
 import drawController from "./drawController.js";
@@ -105,13 +105,13 @@ app.get("/api/email-classify-ui-schema", (req, res) => {
  * Debug xem trước đính kèm — không trả nội dung file, chỉ JSON để dán cho support.
  * Ví dụ: /api/debug/attachment?jobId=job_xxx&f=715-C07418-002%20(Rev%20A).pdf
  */
-app.get("/api/debug/attachment", (req, res) => {
+app.get("/api/debug/attachment", async (req, res) => {
   const jobIdRaw = req.query.jobId ?? req.query.job;
   let f = req.query.f;
   if (Array.isArray(f)) f = f[0];
   const jobId =
     jobIdRaw != null && String(jobIdRaw).trim() ? String(jobIdRaw).trim() : "";
-  const job = jobId ? getJob(jobId) : null;
+  const job = jobId ? await getJobAsync(jobId) : null;
   const names = Array.isArray(job?.attachments)
     ? job.attachments
         .map((a) => (typeof a === "string" ? a : a?.name))

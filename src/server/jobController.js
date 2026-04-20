@@ -2,7 +2,7 @@ import express from "express";
 import fs from "fs";
 import path from "path";
 import { fileURLToPath } from "url";
-import { getJob, getJobs, updateJob } from "../data/jobStore.js";
+import { getJob, getJobs, getJobAsync, getJobsAsync, updateJob } from "../data/jobStore.js";
 import {
   downloadAttachment,
   makeGmail,
@@ -61,7 +61,7 @@ async function loadAttachmentPdfBuffer(jobId, filename, res) {
     };
   }
 
-  const job = getJob(jobId);
+  const job = await getJobAsync(jobId);
   if (!job)
     return { ok: false, status: 404, body: { error: "Khong tim thay job" } };
 
@@ -223,8 +223,8 @@ function dedupeJobsByGmail(rows) {
 
 // ─── GET /jobs ──────────────────────────────────────────────────────────────
 
-router.get("/", (req, res) => {
-  const merged = dedupeJobsByGmail(getJobs());
+router.get("/", async (req, res) => {
+  const merged = await getJobsAsync();
   const jobs = merged.map((j) => {
     const pageCount = j.drawings?.length || 0;
     const fileCount = Array.isArray(j.attachments) ? j.attachments.length : 0;
@@ -271,16 +271,16 @@ router.get("/:id/attachment/*", attachmentPreviewHandler);
 
 // ─── GET /jobs/:id ─────────────────────────────────────────────────────────
 
-router.get("/:id", (req, res) => {
-  const job = getJob(req.params.id);
+router.get("/:id", async (req, res) => {
+  const job = await getJobAsync(req.params.id);
   if (!job) return res.status(404).json({ error: "Khong tim thay" });
   res.json(job);
 });
 
 // ─── POST /jobs/:id/push-erp ────────────────────────────────────────────────
 
-router.post("/:id/push-erp", (req, res) => {
-  const job = getJob(req.params.id);
+router.post("/:id/push-erp", async (req, res) => {
+  const job = await getJobAsync(req.params.id);
   if (!job) return res.status(404).json({ error: "Khong tim thay" });
 
   updateJob(job.id, { status: "pushed", pushed_at: Date.now() });
