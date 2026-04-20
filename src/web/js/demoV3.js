@@ -32,7 +32,7 @@ function logMekongJobAiResponses(job, source) {
   }
   const drawings = job.drawings;
   if (!Array.isArray(drawings) || drawings.length === 0) {
-    console.log(`[mekongAI] drawings (${source}) job=${id}: (không có)`);
+    
     return;
   }
   drawings.forEach((dr, i) => {

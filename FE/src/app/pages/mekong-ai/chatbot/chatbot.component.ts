@@ -21,8 +21,7 @@ interface ChatMessage {
 const INITIAL_BOT_MESSAGE: ChatMessage = {
   id: 0,
   role: 'bot',
-  text:
-    'Xin chào! Mekong AI Bot đây.\n\nTôi có thể:\n- Phân tích báo giá: dán nội dung email hoặc đính kèm file PDF bản vẽ.\n- Trả lời các câu hỏi về hệ thống.\n\nGửi tin nhắn để bắt đầu nhé!',
+  text: 'Xin chào! Mekong AI Bot đây.\n\nTôi có thể:\n- Phân tích báo giá: dán nội dung email hoặc đính kèm file PDF bản vẽ.\n- Trả lời các câu hỏi về hệ thống.\n\nGửi tin nhắn để bắt đầu nhé!',
   time: new Date(),
   files: [],
 };
@@ -40,7 +39,9 @@ export class ChatbotComponent implements OnInit, OnDestroy {
 
   panelOpen = false;
   hasNew = false;
-  messages: ChatMessage[] = [{ ...INITIAL_BOT_MESSAGE, time: new Date(), id: 0 }];
+  messages: ChatMessage[] = [
+    { ...INITIAL_BOT_MESSAGE, time: new Date(), id: 0 },
+  ];
   input = '';
   files: File[] = [];
   sending = false;
@@ -89,10 +90,8 @@ export class ChatbotComponent implements OnInit, OnDestroy {
   autoResize(): void {
     if (this.textareaRef?.nativeElement) {
       this.textareaRef.nativeElement.style.height = 'auto';
-      this.textareaRef.nativeElement.style.height = Math.min(
-        this.textareaRef.nativeElement.scrollHeight,
-        100
-      ) + 'px';
+      this.textareaRef.nativeElement.style.height =
+        Math.min(this.textareaRef.nativeElement.scrollHeight, 100) + 'px';
     }
   }
 
@@ -100,7 +99,10 @@ export class ChatbotComponent implements OnInit, OnDestroy {
     if (!d) return '';
     const dt = new Date(d);
     if (isNaN(dt.getTime())) return '';
-    return dt.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' });
+    return dt.toLocaleTimeString('vi-VN', {
+      hour: '2-digit',
+      minute: '2-digit',
+    });
   }
 
   isPdfFile(name: string): boolean {
@@ -263,21 +265,27 @@ export class ChatbotComponent implements OnInit, OnDestroy {
   private startPolling(): void {
     this.pollSub = interval(this.POLL_INTERVAL).subscribe(() => {
       if (this.panelOpen) return;
-      this.http.get<{ data?: Array<{ id?: string; created_at?: number }> }>('/jobs').subscribe({
-        next: (data) => {
-          const jobs = data.data || [];
-          const chatJobs = jobs.filter(
-            (j) => j.id?.startsWith('chat_') && (j.created_at ?? 0) > this.lastSeenJobTime
-          );
-          if (chatJobs.length > 0) {
-            const newest = Math.max(...chatJobs.map((j) => j.created_at || 0));
-            this.lastSeenJobTime = Math.max(this.lastSeenJobTime, newest);
-            this.hasNew = true;
-            this.cdr.markForCheck();
-          }
-        },
-        error: () => {},
-      });
+      this.http
+        .get<{ data?: Array<{ id?: string; created_at?: number }> }>('/jobs')
+        .subscribe({
+          next: (data) => {
+            const jobs = data.data || [];
+            const chatJobs = jobs.filter(
+              (j) =>
+                j.id?.startsWith('chat_') &&
+                (j.created_at ?? 0) > this.lastSeenJobTime
+            );
+            if (chatJobs.length > 0) {
+              const newest = Math.max(
+                ...chatJobs.map((j) => j.created_at || 0)
+              );
+              this.lastSeenJobTime = Math.max(this.lastSeenJobTime, newest);
+              this.hasNew = true;
+              this.cdr.markForCheck();
+            }
+          },
+          error: () => {},
+        });
     });
   }
 

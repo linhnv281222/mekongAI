@@ -15,7 +15,7 @@ const pool = dbCfg.hasDb ? new pg.Pool({ connectionString: dbCfg.url }) : null;
 
 export async function initJobDB() {
   if (!pool) {
-    console.log("[JobStore] Khong co DATABASE_URL — chi dung agent_jobs.json");
+    
     return;
   }
   await pool.query(`
@@ -38,7 +38,7 @@ export async function initJobDB() {
       updated_at   TIMESTAMPTZ DEFAULT NOW()
     )
   `);
-  console.log("[JobStore] DB ready");
+  
 }
 
 // ─── File-based store (backup / standalone) ─────────────────────────────────

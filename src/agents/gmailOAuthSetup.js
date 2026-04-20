@@ -23,12 +23,13 @@ try {
   process.exit(1);
 }
 if (callbackUrl.protocol !== "http:") {
-  console.error("Script nay chi ho tro http:// (localhost). URI:", REDIRECT_URI);
+  console.error(
+    "Script nay chi ho tro http:// (localhost). URI:",
+    REDIRECT_URI
+  );
   process.exit(1);
 }
-const CALLBACK_PORT = callbackUrl.port
-  ? Number(callbackUrl.port)
-  : 80;
+const CALLBACK_PORT = callbackUrl.port ? Number(callbackUrl.port) : 80;
 const CALLBACK_HOST = callbackUrl.hostname;
 const baseForReq = `http://${CALLBACK_HOST}:${CALLBACK_PORT}`;
 
@@ -48,17 +49,9 @@ const authUrl = oauth2Client.generateAuthUrl({
   ],
 });
 
-console.log("\n=== GMAIL OAUTH SETUP ===\n");
-console.log("Redirect URI (bat buoc them CHINH XAC vao Google Console):");
-console.log("  " + REDIRECT_URI);
 console.log(
   "  APIs & Services -> Credentials -> OAuth client -> Authorized redirect URIs\n"
 );
-console.log("1. Mo link nay trong browser:\n");
-console.log(authUrl);
-console.log("\n2. Dang nhap bang tai khoan Gmail can su dung");
-console.log("3. Cho phep quyen truy cap");
-console.log("4. Se tu dong lay token...\n");
 
 const HDR_HTML_UTF8 = { "Content-Type": "text/html; charset=utf-8" };
 const HDR_TEXT_UTF8 = { "Content-Type": "text/plain; charset=utf-8" };
@@ -102,15 +95,12 @@ const server = http.createServer(async (req, res) => {
     res.writeHead(200, HDR_HTML_UTF8);
     res.end(htmlPage("OAuth — Thành công", body));
 
-    console.log("\n=== THEM VAO .env ===\n");
-    console.log(`GMAIL_REFRESH_TOKEN=${tokens.refresh_token}`);
-    console.log("\n========================\n");
-    console.log("Copy dong tren vao file .env roi chay lai agent.");
-
     server.close();
     process.exit(0);
   } catch (e) {
-    const errBody = `<h2 style="color:#b91c1c">Lỗi</h2><p>${escapeHtml(e.message)}</p>`;
+    const errBody = `<h2 style="color:#b91c1c">Lỗi</h2><p>${escapeHtml(
+      e.message
+    )}</p>`;
     res.writeHead(200, HDR_HTML_UTF8);
     res.end(htmlPage("OAuth — Lỗi", errBody));
     console.error("Loi:", e.message);
@@ -127,6 +117,4 @@ function escapeHtml(s) {
     .replace(/"/g, "&quot;");
 }
 
-server.listen(CALLBACK_PORT, CALLBACK_HOST, () => {
-  console.log(`Dang cho callback tren ${baseForReq}${callbackUrl.pathname} ...\n`);
-});
+server.listen(CALLBACK_PORT, CALLBACK_HOST, () => {});

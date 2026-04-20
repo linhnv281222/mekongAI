@@ -26,7 +26,10 @@ export async function postPdfToDrawingsApi({
       : "drawing.pdf";
   form.append("file", blob, name);
 
-  const url = `${String(baseUrl).replace(/\/$/, "")}/drawings?provider=${encodeURIComponent(provider)}`;
+  const url = `${String(baseUrl).replace(
+    /\/$/,
+    ""
+  )}/drawings?provider=${encodeURIComponent(provider)}`;
   const res = await fetch(url, { method: "POST", body: form });
   const data = await res.json().catch(() => ({}));
   if (!res.ok) throw new Error(data.error || "Lỗi đọc bản vẽ");

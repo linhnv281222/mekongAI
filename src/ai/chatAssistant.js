@@ -43,7 +43,12 @@ export async function chatAssistantReply(userMessage) {
       model: chatModel(),
       contents: [
         { role: "user", parts: [{ text: SYSTEM_VI }] },
-        { role: "model", parts: [{ text: "Tôi đã hiểu. Tôi sẵn sàng trả lời bạn bằng tiếng Việt." }] },
+        {
+          role: "model",
+          parts: [
+            { text: "Tôi đã hiểu. Tôi sẵn sàng trả lời bạn bằng tiếng Việt." },
+          ],
+        },
         { role: "user", parts: [{ text: text.slice(0, 12000) }] },
       ],
     },
@@ -51,7 +56,10 @@ export async function chatAssistantReply(userMessage) {
   );
 
   const raw = response.text ?? "";
-  const cleaned = raw.replace(/^```json\s*/m, "").replace(/```\s*$/m, "").trim();
+  const cleaned = raw
+    .replace(/^```json\s*/m, "")
+    .replace(/```\s*$/m, "")
+    .trim();
 
   if (cleaned) return cleaned;
   return "Không nhận được phản hồi từ Gemini. Thử lại nhé.";
