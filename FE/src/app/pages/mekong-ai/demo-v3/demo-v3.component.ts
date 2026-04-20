@@ -80,6 +80,14 @@ export class DemoV3Component implements OnInit, OnDestroy {
   guideExpanded = sessionStorage.getItem('v3guideExpanded') === '1';
   toastCopy = false;
 
+  // AI Debug - request & response payloads from agent
+  aiDebugInfo: {
+    classifyRequest: object | null;
+    drawingRequest: object | null;
+    classifyResponse: object | null;
+    drawingResponse: object | null;
+  } = { classifyRequest: null, drawingRequest: null, classifyResponse: null, drawingResponse: null };
+
   // ── Lifecycle ─────────────────────────────────────────────
 
   constructor(
@@ -469,6 +477,15 @@ export class DemoV3Component implements OnInit, OnDestroy {
 
   toggleDebug(): void {
     this.debugModalOpen = !this.debugModalOpen;
+    // Load AI debug info from activeEmail
+    if (this.debugModalOpen && this.activeEmail) {
+      this.aiDebugInfo = {
+        classifyRequest: this.activeEmail.classify_ai_payload ?? null,
+        drawingRequest: this.activeEmail.drawing_ai_payload ?? null,
+        classifyResponse: this.activeEmail.classify_output ?? null,
+        drawingResponse: this.activeEmail.drawings ?? null,
+      };
+    }
   }
 
   get debugClassifyRaw(): string {
@@ -482,9 +499,27 @@ export class DemoV3Component implements OnInit, OnDestroy {
   get debugDrawingsRaw(): string {
     if (!this.activeEmail) return '(khong co)';
     const drawings = this.activeEmail.drawings;
-    return drawings != null
-      ? JSON.stringify(drawings, null, 2)
-      : '(khong co drawings)';
+    if (!drawings) return '(khong co drawings)';
+    const filtered = (Array.isArray(drawings) ? drawings : [drawings]).map(({ id, data, filename }) => ({ id, data, filename }));
+    return JSON.stringify(filtered, null, 2);
+  }
+
+  // AI Debug getters - request/response payloads
+  get debugClassifyRequest(): string {
+    const payload = this.aiDebugInfo.classifyRequest;
+    if (!payload) return '(chua co payload)';
+    return JSON.stringify(payload, null, 2);
+  }
+
+  get debugDrawingsRequest(): string {
+    const payloads = this.aiDebugInfo.drawingRequest;
+    if (!payloads) return '(chua co payload)';
+    if (Array.isArray(payloads)) {
+      // Show first drawing payload as example
+      const first = payloads.find(p => p != null);
+      return first ? JSON.stringify(first, null, 2) : '(khong co payload)';
+    }
+    return JSON.stringify(payloads, null, 2);
   }
 
   // ── ERP ──────────────────────────────────────────────────

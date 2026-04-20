@@ -1,50 +1,58 @@
-import fetch from "node-fetch";
+import fs from "fs";
+import path from "path";
+import { fileURLToPath } from "url";
 import { aiCfg } from "../libs/config.js";
-import { getPrompt } from "../prompts/promptStore.js";
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const AI_CONFIG_FILE = path.join(__dirname, "../../data/ai-model-config.json");
+
+/**
+ * Load AI provider config (same logic as drawController).
+ */
+function loadAiConfig() {
+  try {
+    if (fs.existsSync(AI_CONFIG_FILE)) {
+      const raw = JSON.parse(fs.readFileSync(AI_CONFIG_FILE, "utf8"));
+      let provider =
+        typeof raw?.provider === "string"
+          ? raw.provider.trim().toLowerCase()
+          : "";
+      if (!provider && raw?.model != null && String(raw.model).trim() !== "") {
+        const m = String(raw.model).trim().toLowerCase();
+        provider = m.startsWith("gemini") ? "gemini" : "claude";
+      }
+      if (provider !== "claude" && provider !== "gemini") {
+        provider = "claude";
+      }
+      return { provider };
+    }
+  } catch {}
+  return { provider: "claude" };
+}
+
+/**
+ * Export config loader so callers can check provider.
+ */
+export function getAiProvider() {
+  return loadAiConfig().provider;
+}
 
 /**
  * Phan loai email = rfq / repeat_order / hoi_tham / khieu_nai / spam.
+ * Chon provider (gemini/claude) tuong tu nhu drawController.
+ *
  * @param {object} emailData — { from, subject, body, attachments }
- * @returns {object} { loai, ngon_ngu, ly_do, han_giao_hang, hinh_thuc_giao, ... }
+ * @returns {object} { loai, ngon_ngu, ly_do, han_giao_hang, hinh_thuc_giao, ..., _ai_request_payload }
  */
 export async function classifyEmail(emailData) {
-  const promptText = await getPrompt("email-classify", {
-    emailFrom: emailData.from,
-    emailSubject: emailData.subject,
-    emailAttachments: emailData.attachments.map((a) => a.name).join(", ") || "none",
-    emailBody: emailData.body.slice(0, 500),
-  });
+  const { provider } = loadAiConfig();
 
-  try {
-    const res = await fetch("https://api.anthropic.com/v1/messages", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "x-api-key": aiCfg.anthropicKey,
-        "anthropic-version": "2023-06-01",
-      },
-      body: JSON.stringify({
-        model: "claude-haiku-4-5-20251001",
-        max_tokens: 300,
-        messages: [{ role: "user", content: promptText }],
-      }),
-    });
-
-    const data = await res.json();
-    const text = data.content?.[0]?.text || "{}";
-    return JSON.parse(text.replace(/```json|```/g, "").trim());
-  } catch (e) {
-    console.warn("[Classify] fallback:", e.message);
-    return {
-      loai: emailData.attachments.length > 0 ? "rfq" : "hoi_tham",
-      ngon_ngu: "ja",
-      ly_do: "fallback: " + e.message,
-      han_giao_hang: null,
-      hinh_thuc_giao: null,
-      xu_ly_be_mat: null,
-      vat_lieu_chung_nhan: false,
-      ghi_chu: emailData.subject,
-      ten_cong_ty: emailData.senderName,
-    };
+  if (provider === "gemini") {
+    const { classifyEmailGemini } = await import("./emailClassifierGemini.js");
+    return classifyEmailGemini(emailData);
   }
+
+  // Default: Claude Haiku
+  const { classifyEmailClaude } = await import("./emailClassifierClaude.js");
+  return classifyEmailClaude(emailData);
 }

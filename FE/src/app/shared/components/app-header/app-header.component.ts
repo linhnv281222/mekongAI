@@ -16,4 +16,8 @@ export class AppHeaderComponent {
   isActive(path: string): boolean {
     return this.router.url.startsWith(path);
   }
+
+  navigate(path: string): void {
+    this.router.navigate([path]);
+  }
 }

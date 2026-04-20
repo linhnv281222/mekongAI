@@ -229,6 +229,7 @@ router.get("/", (req, res) => {
       subject: j.subject,
       sender: j.sender,
       sender_email: j.sender_email,
+      sender_name: j.sender_name || null,
       classify: j.classify,
       ngon_ngu: j.ngon_ngu,
       classify_output: j.classify_output || null,
@@ -241,6 +242,15 @@ router.get("/", (req, res) => {
       attachments: j.attachments || [],
       status: j.status,
       created_at: j.created_at,
+      ten_cong_ty: j.ten_cong_ty || null,
+      han_giao: j.han_giao || null,
+      hinh_thuc_giao: j.hinh_thuc_giao || null,
+      xu_ly_be_mat: j.xu_ly_be_mat ?? null,
+      vat_lieu_chung_nhan: j.vat_lieu_chung_nhan ?? null,
+      drawings: j.drawings || [],
+      // AI Debug payloads
+      classify_ai_payload: j.classify_ai_payload ?? null,
+      drawing_ai_payload: j.drawing_ai_payload ?? null,
     };
   });
   res.json({ count: jobs.length, data: jobs });

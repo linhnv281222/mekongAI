@@ -22,6 +22,7 @@ const PROJECT_ROOT = path.resolve(__dirname, "../.."); // mekongAI/
 
 const app = express();
 
+// CORS + JSON — ĐẶT TRƯỚC TẤT CẢ ROUTE ĐỂ OPTIONS PREFLIGHT KHÔNG BỊ 405
 app.use(cors({
   origin: '*',
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],

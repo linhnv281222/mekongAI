@@ -13,8 +13,8 @@ export const environment = {
    *  - Electron portable: giữ nguyên IP server bên dưới
    *    Nếu cần thay đổi nhanh, sửa file .env.electron trong thư mục FE
    */
-  api_end_point: 'http://103.82.27.132:5000',
+  api_end_point: 'http://103.82.27.132:3001',
 
   /** Mekong AI endpoint - NodeJS backend */
-  mekong_ai_endpoint: 'http://103.82.27.132:3000',
+  mekong_ai_endpoint: 'http://103.82.27.132:3001',
 };

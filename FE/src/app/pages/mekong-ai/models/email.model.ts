@@ -28,4 +28,7 @@ export interface EmailRow {
   unread: boolean;
   _agent?: boolean;
   _needLoad?: boolean;
+  // AI Debug payloads from agent
+  classify_ai_payload?: object | null;
+  drawing_ai_payload?: Array<object | null> | null;
 }

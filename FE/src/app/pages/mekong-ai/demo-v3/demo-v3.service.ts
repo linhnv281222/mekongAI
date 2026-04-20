@@ -89,6 +89,9 @@ export class DemoV3Service implements OnDestroy {
       ten_kh: job.ten_cong_ty || job.sender || partial.ten_kh || '',
       drawings: job.drawings || [],
       _needLoad: false,
+      // AI Debug payloads
+      classify_ai_payload: job.classify_ai_payload ?? null,
+      drawing_ai_payload: job.drawing_ai_payload ?? null,
     };
   }
 
