@@ -413,6 +413,68 @@ export class MekongAiService {
     }
   }
 
+  /**
+   * Debug text prompt: gửi nội dung lên AI và nhận response thực.
+   * @param promptKey - Key của prompt
+   * @param content - Nội dung text (email body, mô tả, v.v.)
+   * @returns Promise<any>
+   */
+  async debugPrompt(promptKey: string, content: string): Promise<any> {
+    try {
+      const response = await firstValueFrom(
+        this.http.post<any>(
+          `${this.mekongApiPath}/admin/prompts/debug`,
+          { key: promptKey, content },
+          {
+            headers: new HttpHeaders({
+              'Content-Type': 'application/json',
+            }),
+            observe: 'response',
+          }
+        )
+      );
+      if (response?.status === 200 && response?.body) {
+        return response.body.data || response.body;
+      }
+      return null;
+    } catch (error: any) {
+      console.error('Lỗi khi debug prompt:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Debug drawing prompt: upload PDF file và nhận kết quả phân tích.
+   * @param promptKey - Key của prompt (drawing-system hoặc gemini-drawing)
+   * @param file - File PDF
+   * @returns Promise<any>
+   */
+  async debugPromptFile(promptKey: string, file: File): Promise<any> {
+    try {
+      const formData = new FormData();
+      formData.append('key', promptKey);
+      formData.append('file', file);
+
+      const response = await firstValueFrom(
+        this.http.post<any>(
+          `${this.mekongApiPath}/admin/prompts/debug/file`,
+          formData,
+          {
+            headers: new HttpHeaders({}),
+            observe: 'response',
+          }
+        )
+      );
+      if (response?.status === 200 && response?.body) {
+        return response.body.data || response.body;
+      }
+      return null;
+    } catch (error: any) {
+      console.error('Lỗi khi debug prompt file:', error);
+      throw error;
+    }
+  }
+
   // ==================== KNOWLEDGE API ====================
 
   /**

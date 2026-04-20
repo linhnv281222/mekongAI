@@ -34,12 +34,13 @@ function parseMaterials(text) {
   ];
 
   for (const g of groups) {
-    const line = text
-      .split("\n")
-      .find((l) => l.trim().startsWith(g.prefix));
+    const line = text.split("\n").find((l) => l.trim().startsWith(g.prefix));
     if (!line) continue;
     const mappingPart = line.replace(g.prefix, "").trim();
-    const entries = mappingPart.split("|").map((e) => e.trim()).filter(Boolean);
+    const entries = mappingPart
+      .split("|")
+      .map((e) => e.trim())
+      .filter(Boolean);
     for (const entry of entries) {
       const [fromPart, to] = entry.split("→").map((s) => s.trim());
       if (!fromPart || !to) continue;
@@ -70,9 +71,7 @@ function parseHeatTreat(text) {
   ];
 
   for (const g of groups) {
-    const line = text
-      .split("\n")
-      .find((l) => l.trim().startsWith(g.prefix));
+    const line = text.split("\n").find((l) => l.trim().startsWith(g.prefix));
     if (!line) continue;
     const mappingPart = line.replace(g.prefix, "").trim();
     const entries = mappingPart.split("→").map((e) => e.trim());
@@ -80,7 +79,10 @@ function parseHeatTreat(text) {
 
     const fromPart = entries.slice(0, -1).join(" | ");
     const to = entries[entries.length - 1];
-    const froms = fromPart.split("|").map((e) => e.trim()).filter(Boolean);
+    const froms = fromPart
+      .split("|")
+      .map((e) => e.trim())
+      .filter(Boolean);
     for (const from of froms) {
       rows.push({ from, to, group: g.label, note: "" });
     }
@@ -100,12 +102,13 @@ function parseSurface(text) {
   ];
 
   for (const g of groups) {
-    const line = text
-      .split("\n")
-      .find((l) => l.trim().startsWith(g.prefix));
+    const line = text.split("\n").find((l) => l.trim().startsWith(g.prefix));
     if (!line) continue;
     const mappingPart = line.replace(g.prefix, "").trim();
-    const entries = mappingPart.split("|").map((e) => e.trim()).filter(Boolean);
+    const entries = mappingPart
+      .split("|")
+      .map((e) => e.trim())
+      .filter(Boolean);
     for (const entry of entries) {
       const [fromPart, to] = entry.split("→").map((s) => s.trim());
       if (!fromPart || !to) continue;
@@ -132,9 +135,7 @@ function parseShapes(text) {
   ];
 
   for (const g of groups) {
-    const line = text
-      .split("\n")
-      .find((l) => l.trim().startsWith(g.prefix));
+    const line = text.split("\n").find((l) => l.trim().startsWith(g.prefix));
     if (!line) continue;
     const mappingPart = line.replace(g.prefix, "").trim();
     const parts = mappingPart.split("→").map((s) => s.trim());
@@ -154,10 +155,15 @@ function parseVntKnowledge(text) {
   const rows = [];
 
   // BANGLUONGRIENG: key=val,key=val,...
-  const blLine = text.split("\n").find((l) => l.trim().startsWith("BANGLUONGRIENG:"));
+  const blLine = text
+    .split("\n")
+    .find((l) => l.trim().startsWith("BANGLUONGRIENG:"));
   if (blLine) {
     const mappingPart = blLine.replace("BANGLUONGRIENG:", "").trim();
-    const entries = mappingPart.split(",").map((e) => e.trim()).filter(Boolean);
+    const entries = mappingPart
+      .split(",")
+      .map((e) => e.trim())
+      .filter(Boolean);
     for (const entry of entries) {
       const eqIdx = entry.indexOf("=");
       if (eqIdx === -1) continue;
@@ -174,7 +180,10 @@ function parseVntKnowledge(text) {
   const vlLine = text.split("\n").find((l) => l.trim().startsWith("VATLIEU:"));
   if (vlLine) {
     const mappingPart = vlLine.replace("VATLIEU:", "").trim();
-    const entries = mappingPart.split("|").map((e) => e.trim()).filter(Boolean);
+    const entries = mappingPart
+      .split("|")
+      .map((e) => e.trim())
+      .filter(Boolean);
     for (const entry of entries) {
       const arrowIdx = entry.indexOf("→");
       if (arrowIdx === -1) continue;
@@ -191,7 +200,10 @@ function parseVntKnowledge(text) {
   const hdLine = text.split("\n").find((l) => l.trim().startsWith("HINHDANG:"));
   if (hdLine) {
     const mappingPart = hdLine.replace("HINHDANG:", "").trim();
-    const entries = mappingPart.split("|").map((e) => e.trim()).filter(Boolean);
+    const entries = mappingPart
+      .split("|")
+      .map((e) => e.trim())
+      .filter(Boolean);
     for (const entry of entries) {
       const arrowIdx = entry.indexOf("→");
       if (arrowIdx === -1) continue;
@@ -208,7 +220,10 @@ function parseVntKnowledge(text) {
   const mqLine = text.split("\n").find((l) => l.trim().startsWith("MAQT:"));
   if (mqLine) {
     const mappingPart = mqLine.replace("MAQT:", "").trim();
-    const entries = mappingPart.split("|").map((e) => e.trim()).filter(Boolean);
+    const entries = mappingPart
+      .split("|")
+      .map((e) => e.trim())
+      .filter(Boolean);
     for (const entry of entries) {
       const eqIdx = entry.indexOf("=");
       if (eqIdx === -1) continue;
@@ -295,12 +310,7 @@ async function main() {
           JSON.stringify(rows),
         ]
       );
-      console.log(
-        `  [seed] ${seed.key} — ${headers.length} cột × ${rows.length} dòng`
-      );
     }
-
-    console.log("\nSeed knowledge blocks done.");
   } finally {
     client.release();
     await pool.end();
@@ -313,9 +323,12 @@ function renderTableText(title, headers, rows) {
   lines.push(headers.map(() => "---").join(" | "));
   for (const r of rows) {
     const vals = headers.map((h) => {
-      if (h === "Nhóm vật liệu" || h === "Nhóm xử lý" || h === "Loại phôi") return r.group || "";
-      if (h === "Mã gốc (quốc tế)" || h === "Ký hiệu gốc" || h === "Đặc điểm") return r.from || "";
-      if (h === "Mã VNT" || h === "Kết quả VNT" || h === "Phương án gia công") return r.to || "";
+      if (h === "Nhóm vật liệu" || h === "Nhóm xử lý" || h === "Loại phôi")
+        return r.group || "";
+      if (h === "Mã gốc (quốc tế)" || h === "Ký hiệu gốc" || h === "Đặc điểm")
+        return r.from || "";
+      if (h === "Mã VNT" || h === "Kết quả VNT" || h === "Phương án gia công")
+        return r.to || "";
       return r.note || "";
     });
     lines.push(vals.join(" | "));

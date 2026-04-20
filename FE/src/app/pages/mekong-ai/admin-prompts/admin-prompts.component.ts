@@ -39,15 +39,10 @@ interface KnowledgeRow {
   _selected?: boolean;
 }
 
-interface TestVariable {
-  name: string;
-  value: string;
-}
-
 @Component({
   selector: 'app-admin-prompts',
   templateUrl: './admin-prompts.component.html',
-  styleUrls: ['./admin-prompts.component.css']
+  styleUrls: ['./admin-prompts.component.css'],
 })
 export class AdminPromptsComponent implements OnInit {
   // State
@@ -81,16 +76,18 @@ export class AdminPromptsComponent implements OnInit {
   selectedModel: string = 'claude';
   fileMode: boolean = false;
 
-  // Test panel state
+  // Debug panel state
   showTestPanel: boolean = false;
-  testVariables: TestVariable[] = [];
-  testOutput: string = '';
-  isRunningTest: boolean = false;
+  debugContent: string = ''; // textarea content
+  debugFile: File | null = null; // uploaded PDF for drawing prompts
+  debugResponse: string = ''; // AI response (data only, no payload)
+  debugPayload: string = ''; // Request payload sent to AI
+  isRunningAi: boolean = false;
 
   // PrimeNG options
   aiModelOptions = [
     { label: 'Claude', value: 'claude' },
-    { label: 'Gemini', value: 'gemini' }
+    { label: 'Gemini', value: 'gemini' },
   ];
   promptVersionOptions: { label: string; value: number }[] = [];
   availableVariables: string[] = [];
@@ -98,7 +95,6 @@ export class AdminPromptsComponent implements OnInit {
   // Labels mapping
   promptLabelsVi: { [key: string]: string } = {
     'drawing-system': 'Phân tích bản vẽ — Prompt hệ thống',
-    'drawing-correction': 'Sửa kết quả phân tích — Prompt hệ thống',
     'email-classify': 'Phân loại email — Prompt',
     'gemini-drawing': 'Phân tích bản vẽ (Gemini) — Prompt',
   };
@@ -112,14 +108,15 @@ export class AdminPromptsComponent implements OnInit {
   };
 
   promptDescVi: { [key: string]: string } = {
-    'drawing-system': 'Prompt hệ thống chính cho Claude Sonnet 4.6 — phân tích bản vẽ',
-    'drawing-correction': 'Prompt hệ thống cho chỉnh sửa kết quả phân tích qua chat',
+    'drawing-system':
+      'Prompt hệ thống chính cho Claude Sonnet 4.6 — phân tích bản vẽ',
     'email-classify': 'Prompt phân loại email đến (Haiku)',
     'gemini-drawing': 'Prompt phân tích bản vẽ dự phòng bằng Gemini 2.5',
   };
 
   knowledgeDescVi: { [key: string]: string } = {
-    'vnt-materials': 'Quy đổi tiêu chuẩn vật liệu (DIN/AISI/JIS) sang mã JIS nội bộ VNT',
+    'vnt-materials':
+      'Quy đổi tiêu chuẩn vật liệu (DIN/AISI/JIS) sang mã JIS nội bộ VNT',
     'vnt-heat-treat': 'Ký hiệu xử lý nhiệt (JP/EN/FR) sang tên tiếng Việt VNT',
     'vnt-surface': 'Ký hiệu xử lý bề mặt (JP/EN) sang tên tiếng Việt VNT',
     'vnt-shapes': 'Phân loại phôi và hướng gia công',
@@ -127,37 +124,43 @@ export class AdminPromptsComponent implements OnInit {
   };
 
   varToKb: { [key: string]: string } = {
-    'MATERIAL': 'vnt-materials',
-    'HEAT_TREAT': 'vnt-heat-treat',
-    'SURFACE': 'vnt-surface',
-    'SHAPE': 'vnt-shapes',
-    'VNT_KNOWLEDGE': 'vnt-knowledge',
+    MATERIAL: 'vnt-materials',
+    HEAT_TREAT: 'vnt-heat-treat',
+    SURFACE: 'vnt-surface',
+    SHAPE: 'vnt-shapes',
+    VNT_KNOWLEDGE: 'vnt-knowledge',
   };
 
-  knowledgeVars = new Set(['MATERIAL', 'HEAT_TREAT', 'SURFACE', 'SHAPE', 'VNT_KNOWLEDGE']);
+  knowledgeVars = new Set([
+    'MATERIAL',
+    'HEAT_TREAT',
+    'SURFACE',
+    'SHAPE',
+    'VNT_KNOWLEDGE',
+  ]);
 
   kbVarLabels: { [key: string]: string } = {
-    'MATERIAL': 'Bảng quy đổi mã vật liệu quốc tế → mã VNT',
-    'HEAT_TREAT': 'Bảng ký hiệu xử lý nhiệt → tên tiếng Việt VNT',
-    'SURFACE': 'Bảng ký hiệu xử lý bề mặt → tên tiếng Việt VNT',
-    'SHAPE': 'Bảng phân loại hình dạng phôi & phương án gia công',
-    'VNT_KNOWLEDGE': 'Bảng lượng riêng, mã vật liệu, hình dạng, mã qui trình',
+    MATERIAL: 'Bảng quy đổi mã vật liệu quốc tế → mã VNT',
+    HEAT_TREAT: 'Bảng ký hiệu xử lý nhiệt → tên tiếng Việt VNT',
+    SURFACE: 'Bảng ký hiệu xử lý bề mặt → tên tiếng Việt VNT',
+    SHAPE: 'Bảng phân loại hình dạng phôi & phương án gia công',
+    VNT_KNOWLEDGE: 'Bảng lượng riêng, mã vật liệu, hình dạng, mã qui trình',
   };
 
   // Sample values for test panel
   sampleValues: { [key: string]: string } = {
-    'DRAWING_SCHEMA': '{\\n  "ban_ve": { "ma_ban_ve": "string" }\\n}',
-    'VNT_MAT': 'NHOM: AlCu4MgSi→A2017 | AL6061→A6061\\nTHEP: S45C→S45C',
-    'VNT_NHIET': 'NHIET TOAN PHAN: 焼入れ焼戻し→Nhiệt toàn phần [HRC...]',
-    'VNT_BM': 'ANOD NHOM: 白アルマイト→Anod trang',
-    'VNT_HINH': 'Phi tron dac→Tien CNC',
-    'VNT_KNOWLEDGE': 'BANGLUONGRIENG: A2017=2.8\\nVATLIEU: AL6061→A6061',
-    'emailFrom': 'tanaka@example.jp',
-    'emailSubject': '見積依頼 — 精密部品見積もり',
-    'emailAttachments': 'drawing.pdf',
-    'emailBody': 'いつもお世話になっております。\\n見積依頼いたします。',
-    'CURRENT_JSON': '{"ban_ve":{"ma_ban_ve":"BV-001"}}',
-    'USER_REQUEST': 'Đổi vật liệu thành SUS304',
+    DRAWING_SCHEMA: '{\\n  "ban_ve": { "ma_ban_ve": "string" }\\n}',
+    VNT_MAT: 'NHOM: AlCu4MgSi→A2017 | AL6061→A6061\\nTHEP: S45C→S45C',
+    VNT_NHIET: 'NHIET TOAN PHAN: 焼入れ焼戻し→Nhiệt toàn phần [HRC...]',
+    VNT_BM: 'ANOD NHOM: 白アルマイト→Anod trang',
+    VNT_HINH: 'Phi tron dac→Tien CNC',
+    VNT_KNOWLEDGE: 'BANGLUONGRIENG: A2017=2.8\\nVATLIEU: AL6061→A6061',
+    emailFrom: 'tanaka@example.jp',
+    emailSubject: '見積依頼 — 精密部品見積もり',
+    emailAttachments: 'drawing.pdf',
+    emailBody: 'いつもお世話になっております。\\n見積依頼いたします。',
+    CURRENT_JSON: '{"ban_ve":{"ma_ban_ve":"BV-001"}}',
+    USER_REQUEST: 'Đổi vật liệu thành SUS304',
   };
 
   constructor(
@@ -180,35 +183,42 @@ export class AdminPromptsComponent implements OnInit {
       const [templates, knowledgeList, config] = await Promise.all([
         this.mekongAiService.getPromptTemplates(),
         this.mekongAiService.getKnowledgeBlocks(),
-        this.mekongAiService.getAiProviderConfig()
+        this.mekongAiService.getAiProviderConfig(),
       ]);
 
-      this.prompts = templates.map(t => ({
-        id: t.key,
-        name: this.labelVi(t.key, t.name),
-        version: t.active_version ? `v${t.active_version}` : '—',
-        active: !!t.active_version,
-        variables: t.variables || [],
-        description: this.descVi(t.key, t.description || ''),
-        active_version: t.active_version,
+      this.prompts = templates.map((template) => ({
+        id: template.key,
+        name: this.labelVi(template.key, template.name),
+        version: template.active_version ? `v${template.active_version}` : '—',
+        active: !!template.active_version,
+        variables: template.variables || [],
+        description: this.descVi(template.key, template.description || ''),
+        active_version: template.active_version,
       }));
 
-      this.knowledgeItems = knowledgeList.map(k => ({
-        id: k.key,
-        name: this.labelVi(k.key, k.name),
-        active: !!k.updated_at,
-        updatedAt: k.updated_at ? new Date(k.updated_at) : new Date(),
-        content: k.content || '',
-        format: k.format as 'text' | 'table' || 'text',
-        headers: k.headers || ['Nhóm', 'Mã gốc', 'Mã VNT', 'Ghi chú'],
-        rows: k.rows || [],
-        updated_at: k.updated_at,
+      this.knowledgeItems = knowledgeList.map((knowledgeItem) => ({
+        id: knowledgeItem.key,
+        name: this.labelVi(knowledgeItem.key, knowledgeItem.name),
+        active: !!knowledgeItem.updated_at,
+        updatedAt: knowledgeItem.updated_at
+          ? new Date(knowledgeItem.updated_at)
+          : new Date(),
+        content: knowledgeItem.content || '',
+        format: (knowledgeItem.format as 'text' | 'table') || 'text',
+        headers: knowledgeItem.headers || [
+          'Nhóm',
+          'Mã gốc',
+          'Mã VNT',
+          'Ghi chú',
+        ],
+        rows: knowledgeItem.rows || [],
+        updated_at: knowledgeItem.updated_at,
       }));
 
       // Initialize kbNames map
       this.kbNames = {};
-      for (const kb of this.knowledgeItems) {
-        this.kbNames[kb.id] = kb.name;
+      for (const knowledgeBlock of this.knowledgeItems) {
+        this.kbNames[knowledgeBlock.id] = knowledgeBlock.name;
       }
 
       if (config) {
@@ -240,28 +250,29 @@ export class AdminPromptsComponent implements OnInit {
     this.currentPromptKey = key;
     this.selectedKnowledgeKey = null;
     this.showTestPanel = false;
-    this.testOutput = '';
 
-    const tpl = this.prompts.find(t => t.id === key);
-    if (!tpl) return;
+    const template = this.prompts.find((p) => p.id === key);
+    if (!template) return;
 
     // Load versions
     const versions = await this.mekongAiService.getPromptVersions(key);
     this.promptVersions = versions;
-    this.promptVersionOptions = versions.map(v => {
-      const star = v.is_active ? ' ★ đang chạy' : '';
-      const note = v.note ? v.note : 'không ghi chú';
-      const by = v.created_by || 'admin';
+    this.promptVersionOptions = versions.map((pv) => {
+      const star = pv.is_active ? ' ★ đang chạy' : '';
+      const note = pv.note ? pv.note : 'không ghi chú';
+      const by = pv.created_by || 'admin';
       return {
-        label: `v${v.version} — ${note} (${by})${star}`,
-        value: v.version
+        label: `v${pv.version} — ${note} (${by})${star}`,
+        value: pv.version,
       };
     });
 
     // Determine content — follow gốc logic: ưu tiên active_version
     let content = '';
-    if (tpl.active_version) {
-      const activeRow = versions.find(v => v.version === tpl.active_version);
+    if (template.active_version) {
+      const activeRow = versions.find(
+        (pv) => pv.version === template.active_version
+      );
       content = activeRow?.content || '';
     }
     // Fallback: lấy version đầu tiên
@@ -274,12 +285,13 @@ export class AdminPromptsComponent implements OnInit {
       try {
         const testResult = await this.mekongAiService.testPrompt(key, {});
         content = testResult?.content || '';
-      } catch { /* silent */ }
+      } catch {
+        /* silent */
+      }
     }
 
     this.editorContent = content;
     this.selectedNote = '';
-    this.testVariables = [];
 
     if (this.promptVersionOptions.length > 0) {
       this.selectedVersion = this.promptVersionOptions[0].value;
@@ -294,19 +306,21 @@ export class AdminPromptsComponent implements OnInit {
 
     // Build kbNames map
     this.kbNames = {};
-    for (const v of this.availableVariables) {
-      const kbKey = this.varToKb[v];
+    for (const varName of this.availableVariables) {
+      const kbKey = this.varToKb[varName];
       if (kbKey) {
-        const kb = this.knowledgeItems.find(k => k.id === kbKey);
-        this.kbNames[v] = kb?.name || kbKey;
+        const knowledgeBlock = this.knowledgeItems.find(
+          (kb) => kb.id === kbKey
+        );
+        this.kbNames[varName] = knowledgeBlock?.name || kbKey;
       }
     }
 
     // Set computed properties
-    this.currentPromptName = this.labelVi(key, tpl.name);
-    this.currentPromptDesc = this.descVi(key, tpl.description || '');
-    this.runtimeVersionLabel = tpl.active_version
-      ? `Runtime đang dùng: v${tpl.active_version} · ${versions.length} phiên bản trong CSDL`
+    this.currentPromptName = this.labelVi(key, template.name);
+    this.currentPromptDesc = this.descVi(key, template.description || '');
+    this.runtimeVersionLabel = template.active_version
+      ? `Runtime đang dùng: v${template.active_version} · ${versions.length} phiên bản trong CSDL`
       : `Runtime: tệp mặc định · ${versions.length} phiên bản trong CSDL`;
   }
 
@@ -315,17 +329,21 @@ export class AdminPromptsComponent implements OnInit {
     this.currentPromptKey = key;
     this.selectedKnowledgeKey = key;
 
-    const kb = this.knowledgeItems.find(k => k.id === key);
-    if (!kb) return;
+    const knowledgeBlock = this.knowledgeItems.find((kb) => kb.id === key);
+    if (!knowledgeBlock) return;
 
-    this.selectedKnowledgeName = this.labelVi(key, kb.name);
+    this.selectedKnowledgeName = this.labelVi(key, knowledgeBlock.name);
     this.selectedKnowledgeDesc = this.descVi(key, '');
-    this.knowledgeHeaders = kb.headers ? [...kb.headers] : ['Nhóm', 'Mã gốc', 'Mã VNT', 'Ghi chú'];
-    this.knowledgeRows = kb.rows ? [...kb.rows] : [];
+    this.knowledgeHeaders = knowledgeBlock.headers
+      ? [...knowledgeBlock.headers]
+      : ['Nhóm', 'Mã gốc', 'Mã VNT', 'Ghi chú'];
+    this.knowledgeRows = knowledgeBlock.rows ? [...knowledgeBlock.rows] : [];
 
-    if (kb.updatedAt) {
-      this.knowledgeUpdatedAt = kb.updatedAt;
-      this.knowledgeUpdatedAtFormatted = this.formatDate(kb.updatedAt);
+    if (knowledgeBlock.updatedAt) {
+      this.knowledgeUpdatedAt = knowledgeBlock.updatedAt;
+      this.knowledgeUpdatedAtFormatted = this.formatDate(
+        knowledgeBlock.updatedAt
+      );
     } else {
       this.knowledgeUpdatedAt = null;
       this.knowledgeUpdatedAtFormatted = '';
@@ -335,12 +353,22 @@ export class AdminPromptsComponent implements OnInit {
   // Variable detection
   detectVars(text: string): string[] {
     const matches = text.match(/\{\{(\w+)\}\}/g) || [];
-    return [...new Set(matches.map(m => m.replace(/\{\{|\}\}/g, '')))];
+    return [...new Set(matches.map((m) => m.replace(/\{\{|\}\}/g, '')))];
   }
 
   detectVarType(name: string): 'knowledge' | 'schema' | 'prompt' {
     if (this.knowledgeVars.has(name)) return 'knowledge';
-    if (['DRAWING_SCHEMA', 'CURRENT_JSON', 'USER_REQUEST', 'emailFrom', 'emailSubject', 'emailBody', 'emailAttachments'].includes(name)) {
+    if (
+      [
+        'DRAWING_SCHEMA',
+        'CURRENT_JSON',
+        'USER_REQUEST',
+        'emailFrom',
+        'emailSubject',
+        'emailBody',
+        'emailAttachments',
+      ].includes(name)
+    ) {
       return 'schema';
     }
     return 'prompt';
@@ -348,11 +376,13 @@ export class AdminPromptsComponent implements OnInit {
 
   getKbForVar(varName: string): KnowledgeItem | undefined {
     const kbKey = this.varToKb[varName];
-    return kbKey ? this.knowledgeItems.find(k => k.id === kbKey) : undefined;
+    return kbKey
+      ? this.knowledgeItems.find((kb) => kb.id === kbKey)
+      : undefined;
   }
 
-  getSampleValue(v: string): string {
-    return this.sampleValues[v] || `Ví dụ cho {{${v}}}`;
+  getSampleValue(varName: string): string {
+    return this.sampleValues[varName] || `Ví dụ cho {{${varName}}}`;
   }
 
   // Actions
@@ -370,19 +400,23 @@ export class AdminPromptsComponent implements OnInit {
     if (this.selectedVersion === null) return;
 
     // Tìm version được chọn
-    const row = this.promptVersions.find(v => v.version === this.selectedVersion);
-    if (row) {
-      this.editorContent = row.content || '';
+    const selectedVersionRow = this.promptVersions.find(
+      (pv) => pv.version === this.selectedVersion
+    );
+    if (selectedVersionRow) {
+      this.editorContent = selectedVersionRow.content || '';
     }
     // Re-detect variables cho version mới
     this.availableVariables = this.detectVars(this.editorContent);
     // Rebuild kbNames
     this.kbNames = {};
-    for (const v of this.availableVariables) {
-      const kbKey = this.varToKb[v];
+    for (const varName of this.availableVariables) {
+      const kbKey = this.varToKb[varName];
       if (kbKey) {
-        const kb = this.knowledgeItems.find(k => k.id === kbKey);
-        this.kbNames[v] = kb?.name || kbKey;
+        const knowledgeBlock = this.knowledgeItems.find(
+          (kb) => kb.id === kbKey
+        );
+        this.kbNames[varName] = knowledgeBlock?.name || kbKey;
       }
     }
   }
@@ -396,8 +430,8 @@ export class AdminPromptsComponent implements OnInit {
   canActivateVersion(): boolean {
     if (this.fileMode) return false;
     if (this.selectedVersion === null) return false;
-    const tpl = this.prompts.find(t => t.id === this.currentPromptKey);
-    return this.selectedVersion !== tpl?.active_version;
+    const template = this.prompts.find((p) => p.id === this.currentPromptKey);
+    return this.selectedVersion !== template?.active_version;
   }
 
   // Save prompt
@@ -423,7 +457,10 @@ export class AdminPromptsComponent implements OnInit {
           this.editorContent,
           this.selectedNote || ''
         );
-        this.showToast(`Đã lưu thay đổi cho v${this.selectedVersion}`, 'success');
+        this.showToast(
+          `Đã lưu thay đổi cho v${this.selectedVersion}`,
+          'success'
+        );
       }
 
       this.isDirty = false;
@@ -443,7 +480,9 @@ export class AdminPromptsComponent implements OnInit {
 
     let note = this.selectedNote.trim();
     if (!note) {
-      note = activate ? 'Phiên bản mới (kích hoạt)' : 'Phiên bản mới (bản nháp)';
+      note = activate
+        ? 'Phiên bản mới (kích hoạt)'
+        : 'Phiên bản mới (bản nháp)';
     }
 
     try {
@@ -462,7 +501,10 @@ export class AdminPromptsComponent implements OnInit {
       if (result?.activated) {
         this.showToast(`Đã tạo v${result.version} (đã kích hoạt)`, 'success');
       } else {
-        this.showToast(`Đã tạo v${result?.version || ''} (chưa kích hoạt)`, 'success');
+        this.showToast(
+          `Đã tạo v${result?.version || ''} (chưa kích hoạt)`,
+          'success'
+        );
       }
     } catch (e: any) {
       this.showToast('Tạo phiên bản thất bại: ' + e.message, 'error');
@@ -473,10 +515,16 @@ export class AdminPromptsComponent implements OnInit {
     if (!this.currentPromptKey || this.selectedVersion === null) return;
 
     try {
-      await this.mekongAiService.activatePromptVersion(this.currentPromptKey, this.selectedVersion);
+      await this.mekongAiService.activatePromptVersion(
+        this.currentPromptKey,
+        this.selectedVersion
+      );
       await this.loadAll();
       await this.showPrompt(this.currentPromptKey);
-      this.showToast(`Đang dùng v${this.selectedVersion} cho runtime`, 'success');
+      this.showToast(
+        `Đang dùng v${this.selectedVersion} cho runtime`,
+        'success'
+      );
     } catch (e: any) {
       this.showToast('Kích hoạt thất bại: ' + e.message, 'error');
     }
@@ -484,10 +532,18 @@ export class AdminPromptsComponent implements OnInit {
 
   async deleteVersion(): Promise<void> {
     if (!this.currentPromptKey || this.selectedVersion === null) return;
-    if (!confirm(`Xóa vĩnh viễn phiên bản v${this.selectedVersion}? Thao tác không hoàn tác.`)) return;
+    if (
+      !confirm(
+        `Xóa vĩnh viễn phiên bản v${this.selectedVersion}? Thao tác không hoàn tác.`
+      )
+    )
+      return;
 
     try {
-      await this.mekongAiService.deletePromptVersion(this.currentPromptKey, this.selectedVersion);
+      await this.mekongAiService.deletePromptVersion(
+        this.currentPromptKey,
+        this.selectedVersion
+      );
       await this.loadAll();
       await this.showPrompt(this.currentPromptKey);
       this.showToast(`Đã xóa phiên bản v${this.selectedVersion}`, 'success');
@@ -496,40 +552,106 @@ export class AdminPromptsComponent implements OnInit {
     }
   }
 
-  // Test panel
+  // Debug panel
   toggleTestPanel(): void {
     this.showTestPanel = !this.showTestPanel;
     if (this.showTestPanel) {
-      this.buildTestVariables();
+      this.debugContent = '';
+      this.debugFile = null;
+      this.debugResponse = '';
+      this.debugPayload = '';
     }
   }
 
-  private buildTestVariables(): void {
-    const vars = this.detectVars(this.editorContent);
-    this.testVariables = vars.map(v => ({
-      name: v,
-      value: this.getSampleValue(v)
-    }));
-    this.testOutput = '';
+  isDrawingPrompt(): boolean {
+    return (
+      this.currentPromptKey === 'drawing-system' ||
+      this.currentPromptKey === 'gemini-drawing'
+    );
   }
 
-  async runTest(): Promise<void> {
+  onFileSelected(event: Event): void {
+    const input = event.target as HTMLInputElement;
+    if (input.files?.length) {
+      this.debugFile = input.files[0];
+    }
+  }
+
+  clearFile(): void {
+    this.debugFile = null;
+  }
+
+  async runAiTest(): Promise<void> {
     if (!this.currentPromptKey) return;
-    this.isRunningTest = true;
-    this.testOutput = '';
 
-    const variables: { [key: string]: string } = {};
-    for (const tv of this.testVariables) {
-      variables[tv.name] = tv.value;
+    // Validate
+    if (this.isDrawingPrompt()) {
+      if (!this.debugFile) {
+        this.showToast('Cần upload file PDF để debug', 'warn');
+        return;
+      }
+    } else {
+      if (!this.debugContent.trim()) {
+        this.showToast('Cần nhập nội dung để debug', 'warn');
+        return;
+      }
     }
+
+    this.isRunningAi = true;
+    this.debugResponse = '';
+    this.debugPayload = '';
 
     try {
-      const result = await this.mekongAiService.testPrompt(this.currentPromptKey, variables);
-      this.testOutput = result?.content || '(trống)';
+      let result;
+      if (this.isDrawingPrompt()) {
+        result = await this.mekongAiService.debugPromptFile(
+          this.currentPromptKey,
+          this.debugFile!
+        );
+      } else {
+        result = await this.mekongAiService.debugPrompt(
+          this.currentPromptKey,
+          this.debugContent
+        );
+      }
+
+      // Extract request payload
+      const aiResult = result?.result;
+      if (aiResult) {
+        const payload =
+          (aiResult as any).request_payload ||
+          (aiResult as any)._ai_request_payload ||
+          null;
+        if (payload) {
+          this.debugPayload = JSON.stringify(payload, null, 2);
+        }
+      }
+
+      // Extract response data
+      if (result?.result) {
+        const resultData = result.result;
+        if (resultData?.success === false) {
+          this.debugResponse = 'Lỗi: ' + (resultData.error || 'Không rõ lỗi');
+        } else if (typeof resultData === 'object') {
+          // Strip payload from display
+          const {
+            request_payload: _p,
+            _ai_request_payload: _a,
+            ...displayData
+          } = resultData as any;
+          this.debugResponse = JSON.stringify(displayData, null, 2);
+        } else {
+          this.debugResponse = String(resultData);
+        }
+      } else if (result?.error) {
+        this.debugResponse = 'Lỗi: ' + result.error;
+      } else {
+        this.debugResponse = '(trống)';
+      }
     } catch (e: any) {
-      this.testOutput = 'Lỗi: ' + e.message;
+      this.debugResponse = 'Lỗi: ' + e.message;
     } finally {
-      this.isRunningTest = false;
+      this.isRunningAi = false;
     }
   }
 
@@ -549,11 +671,14 @@ export class AdminPromptsComponent implements OnInit {
   }
 
   get isAllSelected(): boolean {
-    return this.knowledgeRows.length > 0 && this.knowledgeRows.every(r => (r as any)._selected);
+    return (
+      this.knowledgeRows.length > 0 &&
+      this.knowledgeRows.every((row) => (row as any)._selected)
+    );
   }
 
   get selectedRowCount(): number {
-    return this.knowledgeRows.filter(r => (r as any)._selected).length;
+    return this.knowledgeRows.filter((row) => (row as any)._selected).length;
   }
 
   deleteSelectedRows(): void {
@@ -562,9 +687,13 @@ export class AdminPromptsComponent implements OnInit {
       return;
     }
     if (!confirm(`Xóa ${this.selectedRowCount} dòng đã chọn?`)) return;
-    this.knowledgeRows = this.knowledgeRows.filter(r => !(r as any)._selected);
+    this.knowledgeRows = this.knowledgeRows.filter(
+      (row) => !(row as any)._selected
+    );
     // Reset selectAll state
-    const remaining = this.knowledgeRows.filter(r => (r as any)._selected);
+    const remaining = this.knowledgeRows.filter(
+      (row) => (row as any)._selected
+    );
     if (remaining.length === 0) {
       this.selectAllRows = false;
     }
@@ -582,7 +711,7 @@ export class AdminPromptsComponent implements OnInit {
         format: 'table',
         headers,
         rows,
-        content: textContent
+        content: textContent,
       });
 
       await this.loadAll();
@@ -595,10 +724,14 @@ export class AdminPromptsComponent implements OnInit {
 
   kbGetCellVal(row: KnowledgeRow, colIndex: number): string {
     switch (colIndex) {
-      case 0: return row.group || '';
-      case 1: return row.from || '';
-      case 2: return row.to || '';
-      default: return row.note || '';
+      case 0:
+        return row.group || '';
+      case 1:
+        return row.from || '';
+      case 2:
+        return row.to || '';
+      default:
+        return row.note || '';
     }
   }
 
@@ -616,12 +749,12 @@ export class AdminPromptsComponent implements OnInit {
     const lines: string[] = [];
     lines.push(headers.join(' | '));
     lines.push(headers.map(() => '---').join(' | '));
-    for (const r of rows) {
+    for (const knowledgeRow of rows) {
       const vals = [
-        r.group || '',
-        r.from || '',
-        r.to || '',
-        r.note || ''
+        knowledgeRow.group || '',
+        knowledgeRow.from || '',
+        knowledgeRow.to || '',
+        knowledgeRow.note || '',
       ];
       lines.push(vals.join(' | '));
     }
@@ -636,17 +769,19 @@ export class AdminPromptsComponent implements OnInit {
 
     const lines: string[] = [];
     lines.push(this.knowledgeHeaders.join(','));
-    for (const row of this.knowledgeRows) {
+    for (const knowledgeRow of this.knowledgeRows) {
       const vals = [
-        `"${(row.group || '').replace(/"/g, '""')}"`,
-        `"${(row.from || '').replace(/"/g, '""')}"`,
-        `"${(row.to || '').replace(/"/g, '""')}"`,
-        `"${(row.note || '').replace(/"/g, '""')}"`
+        `"${(knowledgeRow.group || '').replace(/"/g, '""')}"`,
+        `"${(knowledgeRow.from || '').replace(/"/g, '""')}"`,
+        `"${(knowledgeRow.to || '').replace(/"/g, '""')}"`,
+        `"${(knowledgeRow.note || '').replace(/"/g, '""')}"`,
       ];
       lines.push(vals.join(','));
     }
 
-    const blob = new Blob(['\ufeff' + lines.join('\n')], { type: 'text/csv;charset=utf-8' });
+    const blob = new Blob(['\ufeff' + lines.join('\n')], {
+      type: 'text/csv;charset=utf-8',
+    });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
@@ -669,13 +804,15 @@ export class AdminPromptsComponent implements OnInit {
       for (const line of lines) {
         const trimmed = line.trim();
         if (!trimmed) continue;
-        const cols = trimmed.split(',').map(c => c.replace(/^"|"$/g, '').replace(/""/g, '"').trim());
+        const cols = trimmed
+          .split(',')
+          .map((c) => c.replace(/^"|"$/g, '').replace(/""/g, '"').trim());
         if (cols.length < 2) continue;
         this.knowledgeRows.push({
           group: cols[2] || '',
           from: cols[0] || '',
           to: cols[1] || '',
-          note: cols[3] || ''
+          note: cols[3] || '',
         });
         addedCount++;
       }
@@ -711,7 +848,10 @@ export class AdminPromptsComponent implements OnInit {
   async onModelChange(): Promise<void> {
     try {
       await this.mekongAiService.updateAiProvider(this.selectedModel);
-      this.showToast(`Đã đổi sang ${this.selectedModel === 'gemini' ? 'Gemini' : 'Claude'}`, 'success');
+      this.showToast(
+        `Đã đổi sang ${this.selectedModel === 'gemini' ? 'Gemini' : 'Claude'}`,
+        'success'
+      );
     } catch (e: any) {
       this.showToast('Lỗi: ' + e.message, 'error');
     }
@@ -725,19 +865,26 @@ export class AdminPromptsComponent implements OnInit {
   formatDate(date: Date | string | undefined): string {
     if (!date) return '-';
     const d = typeof date === 'string' ? new Date(date) : date;
-    return d.toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric' });
+    return d.toLocaleDateString('vi-VN', {
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric',
+    });
   }
 
   getPromptVariables(key: string): string[] {
-    const tpl = this.prompts.find(t => t.id === key);
-    return tpl?.variables || [];
+    const template = this.prompts.find((p) => p.id === key);
+    return template?.variables || [];
   }
 
   isKnowledgeVar(name: string): boolean {
     return this.knowledgeVars.has(name);
   }
 
-  showToast(message: string, severity: 'success' | 'error' | 'warn' | 'info'): void {
+  showToast(
+    message: string,
+    severity: 'success' | 'error' | 'warn' | 'info'
+  ): void {
     this.messageService.add({ severity, summary: message, life: 3500 });
   }
 }

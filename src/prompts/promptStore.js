@@ -20,12 +20,6 @@ const PROMPT_DEFAULTS = {
     file: "drawing-system.txt",
     variables: ["MATERIAL", "HEAT_TREAT", "SURFACE", "SHAPE"],
   },
-  "drawing-correction": {
-    name: "Drawing Correction — System Prompt",
-    description: "System prompt for chat-based correction of analysis results",
-    file: "drawing-correction.txt",
-    variables: [],
-  },
   "email-classify": {
     name: "Email Classification Prompt",
     description: "Prompt for classifying incoming emails (Haiku)",
@@ -40,7 +34,8 @@ const PROMPT_DEFAULTS = {
   },
   "chat-classify": {
     name: "Chat Classification — AI Extraction",
-    description: "AI prompt to extract structured info from chat messages (replaces regex)",
+    description:
+      "AI prompt to extract structured info from chat messages (replaces regex)",
     file: "chat-classify.txt",
     variables: ["chatMessage"],
   },
@@ -78,7 +73,7 @@ const KNOWLEDGE_DEFAULTS = {
 };
 
 // ─── Render variables into template ──────────────────────────────────────────
-function render(template, variables) {
+export function render(template, variables) {
   let out = template;
   for (const [key, value] of Object.entries(variables)) {
     out = out.replaceAll(`{{${key}}}`, value ?? "");
@@ -121,6 +116,41 @@ async function dbQuery(text, params) {
 }
 
 // ─── Public API ───────────────────────────────────────────────────────────────
+
+/**
+ * Get raw prompt content without variable substitution.
+ * @param {string} key
+ * @returns {Promise<string|null>}
+ */
+export async function getPromptRawContent(key) {
+  const cached = _cache.get(key);
+  if (cached) return cached.content;
+
+  const result = await dbQuery(
+    `SELECT pv.content
+     FROM prompt_versions pv
+     JOIN prompt_templates pt ON pt.id = pv.template_id
+     WHERE pt.key = $1 AND pv.is_active = true`,
+    [key]
+  );
+
+  if (result?.rows?.length) {
+    const content = result.rows[0].content;
+    _cache.set(key, { content, variables: [], ts: Date.now() });
+    return content;
+  }
+
+  const def = loadFromDefaults(key, PROMPT_DEFAULTS);
+  if (def) {
+    _cache.set(key, {
+      content: def.content,
+      variables: def.variables || [],
+      ts: Date.now(),
+    });
+    return def.content;
+  }
+  return null;
+}
 
 /**
  * Get rendered prompt with variables substituted.
@@ -227,7 +257,12 @@ export async function getKnowledgeTable(key) {
   // 1. Check cache
   const cached = _knowledgeCache.get(key);
   if (cached && Date.now() - cached.ts < CACHE_TTL_MS) {
-    return { headers: cached.headers, rows: cached.rows, format: cached.format, content: cached.content };
+    return {
+      headers: cached.headers,
+      rows: cached.rows,
+      format: cached.format,
+      content: cached.content,
+    };
   }
 
   // 2. Try DB
@@ -245,12 +280,14 @@ export async function getKnowledgeTable(key) {
     const rows = row.kb_rows || [];
     const content =
       row.content ||
-      renderKnowledgeTable(
-        KNOWLEDGE_DEFAULTS[key]?.name || key,
-        headers,
-        rows
-      );
-    _knowledgeCache.set(key, { content, headers, rows, format, ts: Date.now() });
+      renderKnowledgeTable(KNOWLEDGE_DEFAULTS[key]?.name || key, headers, rows);
+    _knowledgeCache.set(key, {
+      content,
+      headers,
+      rows,
+      format,
+      ts: Date.now(),
+    });
     return { headers, rows, format, content };
   }
 
@@ -260,9 +297,7 @@ export async function getKnowledgeTable(key) {
     // Try to extract rows from text format (pipe-separated "A|B|C→D")
     const rows = parseKnowledgeTextToRows(def.content, key);
     const headers =
-      rows.length && rows[0]
-        ? Object.keys(rows[0])
-        : ["Mã gốc", "Mã VNT"];
+      rows.length && rows[0] ? Object.keys(rows[0]) : ["Mã gốc", "Mã VNT"];
     _knowledgeCache.set(key, {
       content: def.content,
       headers,
@@ -287,13 +322,17 @@ function parseKnowledgeTextToRows(text, key) {
   const lines = (text || "").split("\n");
   for (const line of lines) {
     const trimmed = line.trim();
-    if (!trimmed || trimmed.startsWith("#") || trimmed.startsWith("BANG")) continue;
+    if (!trimmed || trimmed.startsWith("#") || trimmed.startsWith("BANG"))
+      continue;
     const arrowIdx = trimmed.indexOf("→");
     if (arrowIdx === -1) continue;
     const left = trimmed.substring(0, arrowIdx).trim();
     const right = trimmed.substring(arrowIdx + 1).trim();
     if (!left || !right) continue;
-    const froms = left.split(/[|/]/).map((s) => s.trim()).filter(Boolean);
+    const froms = left
+      .split(/[|/]/)
+      .map((s) => s.trim())
+      .filter(Boolean);
     const group =
       key === "vnt-materials"
         ? guessMaterialGroup(froms[0])
@@ -314,7 +353,10 @@ function parseVntKnowledgeRows(text) {
   const blLine = lines.find((l) => l.trim().startsWith("BANGLUONGRIENG:"));
   if (blLine) {
     const part = blLine.replace("BANGLUONGRIENG:", "").trim();
-    const entries = part.split(",").map((e) => e.trim()).filter(Boolean);
+    const entries = part
+      .split(",")
+      .map((e) => e.trim())
+      .filter(Boolean);
     for (const entry of entries) {
       const eqIdx = entry.indexOf("=");
       if (eqIdx === -1) continue;
@@ -330,7 +372,10 @@ function parseVntKnowledgeRows(text) {
   const vlLine = lines.find((l) => l.trim().startsWith("VATLIEU:"));
   if (vlLine) {
     const part = vlLine.replace("VATLIEU:", "").trim();
-    const entries = part.split("|").map((e) => e.trim()).filter(Boolean);
+    const entries = part
+      .split("|")
+      .map((e) => e.trim())
+      .filter(Boolean);
     for (const entry of entries) {
       const arrowIdx = entry.indexOf("→");
       if (arrowIdx === -1) continue;
@@ -346,7 +391,10 @@ function parseVntKnowledgeRows(text) {
   const hdLine = lines.find((l) => l.trim().startsWith("HINHDANG:"));
   if (hdLine) {
     const part = hdLine.replace("HINHDANG:", "").trim();
-    const entries = part.split("|").map((e) => e.trim()).filter(Boolean);
+    const entries = part
+      .split("|")
+      .map((e) => e.trim())
+      .filter(Boolean);
     for (const entry of entries) {
       const arrowIdx = entry.indexOf("→");
       if (arrowIdx === -1) continue;
@@ -362,7 +410,10 @@ function parseVntKnowledgeRows(text) {
   const mqLine = lines.find((l) => l.trim().startsWith("MAQT:"));
   if (mqLine) {
     const part = mqLine.replace("MAQT:", "").trim();
-    const entries = part.split("|").map((e) => e.trim()).filter(Boolean);
+    const entries = part
+      .split("|")
+      .map((e) => e.trim())
+      .filter(Boolean);
     for (const entry of entries) {
       const eqIdx = entry.indexOf("=");
       if (eqIdx === -1) continue;
@@ -382,9 +433,15 @@ function guessMaterialGroup(code) {
   const c = (code || "").toUpperCase();
   if (c.includes("AL") || c.includes("AW-") || /^\d+/.test(c)) return "Nhôm";
   if (c.includes("SUS") || c.includes("INOX")) return "Inox";
-  if (c.includes("CU") || c.includes("BRASS") || c.includes("C1100") || c.includes("C3604"))
+  if (
+    c.includes("CU") ||
+    c.includes("BRASS") ||
+    c.includes("C1100") ||
+    c.includes("C3604")
+  )
     return "Đồng";
-  if (c.includes("POM") || c.includes("PMMA") || c.includes("TEFLON")) return "Nhựa";
+  if (c.includes("POM") || c.includes("PMMA") || c.includes("TEFLON"))
+    return "Nhựa";
   if (c.includes("S45C") || c.includes("AISI 10") || c.includes("SCM4"))
     return "Thép";
   if (c.includes("SKD") || c.includes("SKT")) return "Thép dụng cụ";
@@ -406,7 +463,12 @@ function guessSurfaceGroup(code) {
  * @param {object[]} rows
  * @param {string} [textContent] — optional text backup
  */
-export async function updateKnowledgeBlockTable(key, headers, rows, textContent) {
+export async function updateKnowledgeBlockTable(
+  key,
+  headers,
+  rows,
+  textContent
+) {
   const content =
     textContent ||
     renderKnowledgeTable(KNOWLEDGE_DEFAULTS[key]?.name || key, headers, rows);
@@ -622,14 +684,22 @@ export async function updateKnowledgeBlock(key, contentOrPayload) {
   let rows = null;
   let textContent = "";
 
-  if (typeof contentOrPayload === "object" && contentOrPayload !== null && !Array.isArray(contentOrPayload)) {
+  if (
+    typeof contentOrPayload === "object" &&
+    contentOrPayload !== null &&
+    !Array.isArray(contentOrPayload)
+  ) {
     format = contentOrPayload.format || "text";
     headers = contentOrPayload.headers || null;
     rows = contentOrPayload.rows || null;
     textContent =
       contentOrPayload.content ||
       (rows
-        ? renderKnowledgeTable(KNOWLEDGE_DEFAULTS[key]?.name || key, headers, rows)
+        ? renderKnowledgeTable(
+            KNOWLEDGE_DEFAULTS[key]?.name || key,
+            headers,
+            rows
+          )
         : "");
   } else {
     textContent = String(contentOrPayload || "");
@@ -637,13 +707,14 @@ export async function updateKnowledgeBlock(key, contentOrPayload) {
 
   const dbAvailable = isDbAvailable();
   if (!dbAvailable) {
-    console.warn(`[promptStore] DB unavailable for key "${key}" — falling back to file`);
+    console.warn(
+      `[promptStore] DB unavailable for key "${key}" — falling back to file`
+    );
     const def = KNOWLEDGE_DEFAULTS[key];
     if (def) {
       const filePath = path.join(DEFAULTS_DIR, def.file);
       fs.writeFileSync(filePath, textContent, "utf8");
       invalidateCache(key);
-      console.log(`[promptStore] Written to file: ${filePath}`);
     }
     return { updated: false, fallback: "file" };
   }
@@ -919,7 +990,6 @@ export async function listKnowledgeBlocks() {
  */
 export async function seedDefaults() {
   if (!isDbAvailable()) {
-    console.log("[promptStore] No DB — using file-based defaults only");
     return;
   }
 
@@ -975,8 +1045,6 @@ export async function seedDefaults() {
         [key, def.name, def.description, content]
       );
     }
-
-    console.log("[promptStore] Defaults seeded");
   } catch (e) {
     console.error("[promptStore] seedDefaults error:", e.message);
   }

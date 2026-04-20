@@ -134,7 +134,7 @@
               <p-button
                 label="Sửa"
                 icon="pi pi-pencil"
-                styleClass="p-button-sm p-button-secondary"
+                styleClass="p-button-sm p-button-info"
                 (onClick)="showPrompt(prompt.id)"
               ></p-button>
             </td>
@@ -171,7 +171,7 @@
               <p-button
                 label="Sửa"
                 icon="pi pi-pencil"
-                styleClass="p-button-sm p-button-secondary"
+                styleClass="p-button-sm p-button-info"
                 (onClick)="showKnowledge(item.id)"
               ></p-button>
             </td>
@@ -194,7 +194,7 @@
           <p-button
             label="Thử"
             icon="pi pi-play"
-            styleClass="p-button-secondary"
+            styleClass="p-button-warning"
             (onClick)="toggleTestPanel()"
           ></p-button>
           <p-button
@@ -206,13 +206,13 @@
           <p-button
             label="Tạo bản nháp mới"
             icon="pi pi-copy"
-            styleClass="p-button-secondary"
+            styleClass="p-button-info"
             (onClick)="createNewVersion(false)"
           ></p-button>
           <p-button
             label="Tạo & kích hoạt"
             icon="pi pi-check-circle"
-            styleClass="p-button-secondary"
+            styleClass="p-button-success"
             (onClick)="createNewVersion(true)"
           ></p-button>
           <p-button
@@ -339,34 +339,95 @@
         ></textarea>
       </div>
 
-      <!-- Test panel -->
+      <!-- Debug panel -->
       <div id="testPanel" [style.display]="showTestPanel ? 'block' : 'none'">
         <div class="test-panel">
-          <h4 class="test-title">Thử kết quả render</h4>
-          <div class="test-row">
-            <ng-container *ngFor="let tv of testVariables">
-              <div class="test-field">
-                <label class="test-label">{{ '{{' }}{{ tv.name }}{{ '}}' }}</label>
-                <textarea
-                  pTextArea
-                  [(ngModel)]="tv.value"
-                  [rows]="2"
-                  [placeholder]="'Nhập giá trị cho ' + tv.name"
-                  class="test-textarea"
-                ></textarea>
-              </div>
-            </ng-container>
+          <div class="debug-header">
+            <div class="debug-title">
+              <i class="pi pi-send"></i>
+              Debug prompt
+            </div>
+            <p-button
+              label="Gửi AI"
+              icon="pi pi-send"
+              styleClass="p-button-warning"
+              (onClick)="runAiTest()"
+              [loading]="isRunningAi"
+            ></p-button>
           </div>
-          <p-button
-            label="Chạy thử"
-            icon="pi pi-play"
-            styleClass="p-button-secondary"
-            (onClick)="runTest()"
-            [loading]="isRunningTest"
-          ></p-button>
-          <div style="margin-top: 12px">
-            <div class="test-label">Kết quả sau khi thay biến:</div>
-            <div class="test-output">{{ testOutput || '—' }}</div>
+
+          <!-- Text prompts: textarea -->
+          <ng-container *ngIf="!isDrawingPrompt()">
+            <div class="debug-hint">
+              Dán email cần phân tích (hoặc dùng định dạng <code>From: ...</code>, <code>Subject: ...</code>, <code>Body: ...</code>),
+              bấm <strong>Gửi AI</strong> để test prompt.
+            </div>
+            <textarea
+              pTextArea
+              [(ngModel)]="debugContent"
+              [rows]="12"
+              placeholder="Kính gửi Cty VNT&#10;Hãy báo giá các bản vẽ đính kèm&#10;1. số lượng lót 10&#10;..."
+              class="debug-textarea"
+            ></textarea>
+          </ng-container>
+
+          <!-- Drawing prompts: file upload -->
+          <ng-container *ngIf="isDrawingPrompt()">
+            <div class="debug-hint">
+              Upload file PDF bản vẽ, bấm <strong>Gửi AI</strong> để test prompt.
+              AI sẽ đọc file và trả kết quả phân tích ngay — không lưu vào phiếu.
+            </div>
+            <div class="debug-upload-area">
+              <input
+                type="file"
+                accept=".pdf"
+                (change)="onFileSelected($event)"
+                #fileInput
+                style="display: none"
+              />
+              <ng-container *ngIf="!debugFile">
+                <div class="upload-placeholder" (click)="fileInput.click()">
+                  <i class="pi pi-upload"></i>
+                  <div>Kéo thả PDF vào đây hoặc bấm để chọn file</div>
+                  <div class="upload-sub">Chỉ chấp nhận file .pdf</div>
+                </div>
+              </ng-container>
+              <ng-container *ngIf="debugFile">
+                <div class="file-selected">
+                  <i class="pi pi-file-pdf"></i>
+                  <span class="file-name">{{ debugFile.name }}</span>
+                  <span class="file-size">{{ (debugFile.size / 1024 / 1024 | number:'1.1-1') + ' MB' }}</span>
+                  <button class="file-clear" (click)="clearFile()">
+                    <i class="pi pi-times"></i>
+                  </button>
+                </div>
+              </ng-container>
+            </div>
+          </ng-container>
+
+          <!-- AI Output -->
+          <div style="margin-top: 14px">
+            <div class="debug-two-col">
+              <!-- Request Payload -->
+              <div class="debug-section">
+                <div class="debug-section-title">
+                  Request Payload
+                  <span class="debug-provider">{{ selectedModel === 'gemini' ? 'Gemini' : 'Claude' }}</span>
+                </div>
+                <pre
+                  class="debug-pre"
+                  [class.debug-empty]="!debugPayload"
+                >{{ debugPayload || '(chưa có)' }}</pre>
+              </div>
+              <!-- AI Response -->
+              <div class="debug-section">
+                <div class="debug-section-title">AI Response</div>
+                <pre
+                  class="debug-pre"
+                  [class.debug-empty]="!debugResponse && !isRunningAi"
+                >{{ isRunningAi ? 'Đang chờ AI phản hồi...' : (debugResponse || '—') }}</pre>
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -395,13 +456,13 @@
           <p-button
             label="Import CSV"
             icon="pi pi-upload"
-            styleClass="p-button-secondary"
+            styleClass="p-button-info"
             (onClick)="triggerImportCsv()"
           ></p-button>
           <p-button
             label="Export CSV"
             icon="pi pi-download"
-            styleClass="p-button-secondary"
+            styleClass="p-button-info"
             (onClick)="exportCsv()"
           ></p-button>
           <p-button
@@ -419,13 +480,13 @@
           <p-button
             label="Thêm dòng"
             icon="pi pi-plus"
-            styleClass="p-button-secondary"
+            styleClass="p-button-success"
             (onClick)="addKnowledgeRow()"
           ></p-button>
           <p-button
             label="Xóa dòng đã chọn"
             icon="pi pi-trash"
-            styleClass="p-button-secondary"
+            styleClass="p-button-danger"
             (onClick)="deleteSelectedRows()"
             [disabled]="selectedRowCount === 0"
           ></p-button>

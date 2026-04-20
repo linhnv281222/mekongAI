@@ -37,7 +37,6 @@ function detectVarType(name) {
 /** Tên hiển thị tiếng Việt (ưu tiên hơn tên tiếng Anh từ API) */
 const PROMPT_LABELS_VI = {
   "drawing-system": "Phân tích bản vẽ — Prompt hệ thống",
-  "drawing-correction": "Sửa kết quả phân tích — Prompt hệ thống",
   "email-classify": "Phân loại email — Prompt",
   "gemini-drawing": "Phân tích bản vẽ (Gemini) — Prompt",
 };
@@ -51,8 +50,6 @@ const KNOWLEDGE_LABELS_VI = {
 const PROMPT_DESC_VI = {
   "drawing-system":
     "Prompt hệ thống chính cho Claude Sonnet 4.6 — phân tích bản vẽ",
-  "drawing-correction":
-    "Prompt hệ thống cho chỉnh sửa kết quả phân tích qua chat",
   "email-classify": "Prompt phân loại email đến (Haiku)",
   "gemini-drawing": "Prompt phân tích bản vẽ dự phòng bằng Gemini 2.5",
 };

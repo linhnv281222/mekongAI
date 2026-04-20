@@ -115,7 +115,6 @@ BEGIN;
 
 INSERT INTO mekongai.prompt_templates (key, name, description) VALUES
   ('drawing-system', 'Drawing Analysis — System Prompt', 'Primary system prompt for Claude Sonnet 4 drawing analysis'),
-  ('drawing-correction', 'Drawing Correction — System Prompt', 'System prompt for chat-based correction of analysis results'),
   ('email-classify', 'Email Classification Prompt', 'Prompt for classifying incoming emails'),
   ('gemini-drawing', 'Drawing Analysis — Gemini Prompt', 'Prompt for backup drawing analysis using Gemini 2.5');
 
@@ -126,13 +125,6 @@ SELECT id, 1,
   '["MATERIAL","HEAT_TREAT","SURFACE","SHAPE"]'::jsonb,
   true, 'seed', 'Initial version'
 FROM mekongai.prompt_templates WHERE key = 'drawing-system';
-
-INSERT INTO mekongai.prompt_versions (template_id, version, content, variables, is_active, created_by, note)
-SELECT id, 1,
-  'You are helping correct drawing analysis results...',
-  '[]'::jsonb,
-  true, 'seed', 'Initial version'
-FROM mekongai.prompt_templates WHERE key = 'drawing-correction';
 
 INSERT INTO mekongai.prompt_versions (template_id, version, content, variables, is_active, created_by, note)
 SELECT id, 1,

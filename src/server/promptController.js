@@ -1,5 +1,6 @@
 import express from "express";
 import fs from "fs";
+import multer from "multer";
 import path from "path";
 import { fileURLToPath } from "url";
 import {
@@ -13,11 +14,34 @@ import {
   testRender,
   updateKnowledgeBlock,
   updatePromptVersion,
+  getPromptRawContent,
+  render,
+  getPrompt,
+  getKnowledgeTable,
+  renderKnowledgeTable,
 } from "../prompts/promptStore.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const PROJECT_ROOT = path.resolve(__dirname, "../..");
+const UPLOADS_DIR = path.join(PROJECT_ROOT, "uploads");
 const AI_CONFIG_FILE = path.join(PROJECT_ROOT, "data", "ai-model-config.json");
+
+// Ensure uploads dir exists
+if (!fs.existsSync(UPLOADS_DIR)) {
+  fs.mkdirSync(UPLOADS_DIR, { recursive: true });
+}
+
+// Multer for drawing debug (accept PDF only)
+const debugUpload = multer({
+  dest: UPLOADS_DIR,
+  fileFilter: (req, file, cb) => {
+    const ok =
+      file.mimetype === "application/pdf" ||
+      file.originalname.toLowerCase().endsWith(".pdf");
+    cb(ok ? null : new Error("Chi nhan PDF"), ok);
+  },
+  limits: { fileSize: 50 * 1024 * 1024 },
+});
 
 /** Mặc định provider */
 const DEFAULT_AI_CONFIG = { provider: "claude" };
@@ -27,7 +51,10 @@ function loadAiConfig() {
   try {
     if (!fs.existsSync(AI_CONFIG_FILE)) {
       fs.mkdirSync(path.dirname(AI_CONFIG_FILE), { recursive: true });
-      fs.writeFileSync(AI_CONFIG_FILE, JSON.stringify(DEFAULT_AI_CONFIG, null, 2));
+      fs.writeFileSync(
+        AI_CONFIG_FILE,
+        JSON.stringify(DEFAULT_AI_CONFIG, null, 2)
+      );
     }
     const raw = JSON.parse(fs.readFileSync(AI_CONFIG_FILE, "utf8"));
     let provider =
@@ -76,7 +103,7 @@ router.put("/config", (req, res) => {
   if (!provider || !["claude", "gemini"].includes(provider)) {
     return res.status(400).json({
       error:
-        "Thiếu hoặc sai provider. Gửi JSON dạng {\"provider\":\"claude\"} hoặc {\"provider\":\"gemini\"}.",
+        'Thiếu hoặc sai provider. Gửi JSON dạng {"provider":"claude"} hoặc {"provider":"gemini"}.',
     });
   }
   const cfg = { provider };
@@ -301,13 +328,14 @@ router.put("/knowledge/:key", async (req, res) => {
   const { content, format, headers, rows } = req.body;
 
   // New table format: { content, format, headers, rows }
-  if (
-    format === "table" &&
-    Array.isArray(headers) &&
-    Array.isArray(rows)
-  ) {
+  if (format === "table" && Array.isArray(headers) && Array.isArray(rows)) {
     try {
-      const payload = { format: "table", headers, rows, content: content || "" };
+      const payload = {
+        format: "table",
+        headers,
+        rows,
+        content: content || "",
+      };
       const result = await updateKnowledgeBlock(req.params.key, payload);
       res.json({ success: true, updated: result.updated });
     } catch (e) {
@@ -330,7 +358,7 @@ router.put("/knowledge/:key", async (req, res) => {
   }
 });
 
-// POST /admin/prompts/test — test render
+// POST /admin/prompts/test — render variables into prompt template
 router.post("/test", async (req, res) => {
   const { key, variables } = req.body;
   if (!key) return res.status(400).json({ error: "key is required" });
@@ -343,6 +371,185 @@ router.post("/test", async (req, res) => {
     res.json({ data: result });
   } catch (e) {
     res.status(500).json({ error: e.message });
+  }
+});
+
+// ─── Helpers ────────────────────────────────────────────────────────────────
+
+/** Build system prompt from raw template + knowledge blocks for drawing prompts */
+async function buildDrawingSystemPrompt(rawContent) {
+  const [matTbl, nhietTbl, bmTbl, hinhTbl] = await Promise.all([
+    getKnowledgeTable("vnt-materials"),
+    getKnowledgeTable("vnt-heat-treat"),
+    getKnowledgeTable("vnt-surface"),
+    getKnowledgeTable("vnt-shapes"),
+  ]);
+  const matText = matTbl
+    ? renderKnowledgeTable("BANG QUY DOI VAT LIEU", matTbl.headers, matTbl.rows)
+    : "";
+  const nhietText = nhietTbl
+    ? renderKnowledgeTable("BANG XU LY NHIET", nhietTbl.headers, nhietTbl.rows)
+    : "";
+  const bmText = bmTbl
+    ? renderKnowledgeTable("BANG XU LY BE MAT", bmTbl.headers, bmTbl.rows)
+    : "";
+  const hinhText = hinhTbl
+    ? renderKnowledgeTable(
+        "BANG HINH DANG & KIEU PHOI",
+        hinhTbl.headers,
+        hinhTbl.rows
+      )
+    : "";
+
+  return rawContent
+    .replaceAll("{{MATERIAL}}", matText)
+    .replaceAll("{{HEAT_TREAT}}", nhietText)
+    .replaceAll("{{SURFACE}}", bmText)
+    .replaceAll("{{SHAPE}}", hinhText);
+}
+
+// POST /admin/prompts/debug — text prompts only (email-classify, generic)
+// Body: { key, content } — content = textarea text to send to AI
+router.post("/debug", async (req, res) => {
+  const { key, content } = req.body;
+  if (!key) return res.status(400).json({ error: "key is required" });
+  if (!content?.trim())
+    return res.status(400).json({ error: "content is required" });
+
+  try {
+    const { provider } = loadAiConfig();
+
+    if (key === "email-classify") {
+      // Try to parse "From: ...\nSubject: ...\nBody: ..." format
+      // Fallback: treat entire content as email body if format not detected
+      const lines = content.split("\n");
+      let from = "",
+        subject = "",
+        body = "";
+      let section = "body";
+      for (const line of lines) {
+        const lc = line.toLowerCase();
+        if (lc.startsWith("from:")) {
+          from = line.slice(5).trim();
+          section = "from";
+        } else if (lc.startsWith("subject:")) {
+          subject = line.slice(8).trim();
+          section = "subject";
+        } else if (lc.startsWith("body:")) {
+          body = line.slice(5).trim();
+          section = "body";
+        } else if (section === "body") body += "\n" + line;
+      }
+      // If From/Subject are empty, try to extract from raw email content
+      if (!from || !subject) {
+        const raw = content;
+        const fromMatch =
+          raw.match(/^From:\s*(.+)/m) || raw.match(/[Ff]rom[:\s]+(.+@.+)/);
+        const subjectMatch =
+          raw.match(/^Subject:\s*(.+)/m) || raw.match(/[Ss]ubject[:\s]+(.+)/);
+        if (fromMatch) from = fromMatch[1].trim();
+        if (subjectMatch) subject = subjectMatch[1].trim();
+        if (!body || body.trim().length < 5) {
+          // Use entire content as body if body not detected
+          body = content;
+        }
+      }
+      const { classifyEmail } = await import("../ai/emailClassifier.js");
+      const result = await classifyEmail({
+        from,
+        subject,
+        body,
+        attachments: [],
+      });
+      return res.json({ data: { key, provider, result } });
+    }
+
+    // Generic: use content as user message
+    const rawContent = await getPromptRawContent(key);
+    if (!rawContent)
+      return res.status(404).json({ error: `Prompt "${key}" not found` });
+
+    let userMessage = content.trim();
+
+    if (provider === "gemini") {
+      const { debugPromptGemini } = await import("../ai/geminiAnalyzer.js");
+      const result = await debugPromptGemini(rawContent, userMessage, "");
+      return res.json({ data: { key, provider, result } });
+    } else {
+      const { debugPromptClaude } = await import("../ai/claudeAnalyzer.js");
+      const result = await debugPromptClaude(rawContent, userMessage, "");
+      return res.json({ data: { key, provider, result } });
+    }
+  } catch (e) {
+    console.error("[debug] Error:", e);
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// POST /admin/prompts/debug/file — drawing prompts with PDF upload
+// Multipart: { key, file } — file = PDF
+router.post("/debug/file", debugUpload.single("file"), async (req, res) => {
+  if (!req.file) {
+    return res.status(400).json({ error: "PDF file is required" });
+  }
+  const { key } = req.body;
+  if (!key) return res.status(400).json({ error: "key is required" });
+
+  if (!["drawing-system", "gemini-drawing"].includes(key)) {
+    // Clean up uploaded file
+    try {
+      fs.unlinkSync(req.file.path);
+    } catch {}
+    return res
+      .status(400)
+      .json({ error: `Prompt "${key}" does not support file upload` });
+  }
+
+  const { provider } = loadAiConfig();
+
+  try {
+    const DRAWING_SCHEMA = `{
+  "ma_ban_ve": "string",
+  "vat_lieu": "string",
+  "so_luong": "number",
+  "xu_ly_be_mat": "string",
+  "xu_ly_nhiet": "string",
+  "dung_sai_chung": "string",
+  "hinh_dang": "string",
+  "kich_thuoc": "string",
+  "so_be_mat_cnc": "number",
+  "dung_sai_chat_nhat": "string",
+  "co_gdt": "boolean",
+  "ma_quy_trinh": "string",
+  "ly_giai_qt": "string"
+}`;
+
+    let result;
+    if (key === "gemini-drawing") {
+      const rawContent = await getPrompt(key, {
+        VNT_KNOWLEDGE: (await getKnowledgeBlock("vnt-knowledge")) ?? "",
+      });
+      const { analyzeDrawingGemini } = await import("../ai/geminiAnalyzer.js");
+      result = await analyzeDrawingGemini(req.file.path, null);
+      return res.json({
+        data: { key, provider, filename: req.file.originalname, result },
+      });
+    }
+
+    // drawing-system: use the same flow as analyzDrawing but return raw result
+    const { debugDrawingClaude } = await import("../ai/claudeAnalyzer.js");
+    result = await debugDrawingClaude(req.file.path);
+    return res.json({
+      data: { key, provider, filename: req.file.originalname, result },
+    });
+  } catch (e) {
+    console.error("[debug/file] Error:", e);
+    res.status(500).json({ error: e.message });
+  } finally {
+    // Clean up uploaded temp file
+    try {
+      fs.unlinkSync(req.file.path);
+    } catch {}
   }
 });
 
