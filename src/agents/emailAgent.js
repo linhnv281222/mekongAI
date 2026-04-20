@@ -241,7 +241,7 @@ async function processEmail(gmail, msgId) {
     await updateJob(jobId, {
       gmail_id: msgId,
       status: "pending_review",
-      lines_count: allResults.length,
+      lines_count: parseInt(allResults.length, 10),
     });
 
     // 6. Mark email da doc
