@@ -704,17 +704,33 @@
 <!-- DEBUG MODAL -->
 <p-dialog
   [(visible)]="debugModalOpen"
-  header="Debug — Raw AI Output"
+  header="Debug — AI Request & Response"
   [modal]="true"
-  [style]="{ width: '900px', height: '80vh' }"
+  [style]="{ width: '1100px', height: '85vh' }"
   [resizable]="true"
 >
+  <!-- Classify Request/Response Section -->
   <div class="debug-section">
-    <div class="debug-section-title">Thông tin chung (classify_output)</div>
-    <pre class="debug-pre">{{ debugClassifyRaw }}</pre>
+    <div class="debug-section-title">
+      Classify Request (Claude Haiku - Phan tich email)
+    </div>
+    <pre class="debug-pre">{{ debugClassifyRequest }}</pre>
   </div>
   <div class="debug-section">
-    <div class="debug-section-title">Bản vẽ (drawings)</div>
+    <div class="debug-section-title">Classify Response (classify_output)</div>
+    <pre class="debug-pre">{{ debugClassifyRaw }}</pre>
+  </div>
+  <div class="debug-divider"></div>
+
+  <!-- Drawing Request/Response Section -->
+  <div class="debug-section">
+    <div class="debug-section-title">
+      Drawing Request (Claude/Gemini - Phan tich ban ve)
+    </div>
+    <pre class="debug-pre">{{ debugDrawingsRequest }}</pre>
+  </div>
+  <div class="debug-section">
+    <div class="debug-section-title">Drawing Response (drawings data)</div>
     <pre class="debug-pre">{{ debugDrawingsRaw }}</pre>
   </div>
 </p-dialog>

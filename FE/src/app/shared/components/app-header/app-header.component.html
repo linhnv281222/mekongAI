@@ -11,26 +11,28 @@
       [class.app-live-dot--err]="apiStatus === 'offline'"
       aria-hidden="true"
     ></span>
-    <span>{{ apiStatus === 'online' ? 'Đang kết nối' : 'Không kết nối' }}</span>
+    <span>{{ apiStatus === "online" ? "Đang kết nối" : "Không kết nối" }}</span>
   </div>
   <nav class="app-nav" aria-label="Điều hướng">
-    <a
-      routerLink="/mekong-ai/rfq"
+    <button
+      type="button"
       class="nav-link"
       [class.nav-link--active]="isActive('/mekong-ai/rfq')"
       title="Phiếu báo giá RFQ"
+      (click)="navigate('./mekong-ai/rfq')"
     >
       <i class="pi pi-inbox"></i>
       Phiếu báo giá
-    </a>
-    <a
-      routerLink="/mekong-ai/admin/prompts"
+    </button>
+    <button
+      type="button"
       class="nav-link"
       [class.nav-link--active]="isActive('/mekong-ai/admin/prompts')"
       title="Cấu hình prompt & kiến thức AI"
+      (click)="navigate('./mekong-ai/admin/prompts')"
     >
       <i class="pi pi-sliders-h"></i>
       Cấu hình AI
-    </a>
+    </button>
   </nav>
 </header>

@@ -19,7 +19,7 @@ import {
 })
 export class MekongAiService {
   // Dùng localhost:3000 trực tiếp - backend đã có CORS configured
-  mekongApiPath: string = 'http://localhost:3000';
+  mekongApiPath: string = environment.mekong_ai_endpoint;
 
   constructor(private http: HttpClient) {}
 

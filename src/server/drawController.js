@@ -106,7 +106,7 @@ router.post("/", upload.single("file"), async (req, res) => {
     logAiRaw({ filename: req.file.originalname, provider, raw: result.raw });
     const flat = normalizeDrawingToFlat(result.data);
     const id = await saveDrawing(req.file.originalname, flat);
-    res.json({ id, data: flat, raw: result.raw, tokens_used: result.usage, provider });
+    res.json({ id, data: flat, filename: req.file.originalname });
   } catch (e) {
     console.error("[DrawController] EXCEPTION:", e.message, e.stack?.split("\n")[1] ?? "");
     res.status(500).json({ error: e.message });
@@ -148,7 +148,7 @@ router.post("/batch", upload.single("file"), async (req, res) => {
         }
         logAiRaw({ filename: `trang_${pg.page}.pdf`, provider, raw: result.raw, page: pg.page });
         const id = await saveDrawing(`trang_${pg.page}.pdf`, flat);
-        results.push({ page: pg.page, id, data: flat, raw: result.raw, tokens_used: result.usage });
+        results.push({ page: pg.page, id, data: flat });
         console.log(
           `[Batch] ✓ Trang ${pg.page}: ${flat.ma_ban_ve} — ${flat.vat_lieu}`
         );
@@ -167,7 +167,6 @@ router.post("/batch", upload.single("file"), async (req, res) => {
   res.json({
     total_pages: pages.length,
     read_count: results.length,
-    provider,
     results,
   });
 });
@@ -193,7 +192,7 @@ router.post("/:id/correct", async (req, res) => {
       notes: message,
       correctedData: result.data,
     });
-    res.json({ data: result.data, raw: result.raw, tokens_used: result.usage });
+    res.json({ data: result.data });
   } catch (e) {
     res.status(500).json({ error: e.message });
   }

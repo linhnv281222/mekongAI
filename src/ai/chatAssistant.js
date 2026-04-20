@@ -58,4 +58,4 @@ export async function chatAssistantReply(userMessage) {
 }
 
 // Re-export để chatController có thể import từ đây
-export { extractChatInfo } from "./chatExtract.js";
+export { extractChatInfo, extractChatInfoWithPayload } from "./chatExtract.js";

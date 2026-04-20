@@ -37,7 +37,7 @@ const DRAWING_SCHEMA = `
 /**
  * Doc ban ve PDF = Claude Sonnet 4.6.
  * @param {string} pdfPath — duong dan file PDF
- * @returns {object} { success, data, raw, usage }
+ * @returns {object} { success, data, raw, usage, request_payload }
  */
 export async function analyzDrawing(pdfPath) {
   const pdfBuffer = fs.readFileSync(pdfPath);
@@ -70,10 +70,12 @@ export async function analyzDrawing(pdfPath) {
     .replaceAll("{{SURFACE}}", bmText)
     .replaceAll("{{SHAPE}}", hinhText);
 
-  const response = await client.messages.create({
+  const instructionText = `Phan tich ban ve ky thuat nay va tra ve JSON theo schema phang sau:\n${DRAWING_SCHEMA}\n\nLuu y:\n- Tra ve JSON thuan tuy, khong markdown, khong giai thich\n- "Khong ghi tren ban ve" khi thong tin khong co tren ban ve\n- Tu dinh nghia ma_quy_trinh + ly_giai_qt dua tren bieu mau ①②③④⑤\n- so_be_mat_cnc: chi dem so lan ga dat (setups), khong dem so lo/dien tich`;
+
+  // Build request payload for debug
+  const requestPayload = {
     model: aiCfg.anthropicModel,
     max_tokens: 8192,
-
     system: [
       {
         type: "text",
@@ -81,12 +83,10 @@ export async function analyzDrawing(pdfPath) {
         cache_control: { type: "ephemeral" },
       },
     ],
-
     messages: [
       {
         role: "user",
         content: [
-          // PDF dat TRUOC instruction
           {
             type: "document",
             source: {
@@ -97,13 +97,32 @@ export async function analyzDrawing(pdfPath) {
           },
           {
             type: "text",
-            text: `Phan tich ban ve ky thuat nay va tra ve JSON theo schema phang sau:\n${DRAWING_SCHEMA}\n\nLuu y:\n- Tra ve JSON thuan tuy, khong markdown, khong giai thich\n- "Khong ghi tren ban ve" khi thong tin khong co tren ban ve\n- Tu dinh nghia ma_quy_trinh + ly_giai_qt dua tren bieu mau ①②③④⑤\n- so_be_mat_cnc: chi dem so lan ga dat (setups), khong dem so lo/dien tich`,
+            text: instructionText,
             cache_control: { type: "ephemeral" },
           },
         ],
       },
     ],
-  });
+  };
+
+  const response = await client.messages.create(requestPayload);
+
+  // Debug payload: thay base64 bằng tên file để hiển thị (không ảnh hưởng request thật)
+  const debugPayload = {
+    ...requestPayload,
+    messages: requestPayload.messages.map((msg) => ({
+      ...msg,
+      content: msg.content.map((c) => {
+        if (c.type === "document") {
+          return {
+            ...c,
+            source: { ...c.source, data: `[FILE: ${path.basename(pdfPath)}]` },
+          };
+        }
+        return c;
+      }),
+    })),
+  };
 
   const raw = response.content[0].text;
 
@@ -149,6 +168,7 @@ export async function analyzDrawing(pdfPath) {
         cache_read_tokens: u.cache_read_input_tokens ?? 0,
         cache_hit_ratio_pct: parseFloat(cacheHitRatio),
       },
+      request_payload: debugPayload,
     };
   } catch (e) {
     console.error("[ClaudeAnalyzer] EXCEPTION:", e.message, e.stack?.split("\n")[1] ?? "");
@@ -156,6 +176,7 @@ export async function analyzDrawing(pdfPath) {
       success: false,
       error: e.message,
       raw: "",
+      request_payload: debugPayload,
     };
   }
 }
@@ -227,12 +248,19 @@ export async function analyzeDrawingWithStep(pdfPath, stepPath) {
  * Sua doi ket qua phan tich bang chat.
  * @param {object} currentData — ket qua hien tai
  * @param {string} userMessage — yeu cau sua cua ky su
- * @returns {object} { success, data, usage }
+ * @returns {object} { success, data, usage, request_payload }
  */
 export async function correctDrawing(currentData, userMessage) {
   const correctPrompt = await getPrompt("drawing-correction", {});
 
-  const response = await client.messages.create({
+  const instructionText = `Ket qua AI hien tai:
+${JSON.stringify(currentData, null, 2)}
+
+Yeu cau sua cua ky su: "${userMessage}"
+
+Tra ve JSON da cap nhat, giu nguyen toan bo cau truc.`;
+
+  const requestPayload = {
     model: aiCfg.anthropicModel,
     max_tokens: 8192,
     system: [
@@ -245,15 +273,12 @@ export async function correctDrawing(currentData, userMessage) {
     messages: [
       {
         role: "user",
-        content: `Ket qua AI hien tai:
-${JSON.stringify(currentData, null, 2)}
-
-Yeu cau sua cua ky su: "${userMessage}"
-
-Tra ve JSON da cap nhat, giu nguyen toan bo cau truc.`,
+        content: instructionText,
       },
     ],
-  });
+  };
+
+  const response = await client.messages.create(requestPayload);
 
   const raw = response.content[0].text;
   const cleaned = raw
@@ -271,9 +296,10 @@ Tra ve JSON da cap nhat, giu nguyen toan bo cau truc.`,
       data: JSON.parse(cleaned),
       raw,
       usage: { input_tokens: u.input_tokens, output_tokens: u.output_tokens },
+      request_payload: debugPayload,
     };
   } catch {
-    return { success: false, error: "Parse JSON loi", raw };
+    return { success: false, error: "Parse JSON loi", raw, request_payload: requestPayload };
   }
 }
 

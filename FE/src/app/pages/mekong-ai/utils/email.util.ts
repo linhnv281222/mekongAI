@@ -127,6 +127,9 @@ export function mapJobRowToEmail(j: Job): EmailRow {
     unread: j.classify === 'pending_review',
     _agent: true,
     _needLoad: true,
+    // AI Debug payloads
+    classify_ai_payload: j.classify_ai_payload ?? null,
+    drawing_ai_payload: j.drawing_ai_payload ?? null,
   };
 }
 

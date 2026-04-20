@@ -70,6 +70,13 @@ async function processEmail(gmail, msgId) {
       `[Classify] → ${classify.loai} | ${classify.ngon_ngu} | ${classify.ly_do}`
     );
 
+    // AI Debug: extract request payload from classify result
+    const classifyAiPayload = classify._ai_request_payload || null;
+    // Remove internal field before saving
+    if (classify._ai_request_payload) {
+      delete classify._ai_request_payload;
+    }
+
     const rawMeta = {
       subject: emailData.subject,
       from: emailData.from,
@@ -100,6 +107,9 @@ async function processEmail(gmail, msgId) {
         drawings: [],
         created_at: Date.now(),
         raw: rawMeta,
+        // AI Debug
+        classify_ai_payload: classifyAiPayload,
+        drawing_ai_payload: null,
       });
       await markRead(gmail, msgId);
       return;
@@ -123,6 +133,9 @@ async function processEmail(gmail, msgId) {
         drawings: [],
         created_at: Date.now(),
         raw: rawMeta,
+        // AI Debug
+        classify_ai_payload: classifyAiPayload,
+        drawing_ai_payload: null,
       });
       await markRead(gmail, msgId);
       return;
@@ -194,6 +207,10 @@ async function processEmail(gmail, msgId) {
 
     // 5. Tao job ID + luu
     const jobId = makeJobId(msgId);
+
+    // Extract drawing AI payloads
+    const drawingAiPayloads = allResults.map(r => r.request_payload).filter(Boolean);
+
     const jobData = {
       id: jobId,
       gmail_id: msgId,
@@ -216,6 +233,9 @@ async function processEmail(gmail, msgId) {
       drawings: allResults,
       status: "pending_review",
       created_at: Date.now(),
+      // AI Debug payloads
+      classify_ai_payload: classifyAiPayload,
+      drawing_ai_payload: drawingAiPayloads,
     };
 
     await saveJob(jobData);

@@ -12,7 +12,7 @@ import {
 } from "../libs/drawingNormalize.js";
 import { agentCfg, aiCfg } from "../libs/config.js";
 import { saveJob } from "../data/jobStore.js";
-import { chatAssistantReply, extractChatInfo } from "../ai/chatAssistant.js";
+import { chatAssistantReply, extractChatInfoWithPayload } from "../ai/chatAssistant.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const PROJECT_ROOT = path.resolve(__dirname, "../..");
@@ -51,8 +51,7 @@ const chatUpload = multer({
   limits: { fileSize: 100 * 1024 * 1024 }, // 100MB
 });
 
-// ─── GỌI API ĐỌC BẢN VẼ (tái sử dụng từ emailAgent) ───────────────────────
-
+      // ── GỌI API ĐỌC BẢN VẼ (tái sử dụng từ emailAgent) ───────────────────────
 async function analyzeDrawingApi(pdfPath, filename) {
   return postPdfToDrawingsApi({
     pdfPath,
@@ -60,6 +59,11 @@ async function analyzeDrawingApi(pdfPath, filename) {
     baseUrl: agentCfg.banveApiUrl,
     provider: "gemini",
   });
+}
+
+function logChatUrl() {
+  const url = `${agentCfg.banveApiUrl}/drawings?provider=gemini`;
+  console.log(`[ChatBaoGia] analyzeDrawingApi → POST ${url}`);
 }
 
 // ─── TẠO JOB ID ─────────────────────────────────────────────────────────────
@@ -233,6 +237,7 @@ async function handleBaoGiaChat(message, files, senderEmail, jobId) {
   }
 
   // ── Xử lý từng file PDF trước (chạy song song với AI extraction) ──
+  logChatUrl(); // log URL thực tế đang dùng để debug
   const fileProcessPromise = (async () => {
     for (const file of files) {
       if (!file.path) continue;
@@ -288,16 +293,17 @@ async function handleBaoGiaChat(message, files, senderEmail, jobId) {
                 enriched.so_luong
             );
           } catch (e) {
+            const msg = e.message || String(e);
             console.error(
               "[ChatBaoGia] Lỗi trang " +
                 pg.page +
                 " (" +
                 pg.name +
                 "): " +
-                e.message
+                msg
             );
             fileErrors.push(
-              file.originalname + " trang " + pg.page + ": " + e.message
+              file.originalname + " trang " + pg.page + ": " + msg
             );
           } finally {
             fs.unlink(pg.path, () => {});
@@ -316,8 +322,11 @@ async function handleBaoGiaChat(message, files, senderEmail, jobId) {
 
   // ── Dùng AI trích xuất thông tin (prompt 'chat-classify' — chỉnh sửa được trong admin) ──
   let chatInfo = null;
+  let classifyAiPayload = null;
   try {
-    chatInfo = await extractChatInfo(message || "");
+    const extractResult = await extractChatInfoWithPayload(message || "");
+    chatInfo = extractResult.data;
+    classifyAiPayload = extractResult.request_payload;
     console.log("[ChatBaoGia] AI extract:", JSON.stringify(chatInfo));
   } catch (e) {
     console.warn("[ChatBaoGia] extractChatInfo failed:", e.message);
@@ -389,6 +398,9 @@ async function handleBaoGiaChat(message, files, senderEmail, jobId) {
     source: "chat",
     email_info: emailInfo,
     chat_info: chatInfo,
+    // AI Debug payloads
+    classify_ai_payload: classifyAiPayload,
+    drawing_ai_payload: allResults.length > 0 ? allResults.map(r => r.request_payload).filter(Boolean) : null,
   };
 
   await saveJob(jobData);
