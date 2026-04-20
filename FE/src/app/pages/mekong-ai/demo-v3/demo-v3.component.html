@@ -477,10 +477,22 @@
               *ngIf="drawingLines.length > 0"
               [style]="{ height: 'calc(100vh - 315px)' }"
               styleClass="bv-splitter"
-              [panelSizes]="[60, 40]"
+              [panelSizes]="splitterPanelSizes"
             >
               <ng-template pTemplate="panel" [style]="{ minWidth: '320px' }">
                 <div class="bv-split-main">
+                  <div class="bv-split-toolbar">
+                    <span class="bv-split-label">Bản vẽ ({{ drawingLines.length }})</span>
+                    <button
+                      type="button"
+                      class="bv-split-toggle"
+                      [class.active]="splitMode === 'fullLeft'"
+                      (click)="toggleSplitFull('left')"
+                      title="Full bản vẽ"
+                    >
+                      <i class="pi" [ngClass]="splitMode === 'fullLeft' ? 'pi-minus' : 'pi-window-maximize'"></i>
+                    </button>
+                  </div>
                   <p-table
                     [value]="drawingLines"
                     styleClass="bv-tbl p-datatable-sm"
@@ -621,6 +633,15 @@
                   aria-label="Xem trước file đính kèm"
                 >
                   <div class="bv-preview-header">
+                    <button
+                      type="button"
+                      class="bv-split-toggle"
+                      [class.active]="splitMode === 'fullRight'"
+                      (click)="toggleSplitFull('right')"
+                      title="Full preview"
+                    >
+                      <i class="pi" [ngClass]="splitMode === 'fullRight' ? 'pi-minus' : 'pi-window-maximize'"></i>
+                    </button>
                     <span
                       class="bv-preview-filename"
                       [class.bv-preview-filename--empty]="!previewName"

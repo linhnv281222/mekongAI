@@ -41,6 +41,7 @@ export const DEFAULT_COL_WIDTHS: Record<string, number> = {
 };
 
 type ViewTab = 0 | 1;
+type SplitMode = 'normal' | 'fullLeft' | 'fullRight';
 
 @Component({
   selector: 'app-demo-v3',
@@ -75,6 +76,17 @@ export class DemoV3Component implements OnInit, OnDestroy {
   } | null = null;
   private boundMouseMove: ((event: MouseEvent) => void) | null = null;
   private boundMouseUp: (() => void) | null = null;
+
+  // Splitter full-width toggle
+  splitMode: SplitMode = 'normal';
+
+  get splitterPanelSizes(): number[] {
+    switch (this.splitMode) {
+      case 'fullLeft': return [100, 0];
+      case 'fullRight': return [0, 100];
+      default: return [60, 40];
+    }
+  }
 
   // Guide panel
   guideExpanded = sessionStorage.getItem('v3guideExpanded') === '1';
@@ -225,6 +237,15 @@ export class DemoV3Component implements OnInit, OnDestroy {
     this.resetPreview();
     this.colWidths = {};
     this.drawingLines = [];
+    this.splitMode = 'normal';
+  }
+
+  toggleSplitFull(mode: 'left' | 'right'): void {
+    if (this.splitMode === (mode === 'left' ? 'fullLeft' : 'fullRight')) {
+      this.splitMode = 'normal';
+    } else {
+      this.splitMode = mode === 'left' ? 'fullLeft' : 'fullRight';
+    }
   }
 
   private loadDrawingLines(): void {
