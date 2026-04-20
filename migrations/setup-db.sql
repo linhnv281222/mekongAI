@@ -100,11 +100,6 @@ CREATE TABLE mekongai.agent_jobs (
 );
 
 -- ── 7. Schema Migrations ────────────────────────────────────────
-CREATE TABLE mekongai.schema_migrations (
-  id         SERIAL PRIMARY KEY,
-  name       TEXT NOT NULL UNIQUE,
-  applied_at TIMESTAMPTZ DEFAULT NOW()
-);
 
 COMMIT;
 

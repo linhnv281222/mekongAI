@@ -197,10 +197,16 @@ export async function getJobsFromDb() {
 export async function getJobFromDb(id) {
   if (!pool) return null;
   try {
-    const r = await pool.query(
-      "SELECT * FROM mekongai.agent_jobs WHERE id=$1 OR gmail_id=$1 LIMIT 1",
-      [id]
-    );
+    const isNum = String(id).match(/^\d+$/);
+    const r = isNum
+      ? await pool.query(
+          "SELECT * FROM mekongai.agent_jobs WHERE id=$1 LIMIT 1",
+          [id]
+        )
+      : await pool.query(
+          "SELECT * FROM mekongai.agent_jobs WHERE gmail_id=$1 LIMIT 1",
+          [String(id)]
+        );
     return r.rows[0] ? normalizeDbRow(r.rows[0]) : null;
   } catch (e) {
     console.error("[JobDB] getJobFromDb error:", e.message);
