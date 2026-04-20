@@ -12,7 +12,6 @@ BEGIN;
 CREATE SCHEMA IF NOT EXISTS mekongai;
 
 -- ── 1. Drop existing tables (fresh start) ─────────────────────
-DROP TABLE IF EXISTS mekongai.schema_migrations CASCADE;
 DROP TABLE IF EXISTS mekongai.agent_jobs CASCADE;
 DROP TABLE IF EXISTS mekongai.prompt_versions CASCADE;
 DROP TABLE IF EXISTS mekongai.prompt_templates CASCADE;
@@ -136,17 +135,6 @@ SELECT id, 1,
 FROM mekongai.prompt_templates WHERE key = 'gemini-drawing';
 
 COMMIT;
-
--- ============================================================
--- Seed Data — Knowledge Blocks (table format)
--- Chay: node migrations/seed-knowledge.js
--- Sau khi chay seed-knowledge.js thi bo comment phan duoi:
---
--- INSERT INTO mekongai.schema_migrations (name) VALUES ('seed-knowledge') ON CONFLICT DO NOTHING;
--- ============================================================
--- ============================================================
--- 6b. Add missing columns to agent_jobs (chay sau khi da tao table)
--- ============================================================
 
 ALTER TABLE mekongai.agent_jobs
   ADD COLUMN IF NOT EXISTS attachments    JSONB DEFAULT '[]',

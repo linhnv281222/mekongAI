@@ -1,22 +1,10 @@
-import fs from "fs";
-import path from "path";
 import pg from "pg";
-import { fileURLToPath } from "url";
 import { dbCfg } from "../libs/config.js";
-
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const JOB_FILE =
-  (process.env.AGENT_JOBS_FILE || "").trim() ||
-  path.join(__dirname, "../../agent_jobs.json");
-
-// ─── PostgreSQL pool ───────────────────────────────────────────────────────
 
 const pool = dbCfg.hasDb ? new pg.Pool({ connectionString: dbCfg.url }) : null;
 
 export async function initJobDB() {
   if (!pool) return;
-  // Table duoc tao qua migrations/setup-db.sql
-  // Ham nay chi dam bao cac cot moi nhat ton tai (ALTER TABLE neu thieu)
   try {
     const missing = [
       { col: "attachments", type: "JSONB DEFAULT '[]'" },
@@ -43,221 +31,8 @@ export async function initJobDB() {
   }
 }
 
-// ─── File-based store (backup / standalone) ─────────────────────────────────
+// ─── Public API ───────────────────────────────────────────────────────────
 
-export function readJobs() {
-  try {
-    return JSON.parse(fs.readFileSync(JOB_FILE, "utf8"));
-  } catch {
-    return [];
-  }
-}
-
-export function writeJobs(jobs) {
-  const dir = path.dirname(JOB_FILE);
-  if (dir && dir !== "." && !fs.existsSync(dir)) {
-    fs.mkdirSync(dir, { recursive: true });
-  }
-  const payload = JSON.stringify(jobs.slice(0, 100), null, 2);
-  const tmp = `${JOB_FILE}.${process.pid}.tmp`;
-  fs.writeFileSync(tmp, payload, "utf8");
-  try {
-    if (fs.existsSync(JOB_FILE)) fs.unlinkSync(JOB_FILE);
-  } catch {
-    /* ignore */
-  }
-  fs.renameSync(tmp, JOB_FILE);
-}
-
-// ─── Public API ────────────────────────────────────────────────────────────
-
-function jobGmailId(j) {
-  return j.gmail_id || j.gmailId || "";
-}
-
-/**
- * Luu job moi hoac cap nhat job cu.
- * Ghi de theo gmail_id: moi email chi 1 dong trong file (tranh job tam id:null + job xong).
- * @param {object} jobData
- */
-export async function saveJob(jobData) {
-  const gid = jobGmailId(jobData);
-  const jobs = readJobs().filter((j) => {
-    if (gid && jobGmailId(j) === gid) return false;
-    if (jobData.id != null && j.id === jobData.id) return false;
-    return true;
-  });
-  writeJobs([jobData, ...jobs]);
-
-  // DB if available
-  if (pool) {
-    const job = jobData;
-    try {
-      await pool.query(
-        `
-        INSERT INTO mekongai.agent_jobs
-          (gmail_id, subject, sender_email, sender_name, sender_company,
-           classify, ngon_ngu, status, lines_count, error, raw_email, extracted,
-           attachments, ten_cong_ty, han_giao, hinh_thuc_giao,
-           xu_ly_be_mat, vat_lieu_chung_nhan, drawings,
-           classify_output, classify_ai_payload, drawing_ai_payload, ghi_chu)
-        VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23)
-        ON CONFLICT (gmail_id) DO UPDATE SET
-          subject=EXCLUDED.subject,
-          sender_email=EXCLUDED.sender_email,
-          sender_name=EXCLUDED.sender_name,
-          sender_company=EXCLUDED.sender_company,
-          classify=EXCLUDED.classify,
-          ngon_ngu=EXCLUDED.ngon_ngu,
-          status=EXCLUDED.status,
-          lines_count=EXCLUDED.lines_count,
-          error=EXCLUDED.error,
-          raw_email=EXCLUDED.raw_email,
-          extracted=EXCLUDED.extracted,
-          attachments=EXCLUDED.attachments,
-          ten_cong_ty=EXCLUDED.ten_cong_ty,
-          han_giao=EXCLUDED.han_giao,
-          hinh_thuc_giao=EXCLUDED.hinh_thuc_giao,
-          xu_ly_be_mat=EXCLUDED.xu_ly_be_mat,
-          vat_lieu_chung_nhan=EXCLUDED.vat_lieu_chung_nhan,
-          drawings=EXCLUDED.drawings,
-          classify_output=EXCLUDED.classify_output,
-          classify_ai_payload=EXCLUDED.classify_ai_payload,
-          drawing_ai_payload=EXCLUDED.drawing_ai_payload,
-          ghi_chu=EXCLUDED.ghi_chu,
-          updated_at=NOW()
-      `,
-        [
-          job.gmail_id || job.gmailId || null,
-          job.subject || null,
-          job.sender_email || job.senderEmail || null,
-          job.sender_name || job.senderName || null,
-          job.sender_company || job.senderCompany || null,
-          job.classify || null,
-          job.ngon_ngu || job.ngonNgu || null,
-          job.status || "new",
-          Array.isArray(job.drawings) ? job.drawings.length : (job.lines_count || 0),
-          job.error || null,
-          JSON.stringify(job.raw || {}),
-          JSON.stringify({}),
-          job.attachments ? JSON.stringify(job.attachments) : "[]",
-          job.ten_cong_ty || null,
-          job.han_giao || job.han_giao_hang || null,
-          job.hinh_thuc_giao || null,
-          job.xu_ly_be_mat ?? null,
-          job.vat_lieu_chung_nhan || null,
-          job.drawings ? JSON.stringify(job.drawings) : "[]",
-          job.classify_output ? JSON.stringify(job.classify_output) : null,
-          job.classify_ai_payload ? JSON.stringify(job.classify_ai_payload) : null,
-          job.drawing_ai_payload ? JSON.stringify(job.drawing_ai_payload) : null,
-          job.ghi_chu || null,
-        ]
-      );
-    } catch (e) {
-      console.error("[JobDB] saveJob error:", e.message);
-    }
-  }
-
-  return jobData.id;
-}
-
-/**
- * Lay tat ca jobs (tu file)
- */
-export function getJobs() {
-  return readJobs();
-}
-
-/**
- * Lay 1 job theo id (tu file)
- */
-export function getJob(id) {
-  return readJobs().find((j) => j.id === id) || null;
-}
-
-/**
- * Lay tat ca jobs tu PostgreSQL.
- */
-export async function getJobsFromDb() {
-  if (!pool) return [];
-  try {
-    const result = await pool.query(
-      "SELECT * FROM mekongai.agent_jobs ORDER BY created_at DESC"
-    );
-    return result.rows.map(normalizeDbRow);
-  } catch (e) {
-    console.error("[JobDB] getJobsFromDb error:", e.message);
-    return [];
-  }
-}
-
-/**
- * Lay 1 job theo id tu PostgreSQL.
- */
-export async function getJobFromDb(id) {
-  if (!pool) return null;
-  try {
-    const isNum = String(id).match(/^\d+$/);
-    const result = isNum
-      ? await pool.query(
-          "SELECT * FROM mekongai.agent_jobs WHERE id=$1 LIMIT 1",
-          [id]
-        )
-      : await pool.query(
-          "SELECT * FROM mekongai.agent_jobs WHERE gmail_id=$1 LIMIT 1",
-          [String(id)]
-        );
-    return result.rows[0] ? normalizeDbRow(result.rows[0]) : null;
-  } catch (e) {
-    console.error("[JobDB] getJobFromDb error:", e.message);
-    return null;
-  }
-}
-
-/**
- * Lay 1 job: uu tien file (local first), neu khong co thi hoi DB.
- */
-export async function getJobAsync(id) {
-  const fromFile = getJob(id);
-  if (fromFile) return fromFile;
-  return await getJobFromDb(id);
-}
-
-/**
- * Lay tat ca jobs: gop file + DB, loai bo trung lap.
- */
-export async function getJobsAsync() {
-  const [file, db] = await Promise.all([
-    Promise.resolve(readJobs()),
-    getJobsFromDb(),
-  ]);
-  // Gop, loai trung theo gmail_id (hoac id)
-  const seen = new Map();
-  const all = [...file, ...db];
-  for (const j of all) {
-    const key = (j.gmail_id || j.gmailId || "") || `id:${j.id}`;
-    const prev = seen.get(key);
-    if (!prev) {
-      seen.set(key, j);
-      continue;
-    }
-    //Uu tien ban co nhieu drawings hon
-    const score = (x) => {
-      const pages = Array.isArray(x.drawings) ? x.drawings.length : 0;
-      const raw = x.created_at;
-      const timestampMs = typeof raw === "number" ? raw : raw ? new Date(raw).getTime() : 0;
-      return pages * 1e15 + (Number.isNaN(timestampMs) ? 0 : timestampMs);
-    };
-    if (score(j) >= score(prev)) seen.set(key, j);
-  }
-  return Array.from(seen.values()).sort((a, b) => {
-    const ta = typeof a.created_at === "number" ? a.created_at : new Date(a.created_at || 0).getTime();
-    const tb = typeof b.created_at === "number" ? b.created_at : new Date(b.created_at || 0).getTime();
-    return (Number.isNaN(tb) ? 0 : tb) - (Number.isNaN(ta) ? 0 : ta);
-  });
-}
-
-/** Chuan hoa row tu DB sang format job (giong nhu file JSON) */
 function normalizeDbRow(row) {
   return {
     id: row.id,
@@ -294,43 +69,186 @@ function normalizeDbRow(row) {
 }
 
 /**
- * Cap nhat job theo id
+ * Luu job moi hoac cap nhat job cu (chi ghi vao DB).
  */
-export function updateJob(id, updates) {
-  if (id == null) return;
-  const jobs = readJobs();
-  const idx = jobs.findIndex((j) => j.id === id);
-  if (idx !== -1) {
-    jobs[idx] = { ...jobs[idx], ...updates };
-    writeJobs(jobs);
+export async function saveJob(jobData) {
+  if (!pool) {
+    console.warn("[JobDB] saveJob: DATABASE_URL not set, skipping.");
+    return jobData.id;
   }
 
-  // DB
-  if (pool && updates.gmail_id) {
-    const cols = Object.keys(updates)
-      .map((k, i) => `${k}=$${i + 2}`)
-      .join(",");
-    pool
-      .query(
-        `UPDATE mekongai.agent_jobs SET ${cols}, updated_at=NOW() WHERE gmail_id=$1`,
-        [updates.gmail_id, ...Object.values(updates)]
-      )
-      .catch(() => {});
+  const job = jobData;
+  try {
+    await pool.query(
+      `
+      INSERT INTO mekongai.agent_jobs
+        (gmail_id, subject, sender_email, sender_name, sender_company,
+         classify, ngon_ngu, status, lines_count, error, raw_email, extracted,
+         attachments, ten_cong_ty, han_giao, hinh_thuc_giao,
+         xu_ly_be_mat, vat_lieu_chung_nhan, drawings,
+         classify_output, classify_ai_payload, drawing_ai_payload, ghi_chu)
+      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23)
+      ON CONFLICT (gmail_id) DO UPDATE SET
+        subject=EXCLUDED.subject,
+        sender_email=EXCLUDED.sender_email,
+        sender_name=EXCLUDED.sender_name,
+        sender_company=EXCLUDED.sender_company,
+        classify=EXCLUDED.classify,
+        ngon_ngu=EXCLUDED.ngon_ngu,
+        status=EXCLUDED.status,
+        lines_count=EXCLUDED.lines_count,
+        error=EXCLUDED.error,
+        raw_email=EXCLUDED.raw_email,
+        extracted=EXCLUDED.extracted,
+        attachments=EXCLUDED.attachments,
+        ten_cong_ty=EXCLUDED.ten_cong_ty,
+        han_giao=EXCLUDED.han_giao,
+        hinh_thuc_giao=EXCLUDED.hinh_thuc_giao,
+        xu_ly_be_mat=EXCLUDED.xu_ly_be_mat,
+        vat_lieu_chung_nhan=EXCLUDED.vat_lieu_chung_nhan,
+        drawings=EXCLUDED.drawings,
+        classify_output=EXCLUDED.classify_output,
+        classify_ai_payload=EXCLUDED.classify_ai_payload,
+        drawing_ai_payload=EXCLUDED.drawing_ai_payload,
+        ghi_chu=EXCLUDED.ghi_chu,
+        updated_at=NOW()
+    `,
+      [
+        job.gmail_id || job.gmailId || null,
+        job.subject || null,
+        job.sender_email || job.senderEmail || null,
+        job.sender_name || job.senderName || null,
+        job.sender_company || job.senderCompany || null,
+        job.classify || null,
+        job.ngon_ngu || job.ngonNgu || null,
+        job.status || "new",
+        Array.isArray(job.drawings) ? job.drawings.length : (job.lines_count || 0),
+        job.error || null,
+        JSON.stringify(job.raw || {}),
+        JSON.stringify({}),
+        job.attachments ? JSON.stringify(job.attachments) : "[]",
+        job.ten_cong_ty || null,
+        job.han_giao || job.han_giao_hang || null,
+        job.hinh_thuc_giao || null,
+        job.xu_ly_be_mat ?? null,
+        job.vat_lieu_chung_nhan || null,
+        job.drawings ? JSON.stringify(job.drawings) : "[]",
+        job.classify_output ? JSON.stringify(job.classify_output) : null,
+        job.classify_ai_payload ? JSON.stringify(job.classify_ai_payload) : null,
+        job.drawing_ai_payload ? JSON.stringify(job.drawing_ai_payload) : null,
+        job.ghi_chu || null,
+      ]
+    );
+  } catch (e) {
+    console.error("[JobDB] saveJob error:", e.message);
+  }
+
+  return jobData.id;
+}
+
+/**
+ * Cap nhat job theo DB id hoac gmail_id (chi ghi vao DB).
+ * Goi kieu 1: updateJob(jobDbId, { status: "pushed", ... })
+ * Goi kieu 2: updateJob({ gmail_id: "xxx", status: "pending_review", ... })
+ */
+export async function updateJob(idOrFields, fields) {
+  let jobDbId;
+  let updates;
+
+  if (typeof idOrFields === "string" || typeof idOrFields === "number") {
+    jobDbId = Number(idOrFields);
+    updates = fields || {};
+  } else {
+    jobDbId = null;
+    updates = idOrFields;
+  }
+
+  if (!pool) return;
+
+  try {
+    if (jobDbId && !Number.isNaN(jobDbId)) {
+      await pool.query(
+        `UPDATE mekongai.agent_jobs SET ${Object.keys(updates).map((k, i) => `${k}=$${i + 2}`).join(",")}, updated_at=NOW() WHERE id=$${Object.keys(updates).length + 1}`,
+        [...Object.values(updates), jobDbId]
+      );
+    } else if (updates.gmail_id) {
+      await pool.query(
+        `UPDATE mekongai.agent_jobs SET ${Object.keys(updates).map((k, i) => `${k}=$${i + 2}`).join(",")}, updated_at=NOW() WHERE gmail_id=$${Object.keys(updates).length + 1}`,
+        [...Object.values(updates), updates.gmail_id]
+      );
+    }
+  } catch (e) {
+    console.error("[JobDB] updateJob error:", e.message);
   }
 }
 
 /**
- * Check email da duoc xu ly chua (co job trong file hoac DB).
+ * Lay tat ca jobs tu PostgreSQL.
+ */
+export async function getJobs() {
+  if (!pool) return [];
+  try {
+    const result = await pool.query(
+      "SELECT * FROM mekongai.agent_jobs ORDER BY created_at DESC"
+    );
+    return result.rows.map(normalizeDbRow);
+  } catch (e) {
+    console.error("[JobDB] getJobs error:", e.message);
+    return [];
+  }
+}
+
+/**
+ * Lay 1 job theo id (so nguyen = DB id, chuoi = gmail_id).
+ */
+export async function getJob(id) {
+  if (!pool) return null;
+  try {
+    const isNum = String(id).match(/^\d+$/);
+    const result = isNum
+      ? await pool.query(
+          "SELECT * FROM mekongai.agent_jobs WHERE id=$1 LIMIT 1",
+          [id]
+        )
+      : await pool.query(
+          "SELECT * FROM mekongai.agent_jobs WHERE gmail_id=$1 LIMIT 1",
+          [String(id)]
+        );
+    return result.rows[0] ? normalizeDbRow(result.rows[0]) : null;
+  } catch (e) {
+    console.error("[JobDB] getJob error:", e.message);
+    return null;
+  }
+}
+
+/**
+ * Lay 1 job theo id hoac gmail_id (DB truoc, fallback = none).
+ */
+export async function getJobAsync(id) {
+  return getJob(id);
+}
+
+/**
+ * Lay tat ca jobs (chi tu DB).
+ */
+export async function getJobsAsync() {
+  return getJobs();
+}
+
+/**
+ * Check email da duoc xu ly chua (chi kiem tra DB).
  */
 export async function isJobProcessed(gmailId) {
-  if (!gmailId) return false;
-  const inFile = readJobs().some((j) => jobGmailId(j) === gmailId);
-  if (inFile) return true;
-  if (!pool) return false;
-  const r = await pool.query("SELECT id FROM mekongai.agent_jobs WHERE gmail_id=$1", [
-    gmailId,
-  ]);
-  return r.rows.length > 0;
+  if (!pool || !gmailId) return false;
+  try {
+    const r = await pool.query("SELECT id FROM mekongai.agent_jobs WHERE gmail_id=$1", [
+      gmailId,
+    ]);
+    return r.rows.length > 0;
+  } catch (e) {
+    console.error("[JobDB] isJobProcessed error:", e.message);
+    return false;
+  }
 }
 
 export { pool };
