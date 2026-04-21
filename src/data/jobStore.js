@@ -255,7 +255,7 @@ export async function isJobProcessed(gmailId) {
   try {
     const r = await pool.query(
       `SELECT id FROM mekongai.agent_jobs
-       WHERE gmail_id = $1
+       WHERE gmail_id = $1 /* gmailId */
          AND status IN ('pending_review', 'pushed')
        LIMIT 1`,
       [gmailId]

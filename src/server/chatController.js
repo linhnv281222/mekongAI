@@ -4,7 +4,6 @@ import multer from "multer";
 import path from "path";
 import { fileURLToPath } from "url";
 import { postPdfToDrawingsApi } from "../libs/postDrawingUpload.js";
-import { enrichWithF7F8 } from "../processors/processRouter.js";
 import { splitPdf } from "../processors/pdfSplitter.js";
 import {
   drawingHasMinimalData,
@@ -293,21 +292,20 @@ async function handleBaoGiaChat(message, files, senderEmail, jobId) {
               continue;
             }
 
-            const enriched = enrichWithF7F8(flat);
             allResults.push({
               ...result,
-              data: enriched,
+              data: flat,
               filename: file.originalname,
               page: pg.page,
             });
 
             console.log(
               "[ChatBaoGia] OK: " +
-                enriched.ma_ban_ve +
+                flat.ma_ban_ve +
                 " | " +
-                enriched.vat_lieu +
+                flat.vat_lieu +
                 " | SL:" +
-                enriched.so_luong
+                flat.so_luong
             );
           } catch (e) {
             const msg = e.message || String(e);
@@ -481,8 +479,6 @@ async function handleBaoGiaChat(message, files, senderEmail, jobId) {
         (r.data.vat_lieu || "?") +
         " | SL:" +
         (r.data.so_luong || "?") +
-        " | QT:" +
-        (r.data.ma_quy_trinh || "?") +
         "\n";
     }
     reply += "\nJob " + jobId + " đã được tạo trong hệ thống. Xem tại DemoV3.";

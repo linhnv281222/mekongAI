@@ -6,6 +6,7 @@ import { TranslateModule } from '@ngx-translate/core';
 import { RouterModule } from '@angular/router';
 import { ButtonModule } from 'primeng/button';
 import { InputTextModule } from 'primeng/inputtext';
+import { InputNumberModule } from 'primeng/inputnumber';
 import { ToastModule } from 'primeng/toast';
 import { DialogModule } from 'primeng/dialog';
 import { ProgressBarModule } from 'primeng/progressbar';
@@ -24,6 +25,7 @@ import { AutoCompleteModule } from 'primeng/autocomplete';
 import { ConfirmDialogModule } from 'primeng/confirmdialog';
 import { InputMaskModule } from 'primeng/inputmask';
 import { SplitterModule } from 'primeng/splitter';
+import { InputSwitchModule } from 'primeng/inputswitch';
 import { MessageService } from 'primeng/api';
 import { ConfirmationService } from 'primeng/api';
 import { MekongAiRoutingModule } from './mekong-ai-routing.module';
@@ -44,6 +46,7 @@ import { SharedComponentsModule } from '../../shared/shared-components.module';
     TranslateModule,
     ButtonModule,
     InputTextModule,
+    InputNumberModule,
     ToastModule,
     DialogModule,
     ProgressBarModule,
@@ -61,6 +64,7 @@ import { SharedComponentsModule } from '../../shared/shared-components.module';
     AutoCompleteModule,
     ConfirmDialogModule,
     InputMaskModule,
+    InputSwitchModule,
     SplitterModule,
     RouterModule,
     SharedComponentsModule,

@@ -17,8 +17,6 @@ import {
   getPromptRawContent,
   render,
   getPrompt,
-  getKnowledgeTable,
-  renderKnowledgeTable,
 } from "../prompts/promptStore.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -44,7 +42,7 @@ const debugUpload = multer({
 });
 
 /** Mặc định provider */
-const DEFAULT_AI_CONFIG = { provider: "claude" };
+const DEFAULT_AI_CONFIG = { provider: "gemini" };
 
 /** Đọc config từ file, tạo file nếu chưa có */
 function loadAiConfig() {
@@ -66,7 +64,7 @@ function loadAiConfig() {
       provider = m.startsWith("gemini") ? "gemini" : "claude";
     }
     if (provider !== "claude" && provider !== "gemini") {
-      provider = "claude";
+      provider = "gemini";
     }
     return { provider };
   } catch {
@@ -374,41 +372,7 @@ router.post("/test", async (req, res) => {
   }
 });
 
-// ─── Helpers ────────────────────────────────────────────────────────────────
-
-/** Build system prompt from raw template + knowledge blocks for drawing prompts */
-async function buildDrawingSystemPrompt(rawContent) {
-  const [matTbl, nhietTbl, bmTbl, hinhTbl] = await Promise.all([
-    getKnowledgeTable("vnt-materials"),
-    getKnowledgeTable("vnt-heat-treat"),
-    getKnowledgeTable("vnt-surface"),
-    getKnowledgeTable("vnt-shapes"),
-  ]);
-  const matText = matTbl
-    ? renderKnowledgeTable("BANG QUY DOI VAT LIEU", matTbl.headers, matTbl.rows)
-    : "";
-  const nhietText = nhietTbl
-    ? renderKnowledgeTable("BANG XU LY NHIET", nhietTbl.headers, nhietTbl.rows)
-    : "";
-  const bmText = bmTbl
-    ? renderKnowledgeTable("BANG XU LY BE MAT", bmTbl.headers, bmTbl.rows)
-    : "";
-  const hinhText = hinhTbl
-    ? renderKnowledgeTable(
-        "BANG HINH DANG & KIEU PHOI",
-        hinhTbl.headers,
-        hinhTbl.rows
-      )
-    : "";
-
-  return rawContent
-    .replaceAll("{{MATERIAL}}", matText)
-    .replaceAll("{{HEAT_TREAT}}", nhietText)
-    .replaceAll("{{SURFACE}}", bmText)
-    .replaceAll("{{SHAPE}}", hinhText);
-}
-
-// POST /admin/prompts/debug — text prompts only (email-classify, generic)
+// POST /admin/prompts/debug — text prompts only
 // Body: { key, content } — content = textarea text to send to AI
 router.post("/debug", async (req, res) => {
   const { key, content } = req.body;
@@ -471,15 +435,9 @@ router.post("/debug", async (req, res) => {
 
     let userMessage = content.trim();
 
-    if (provider === "gemini") {
-      const { debugPromptGemini } = await import("../ai/geminiAnalyzer.js");
-      const result = await debugPromptGemini(rawContent, userMessage, "");
-      return res.json({ data: { key, provider, result } });
-    } else {
-      const { debugPromptClaude } = await import("../ai/claudeAnalyzer.js");
-      const result = await debugPromptClaude(rawContent, userMessage, "");
-      return res.json({ data: { key, provider, result } });
-    }
+    const { debugPromptGemini } = await import("../ai/geminiAnalyzer.js");
+    const result = await debugPromptGemini(rawContent, userMessage, "");
+    return res.json({ data: { key, provider: "gemini", result } });
   } catch (e) {
     console.error("[debug] Error:", e);
     res.status(500).json({ error: e.message });
@@ -495,7 +453,7 @@ router.post("/debug/file", debugUpload.single("file"), async (req, res) => {
   const { key } = req.body;
   if (!key) return res.status(400).json({ error: "key is required" });
 
-  if (!["drawing-system", "gemini-drawing"].includes(key)) {
+  if (!["gemini-drawing"].includes(key)) {
     // Clean up uploaded file
     try {
       fs.unlinkSync(req.file.path);
@@ -505,48 +463,16 @@ router.post("/debug/file", debugUpload.single("file"), async (req, res) => {
       .json({ error: `Prompt "${key}" does not support file upload` });
   }
 
-  const { provider } = loadAiConfig();
-
   try {
-    const DRAWING_SCHEMA = `{
-  "ma_ban_ve": "string",
-  "vat_lieu": "string",
-  "so_luong": "number",
-  "xu_ly_be_mat": "string",
-  "xu_ly_nhiet": "string",
-  "dung_sai_chung": "string",
-  "hinh_dang": "string",
-  "kich_thuoc": "string",
-  "so_be_mat_cnc": "number",
-  "dung_sai_chat_nhat": "string",
-  "co_gdt": "boolean",
-  "ma_quy_trinh": "string",
-  "ly_giai_qt": "string"
-}`;
-
-    let result;
-    if (key === "gemini-drawing") {
-      const rawContent = await getPrompt(key, {
-        VNT_KNOWLEDGE: (await getKnowledgeBlock("vnt-knowledge")) ?? "",
-      });
-      const { analyzeDrawingGemini } = await import("../ai/geminiAnalyzer.js");
-      result = await analyzeDrawingGemini(req.file.path, null);
-      return res.json({
-        data: { key, provider, filename: req.file.originalname, result },
-      });
-    }
-
-    // drawing-system: use the same flow as analyzDrawing but return raw result
-    const { debugDrawingClaude } = await import("../ai/claudeAnalyzer.js");
-    result = await debugDrawingClaude(req.file.path);
+    const { analyzeDrawingGemini } = await import("../ai/geminiAnalyzer.js");
+    const result = await analyzeDrawingGemini(req.file.path, null);
     return res.json({
-      data: { key, provider, filename: req.file.originalname, result },
+      data: { key, provider: "gemini", filename: req.file.originalname, result },
     });
   } catch (e) {
     console.error("[debug/file] Error:", e);
     res.status(500).json({ error: e.message });
   } finally {
-    // Clean up uploaded temp file
     try {
       fs.unlinkSync(req.file.path);
     } catch {}

@@ -4,8 +4,7 @@ import multer from "multer";
 import path from "path";
 import { PDFDocument } from "pdf-lib";
 import { fileURLToPath } from "url";
-import { analyzDrawing, correctDrawing } from "../ai/claudeAnalyzer.js";
-import { analyzeDrawingGemini } from "../ai/geminiAnalyzer.js";
+import { analyzeDrawingGemini, correctDrawingGemini } from "../ai/geminiAnalyzer.js";
 import {
   getDrawing,
   listDrawings,
@@ -20,39 +19,13 @@ import {
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const PROJECT_ROOT = path.resolve(__dirname, "../..");
 const UPLOADS_DIR = path.join(PROJECT_ROOT, "uploads");
-const AI_CONFIG_FILE = path.join(PROJECT_ROOT, "data", "ai-model-config.json");
 
 /** Ghi phản hồi nguyên bản từ AI vào file log (data/ai-drawing-log/YYYY-MM-DD.jsonl) */
 function logAiRaw({ filename, provider, raw, page }) {}
 
-function loadAiConfig() {
-  try {
-    if (fs.existsSync(AI_CONFIG_FILE)) {
-      const raw = JSON.parse(fs.readFileSync(AI_CONFIG_FILE, "utf8"));
-      let provider =
-        typeof raw?.provider === "string"
-          ? raw.provider.trim().toLowerCase()
-          : "";
-      if (!provider && raw?.model != null && String(raw.model).trim() !== "") {
-        const m = String(raw.model).trim().toLowerCase();
-        provider = m.startsWith("gemini") ? "gemini" : "claude";
-      }
-      if (provider !== "claude" && provider !== "gemini") {
-        provider = "claude";
-      }
-      return { provider };
-    }
-  } catch {}
-  return { provider: "claude" };
-}
-
-/** Chọn analyzer dựa trên provider hint hoặc config file */
+/** Chọn analyzer — luôn dùng Gemini */
 function selectAnalyzer(providerHint) {
-  const effective = providerHint || loadAiConfig().provider;
-  if (effective === "gemini") {
-    return { fn: analyzeDrawingGemini, label: "gemini" };
-  }
-  return { fn: analyzDrawing, label: "claude" };
+  return { fn: analyzeDrawingGemini, label: "gemini" };
 }
 
 const router = express.Router();
@@ -194,12 +167,12 @@ router.post("/:id/correct", async (req, res) => {
     const drawing = await getDrawing(parseInt(req.params.id));
     if (!drawing) return res.status(404).json({ error: "Khong tim thay" });
 
-    const result = await correctDrawing(drawing.full_data, message);
+    const result = await correctDrawingGemini(drawing.full_data, message);
     if (!result.success) return res.status(422).json({ error: result.error });
 
     logAiRaw({
       filename: `correct_${drawing.id}`,
-      provider: "claude",
+      provider: "gemini",
       raw: result.raw,
     });
 

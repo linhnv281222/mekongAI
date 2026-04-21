@@ -14,12 +14,6 @@ const CACHE_TTL_MS = 60_000; // 1 minute
 
 // ─── Default seed data (key → file mapping) ──────────────────────────────────
 const PROMPT_DEFAULTS = {
-  "drawing-system": {
-    name: "Drawing Analysis — System Prompt",
-    description: "Primary system prompt for Claude Sonnet 4.6 drawing analysis",
-    file: "drawing-system.txt",
-    variables: ["MATERIAL", "HEAT_TREAT", "SURFACE", "SHAPE"],
-  },
   "email-classify": {
     name: "Email Classification Prompt",
     description: "Prompt for classifying incoming emails (Haiku)",
@@ -30,7 +24,7 @@ const PROMPT_DEFAULTS = {
     name: "Drawing Analysis — Gemini Prompt",
     description: "Prompt for backup drawing analysis using Gemini 2.5",
     file: "gemini-drawing.txt",
-    variables: ["VNT_KNOWLEDGE"],
+    variables: ["MATERIAL", "HEAT_TREAT", "SURFACE", "SHAPE", "VNT_KNOWLEDGE"],
   },
   "chat-classify": {
     name: "Chat Classification — AI Extraction",
@@ -43,32 +37,24 @@ const PROMPT_DEFAULTS = {
 
 const KNOWLEDGE_DEFAULTS = {
   "vnt-materials": {
-    name: "VNT Materials Conversion Table",
-    description:
-      "Maps international material standards (DIN/AISI/JIS) to VNT JIS codes",
+    name: "Nguyên vật liệu",
+    description: "Bảng lượng riêng và mã vật liệu VNT",
     file: "vnt-materials.txt",
   },
   "vnt-heat-treat": {
-    name: "VNT Heat Treatment Table",
-    description:
-      "Maps Japanese/English/French heat treatment symbols to VNT Vietnamese names",
+    name: "Xử lý nhiệt",
+    description: "Bảng mã xử lý nhiệt VNT",
     file: "vnt-heat-treat.txt",
   },
   "vnt-surface": {
-    name: "VNT Surface Treatment Table",
-    description:
-      "Maps Japanese/English surface treatment symbols to VNT Vietnamese names",
+    name: "Xử lý bề mặt",
+    description: "Bảng mã xử lý bề mặt VNT",
     file: "vnt-surface.txt",
   },
   "vnt-shapes": {
-    name: "VNT Shape Classification Table",
-    description: "Billet type classification and machining approach routing",
+    name: "Phân loại hình dạng",
+    description: "Bảng hình dạng và phương án gia công VNT",
     file: "vnt-shapes.txt",
-  },
-  "vnt-knowledge": {
-    name: "VNT Knowledge (Gemini)",
-    description: "Compact knowledge base for Gemini backup analyzer",
-    file: "vnt-knowledge.txt",
   },
 };
 
@@ -156,7 +142,7 @@ export async function getPromptRawContent(key) {
  * Get rendered prompt with variables substituted.
  * Order: DB cache → DB query → default file → null
  *
- * @param {string} key — e.g. "drawing-system", "email-classify"
+ * @param {string} key — e.g. "email-classify"
  * @param {object} variables — map of {{VAR_NAME}} → replacement text
  * @returns {string|null}
  */
@@ -203,7 +189,7 @@ export async function getPrompt(key, variables = {}) {
  * Get a knowledge block by key (text-only, backward-compatible).
  * Uses the same cache as getKnowledgeTable.
  *
- * @param {string} key — e.g. "vnt-materials"
+ * @param {string} key — e.g. "vnt-knowledge"
  * @returns {string|null}
  */
 export async function getKnowledgeBlock(key) {
@@ -250,7 +236,7 @@ export function renderKnowledgeTable(title, headers, rows) {
  * Get knowledge block as structured table data.
  * Order: cache → DB → defaults file
  *
- * @param {string} key — e.g. "vnt-materials"
+ * @param {string} key — e.g. "vnt-knowledge"
  * @returns {{ headers: string[], rows: object[], format: string, content: string }|null}
  */
 export async function getKnowledgeTable(key) {
@@ -312,38 +298,12 @@ export async function getKnowledgeTable(key) {
 }
 
 /**
- * Parse legacy pipe-text format into structured rows.
+ * Parse pipe-text format into structured rows (legacy).
  * Handles: "A|B|C→D" or "A/B/C→D" patterns
  */
 function parseKnowledgeTextToRows(text, key) {
   if (key === "vnt-knowledge") return parseVntKnowledgeRows(text);
-
-  const rows = [];
-  const lines = (text || "").split("\n");
-  for (const line of lines) {
-    const trimmed = line.trim();
-    if (!trimmed || trimmed.startsWith("#") || trimmed.startsWith("BANG"))
-      continue;
-    const arrowIdx = trimmed.indexOf("→");
-    if (arrowIdx === -1) continue;
-    const left = trimmed.substring(0, arrowIdx).trim();
-    const right = trimmed.substring(arrowIdx + 1).trim();
-    if (!left || !right) continue;
-    const froms = left
-      .split(/[|/]/)
-      .map((s) => s.trim())
-      .filter(Boolean);
-    const group =
-      key === "vnt-materials"
-        ? guessMaterialGroup(froms[0])
-        : key === "vnt-surface"
-        ? guessSurfaceGroup(froms[0])
-        : "";
-    for (const from of froms) {
-      rows.push({ from, to: right, group, note: "" });
-    }
-  }
-  return rows;
+  return [];
 }
 
 function parseVntKnowledgeRows(text) {
@@ -383,7 +343,12 @@ function parseVntKnowledgeRows(text) {
       const templateValue = entry.slice(arrowIdx + 1).trim();
       const froms = fromPart.split("/").map((s) => s.trim());
       for (const from of froms) {
-        rows.push({ group: "Bảng vật liệu", from, to: templateValue, note: "" });
+        rows.push({
+          group: "Bảng vật liệu",
+          from,
+          to: templateValue,
+          note: "",
+        });
       }
     }
   }
@@ -429,33 +394,6 @@ function parseVntKnowledgeRows(text) {
   return rows;
 }
 
-function guessMaterialGroup(code) {
-  const c = (code || "").toUpperCase();
-  if (c.includes("AL") || c.includes("AW-") || /^\d+/.test(c)) return "Nhôm";
-  if (c.includes("SUS") || c.includes("INOX")) return "Inox";
-  if (
-    c.includes("CU") ||
-    c.includes("BRASS") ||
-    c.includes("C1100") ||
-    c.includes("C3604")
-  )
-    return "Đồng";
-  if (c.includes("POM") || c.includes("PMMA") || c.includes("TEFLON"))
-    return "Nhựa";
-  if (c.includes("S45C") || c.includes("AISI 10") || c.includes("SCM4"))
-    return "Thép";
-  if (c.includes("SKD") || c.includes("SKT")) return "Thép dụng cụ";
-  return "Thép";
-}
-
-function guessSurfaceGroup(code) {
-  const c = (code || "").toLowerCase();
-  if (c.includes("アルマイト") || c.includes("anod")) return "Anod nhôm";
-  if (c.includes("ニッケル") || c.includes("niken")) return "Mạ";
-  if (c.includes("染め") || c.includes("soob")) return "Nhuộm đen";
-  return "Không xử lý";
-}
-
 /**
  * Update a knowledge block with table format.
  * @param {string} key
@@ -474,12 +412,7 @@ export async function updateKnowledgeBlockTable(
     renderKnowledgeTable(KNOWLEDGE_DEFAULTS[key]?.name || key, headers, rows);
 
   if (!isDbAvailable()) {
-    const def = KNOWLEDGE_DEFAULTS[key];
-    if (def) {
-      const filePath = path.join(DEFAULTS_DIR, def.file);
-      fs.writeFileSync(filePath, content, "utf8");
-      invalidateCache(key);
-    }
+    console.warn(`[promptStore] DB unavailable — saveKnowledgeTable("${key}") skipped`);
     return;
   }
 
@@ -524,12 +457,7 @@ export async function updatePromptVersion(
   createdBy = "admin"
 ) {
   if (!isDbAvailable()) {
-    const def = PROMPT_DEFAULTS[key];
-    if (def) {
-      const filePath = path.join(DEFAULTS_DIR, def.file);
-      fs.writeFileSync(filePath, content, "utf8");
-      invalidateCache(key);
-    }
+    console.warn(`[promptStore] DB unavailable — updatePromptVersion("${key}") skipped`);
     return { version: versionNumber };
   }
 
@@ -591,12 +519,7 @@ export async function createPromptVersion(
   setActive = false
 ) {
   if (!isDbAvailable()) {
-    const def = PROMPT_DEFAULTS[key];
-    if (def) {
-      const filePath = path.join(DEFAULTS_DIR, def.file);
-      fs.writeFileSync(filePath, content, "utf8");
-      invalidateCache(key);
-    }
+    console.warn(`[promptStore] DB unavailable — createPromptVersion("${key}") skipped`);
     return null;
   }
 
@@ -708,15 +631,9 @@ export async function updateKnowledgeBlock(key, contentOrPayload) {
   const dbAvailable = isDbAvailable();
   if (!dbAvailable) {
     console.warn(
-      `[promptStore] DB unavailable for key "${key}" — falling back to file`
+      `[promptStore] DB unavailable for key "${key}" — updateKnowledgeBlock skipped`
     );
-    const def = KNOWLEDGE_DEFAULTS[key];
-    if (def) {
-      const filePath = path.join(DEFAULTS_DIR, def.file);
-      fs.writeFileSync(filePath, textContent, "utf8");
-      invalidateCache(key);
-    }
-    return { updated: false, fallback: "file" };
+    return { updated: false, fallback: "none" };
   }
 
   try {
