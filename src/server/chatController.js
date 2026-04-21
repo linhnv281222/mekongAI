@@ -147,21 +147,15 @@ async function analyzeFilesForJob(files, jobId) {
   for (const file of files) {
     if (!file.path) continue;
 
-    // file.path = uploads/{jobId}_{safeName}.pdf (already has full safe filename)
-    // basename already includes the extension (.pdf) — do NOT append ext again
-    const safeBasename = path.basename(file.path);
-    const archivePath = path.join(UPLOADS_DIR, `chat_${jobId}_${safeBasename}`);
-    try {
-      fs.copyFileSync(file.path, archivePath);
-    } catch (e) {
-      // archive khong critical
-    }
+    // NOTE: The file is already at UPLOADS_DIR with the safe name from the rename step above.
+    // No separate archive copy is needed — file.path IS the permanent location used by
+    // the preview endpoint and the job's attachments list.
 
     const extLower = file.originalname.toLowerCase();
 
     if (extLower.endsWith(".pdf")) {
-      // safeBasename already has the extension — use directly
-      const safeFileName = safeBasename;
+      // file.path is already at UPLOADS_DIR with the safe name from the rename step above
+      const safeFileName = path.basename(file.path);
       let pages;
       try {
         pages = await splitPdf(fs.readFileSync(file.path), safeFileName);
