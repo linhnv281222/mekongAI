@@ -87,24 +87,10 @@ app.get("/api/demo-hint", (req, res) => {
   });
 });
 
-/** Schema UI tab Thông tin chung (demoV3) — khớp field JSON phân loại email */
+/** Schema UI tab Thông tin chung (demoV3) — đã ngưng sử dụng, trả fallback rỗng */
 app.get("/api/email-classify-ui-schema", (req, res) => {
-  try {
-    const p = path.join(
-      __dirname,
-      "../prompts/defaults/email-classify-ui.json"
-    );
-    const raw = fs.readFileSync(p, "utf8");
-    res.type("application/json").send(raw);
-  } catch (e) {
-    res.status(500).json({ error: String(e.message || e) });
-  }
+  res.type("application/json").json({ generalRows: [], hiddenKeys: [] });
 });
-
-/**
- * Debug xem trước đính kèm — không trả nội dung file, chỉ JSON để dán cho support.
- * Ví dụ: /api/debug/attachment?jobId=job_xxx&f=715-C07418-002%20(Rev%20A).pdf
- */
 app.get("/api/debug/attachment", async (req, res) => {
   const jobIdRaw = req.query.jobId ?? req.query.job;
   let f = req.query.f;

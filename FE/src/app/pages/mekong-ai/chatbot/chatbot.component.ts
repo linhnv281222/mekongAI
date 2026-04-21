@@ -16,7 +16,57 @@ interface ChatMessage {
   text: string;
   time: Date;
   files: File[];
+  /** Khi bot gửi form RFQ, message này chứa schema form */
+  rfqForm?: RfqFormField[];
+  drawingsSummary?: DrawingSummary[];
+  jobId?: string;
+  /** Khi user submit form */
+  isFormSubmit?: boolean;
+  /** Hien thi nut goi y mo form */
+  rfqPrompt?: boolean;
 }
+
+interface RfqFormField {
+  key: string;
+  label: string;
+  type: 'text' | 'email' | 'number' | 'select' | 'textarea';
+  placeholder?: string;
+  required?: boolean;
+  options?: string[];
+}
+
+interface DrawingSummary {
+  filename: string;
+  page: number;
+  data: {
+    ma_ban_ve?: string;
+    vat_lieu?: string;
+    so_luong?: number;
+  };
+}
+
+interface RfqFormValue {
+  [key: string]: string | number | boolean | null;
+}
+
+const RFQ_FORM_FIELDS: RfqFormField[] = [
+  { key: "ma_khach_hang", label: "Mã khách hàng", type: "text", placeholder: "VD: CUST-001" },
+  { key: "ten_cong_ty", label: "Tên công ty khách hàng", type: "text", placeholder: "VD: ABC Precision Co., Ltd", required: true },
+  { key: "nguoi_lien_he", label: "Người liên hệ", type: "text", placeholder: "VD: Tanaka Yamada" },
+  { key: "email", label: "Email liên hệ", type: "email", placeholder: "VD: tanaka@abc.co.jp" },
+  { key: "co_vat", label: "Có VAT không?", type: "select", options: ["Có", "Không"], required: true },
+  { key: "xu_ly_be_mat", label: "Có xử lý bề mặt không?", type: "select", options: ["Có", "Không"], required: true },
+  {
+    key: "so_luong_theo_ve",
+    label: "Số lượng theo bản vẽ?",
+    type: "select",
+    options: ["Theo bản vẽ", "Khác"],
+    required: true,
+  },
+  { key: "so_luong_khac", label: "Số lượng khác (nếu khác bản vẽ)", type: "number", placeholder: "VD: 50" },
+  { key: "co_van_chuyen", label: "Có vận chuyển không?", type: "select", options: ["Có", "Không"], required: true },
+  { key: "ghi_chu_noi_bo", label: "Ghi chú nội bộ", type: "textarea", placeholder: "Ghi chú chỉ hiển thị trong hệ thống..." },
+];
 
 const INITIAL_BOT_MESSAGE: ChatMessage = {
   id: 0,
@@ -24,6 +74,7 @@ const INITIAL_BOT_MESSAGE: ChatMessage = {
   text: 'Xin chào! Mekong AI Bot đây.\n\nTôi có thể:\n- Phân tích báo giá: dán nội dung email hoặc đính kèm file PDF bản vẽ.\n- Trả lời các câu hỏi về hệ thống.\n\nGửi tin nhắn để bắt đầu nhé!',
   time: new Date(),
   files: [],
+  rfqPrompt: true,
 };
 
 @Component({
@@ -47,6 +98,12 @@ export class ChatbotComponent implements OnInit, OnDestroy {
   sending = false;
   typing = false;
 
+  /** Form RFQ đang chờ user điền (sau khi phân tích bản vẽ xong) */
+  pendingRfqForm: RfqFormField[] | null = null;
+  pendingJobId: string | null = null;
+  pendingDrawingsSummary: DrawingSummary[] | null = null;
+  rfqFormValues: RfqFormValue = {};
+
   private pollSub?: Subscription;
   private lastSeenJobTime = Date.now();
   private readonly POLL_INTERVAL = 15000;
@@ -64,6 +121,23 @@ export class ChatbotComponent implements OnInit, OnDestroy {
 
   ngOnDestroy(): void {
     this.stopPolling();
+  }
+
+  /** Hien thi form RFQ khi user nhan nut goi y */
+  showFormFromPrompt(): void {
+    this.pendingRfqForm = RFQ_FORM_FIELDS;
+    this.pendingJobId = 'chat_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2, 6);
+    this.pendingDrawingsSummary = null;
+    this.rfqFormValues = {};
+    for (const field of RFQ_FORM_FIELDS) {
+      if (field.type === 'select' && field.options && field.options.length > 0) {
+        this.rfqFormValues[field.key] = field.options[0];
+      } else {
+        this.rfqFormValues[field.key] = '';
+      }
+    }
+    this.cdr.markForCheck();
+    setTimeout(() => this.scrollToBottom(), 50);
   }
 
   toggleFab(): void {
@@ -109,12 +183,21 @@ export class ChatbotComponent implements OnInit, OnDestroy {
     return !!name && name.toLowerCase().endsWith('.pdf');
   }
 
-  get fileExt(): string {
-    return 'FILE';
-  }
-
-  getChipExt(name: string): string {
-    return name ? name.split('.').pop()?.toUpperCase() ?? 'FILE' : 'FILE';
+  /**
+   * Convert a filename to a safe ASCII name to avoid multipart encoding corruption of CJK chars.
+   * Since non-ASCII chars get corrupted, we derive a name from file content hash instead.
+   */
+  async makeSafeFilename(originalName: string, fileContent: Blob): Promise<string> {
+    const lastDot = originalName.lastIndexOf('.');
+    const ext = lastDot >= 0 ? originalName.slice(lastDot).toLowerCase() : '';
+    // Hash first 64KB of file to get a unique, safe ASCII name
+    const chunk = fileContent.slice(0, 65536);
+    const hashBuffer = await crypto.subtle.digest('SHA-256', await chunk.arrayBuffer());
+    const hashHex = Array.from(new Uint8Array(hashBuffer))
+      .map(b => b.toString(16).padStart(2, '0'))
+      .join('')
+      .slice(0, 16);
+    return hashHex + ext;
   }
 
   onFileChange(event: Event): void {
@@ -129,7 +212,7 @@ export class ChatbotComponent implements OnInit, OnDestroy {
     }
     const oversized = selected.filter((f) => f.size > this.MAX_FILE_SIZE);
     if (oversized.length > 0) {
-      alert(`File quá 100MB: ${oversized.map((f) => f.name).join(', ')}`);
+      alert(`File qua 100MB: ${oversized.map((f) => f.name).join(', ')}`);
       return;
     }
     this.files = [...this.files, ...selected];
@@ -149,7 +232,132 @@ export class ChatbotComponent implements OnInit, OnDestroy {
     }
   }
 
-  send(): void {
+  /** Submit form RFQ từ embedded form trong chat */
+  async submitRfqForm(): Promise<void> {
+    if (this.sending) return;
+    if (!this.pendingJobId || !this.pendingRfqForm) return;
+
+    const requiredFields = this.pendingRfqForm.filter((f) => f.required);
+    for (const field of requiredFields) {
+      const val = this.rfqFormValues[field.key];
+      if (val === undefined || val === null || String(val).trim() === '') {
+        alert(`Vui lòng điền: ${field.label}`);
+        return;
+      }
+    }
+
+    this.sending = true;
+    this.typing = true;
+
+    const formSummary = this.buildFormSummary();
+    const userMsg: ChatMessage = {
+      id: Date.now(),
+      role: 'user',
+      text: formSummary,
+      time: new Date(),
+      files: [],
+      isFormSubmit: true,
+    };
+    this.messages = [...this.messages, userMsg];
+
+    const jobId = this.pendingJobId;
+    const formDataJson = JSON.stringify(this.rfqFormValues);
+    const savedFiles = [...this.files];
+    this.pendingRfqForm = null;
+    this.pendingJobId = null;
+    this.pendingDrawingsSummary = null;
+    this.rfqFormValues = {};
+    this.files = [];
+    this.input = '';
+
+    this.cdr.markForCheck();
+    this.scrollToBottom();
+
+    const formData = new FormData();
+    formData.append('rfq_form_data', formDataJson);
+    formData.append('job_id', jobId);
+    for (const f of savedFiles) {
+      const safeName = await this.makeSafeFilename(f.name, f);
+      formData.append('files', f.slice(), safeName);
+    }
+
+    this.http.post<unknown>('/chat/message', formData).subscribe({
+      next: (data) => {
+        this.typing = false;
+        const d = data as Record<string, unknown>;
+        const reply = d['reply'] as string | undefined;
+        if (reply) {
+          this.messages = [
+            ...this.messages,
+            {
+              id: Date.now() + 1,
+              role: 'bot',
+              text: reply,
+              time: new Date(),
+              files: [],
+            },
+          ];
+        } else {
+          this.messages = [
+            ...this.messages,
+            {
+              id: Date.now() + 1,
+              role: 'bot',
+              text: 'Đã xử lý xong nhưng không có phản hồi từ server.',
+              time: new Date(),
+              files: [],
+            },
+          ];
+        }
+        this.cdr.markForCheck();
+        this.scrollToBottom();
+      },
+      error: () => {
+        this.typing = false;
+        this.messages = [
+          ...this.messages,
+          {
+            id: Date.now() + 1,
+            role: 'bot',
+            text: 'Không thể kết nối server. Vui lòng kiểm tra kết nối mạng.',
+            time: new Date(),
+            files: [],
+          },
+        ];
+        this.cdr.markForCheck();
+        this.scrollToBottom();
+      },
+      complete: () => {
+        this.sending = false;
+        this.cdr.markForCheck();
+      },
+    });
+  }
+
+  /** Build text summary from form values for user message display */
+  private buildFormSummary(): string {
+    if (!this.pendingRfqForm) return '';
+    const lines: string[] = [];
+    for (const field of this.pendingRfqForm) {
+      const val = this.rfqFormValues[field.key];
+      if (val !== undefined && val !== null && val !== '') {
+        const label = field.label.replace(/\?$/, '').trim();
+        lines.push(`${label}: ${val}`);
+      }
+    }
+    return 'Đã điền thông tin:\n' + lines.join('\n');
+  }
+
+  /** Hủy form, quay lại chat thường */
+  cancelRfqForm(): void {
+    this.pendingRfqForm = null;
+    this.pendingJobId = null;
+    this.pendingDrawingsSummary = null;
+    this.rfqFormValues = {};
+    this.cdr.markForCheck();
+  }
+
+  async send(): Promise<void> {
     if (this.sending) return;
 
     const text = this.input.trim();
@@ -177,83 +385,114 @@ export class ChatbotComponent implements OnInit, OnDestroy {
 
     const formData = new FormData();
     if (text) formData.append('message', text);
-    userMsg.files.forEach((f) => formData.append('files', f));
-    this.http
-      .post<{ reply?: string; error?: string }>('/chat/message', formData)
-      .subscribe({
-        next: (data) => {
-          this.typing = false;
-          // Hỏi làm rõ — hiển thị câu hỏi nhưng không tạo job
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          const d = data as any;
-          if (d.askClarify) {
-            this.messages = [
-              ...this.messages,
-              {
-                id: Date.now() + Math.random(),
-                role: 'bot',
-                text: data.reply || 'Bạn cho mình biết thêm thông tin nhé.',
-                time: new Date(),
-                files: [],
-              },
-            ];
-          } else if (data.reply) {
-            this.messages = [
-              ...this.messages,
-              {
-                id: Date.now() + Math.random(),
-                role: 'bot',
-                text: data.reply,
-                time: new Date(),
-                files: [],
-              },
-            ];
-          } else if (data.error) {
-            this.messages = [
-              ...this.messages,
-              {
-                id: Date.now() + Math.random(),
-                role: 'bot',
-                text: 'Đã xảy ra lỗi: ' + data.error,
-                time: new Date(),
-                files: [],
-              },
-            ];
-          } else {
-            this.messages = [
-              ...this.messages,
-              {
-                id: Date.now() + Math.random(),
-                role: 'bot',
-                text: 'Đã xử lý xong nhưng không có phản hồi từ server.',
-                time: new Date(),
-                files: [],
-              },
-            ];
+    await Promise.all(userMsg.files.map(async (f) => {
+      const safeName = await this.makeSafeFilename(f.name, f);
+      formData.append('files', f.slice(), safeName);
+    }));
+
+    this.http.post<unknown>('/chat/message', formData).subscribe({
+      next: (data) => {
+        this.typing = false;
+        const d = data as Record<string, unknown>;
+        const reply = d['reply'] as string | undefined;
+        const step = d['step'] != null ? String(d['step']) : null;
+        const jobId = d['job_id'] as string | undefined;
+        const rfqForm = d['rfq_form'] as RfqFormField[] | undefined;
+        const drawingsSummary = d['drawings_summary'] as DrawingSummary[] | undefined;
+        const error = d['error'] as string | undefined;
+
+        // ── Step 2: Server trả form RFQ ───────────────────────────────────
+        if (step === '2' && rfqForm && jobId) {
+          this.pendingRfqForm = rfqForm;
+          this.pendingJobId = jobId;
+          this.pendingDrawingsSummary = drawingsSummary || null;
+
+          // Khởi tạo default values
+          this.rfqFormValues = {};
+          for (const field of rfqForm) {
+            if (field.type === 'select' && field.options && field.options.length > 0) {
+              this.rfqFormValues[field.key] = field.options[0];
+            } else {
+              this.rfqFormValues[field.key] = '';
+            }
           }
-          this.cdr.markForCheck();
-          this.scrollToBottom();
-        },
-        error: () => {
-          this.typing = false;
+
           this.messages = [
             ...this.messages,
             {
               id: Date.now() + Math.random(),
               role: 'bot',
-              text: 'Không thể kết nối server. Vui lòng kiểm tra kết nối mạng.',
+              text: reply || 'Hãy điền đầy đủ thông tin:',
               time: new Date(),
               files: [],
+              rfqForm,
+              drawingsSummary,
+              jobId,
             },
           ];
           this.cdr.markForCheck();
           this.scrollToBottom();
-        },
-        complete: () => {
-          this.sending = false;
-          this.cdr.markForCheck();
-        },
-      });
+          return;
+        }
+
+        // ── Reply bình thường ───────────────────────────────────────────
+        if (reply) {
+          this.messages = [
+            ...this.messages,
+            {
+              id: Date.now() + Math.random(),
+              role: 'bot',
+              text: reply,
+              time: new Date(),
+              files: [],
+            },
+          ];
+        } else if (error) {
+          this.messages = [
+            ...this.messages,
+            {
+              id: Date.now() + Math.random(),
+              role: 'bot',
+              text: 'Đã xảy ra lỗi: ' + error,
+              time: new Date(),
+              files: [],
+            },
+          ];
+        } else {
+          this.messages = [
+            ...this.messages,
+            {
+              id: Date.now() + Math.random(),
+              role: 'bot',
+              text: 'Đã xử lý xong nhưng không có phản hồi từ server.',
+              time: new Date(),
+              files: [],
+            },
+          ];
+        }
+        this.cdr.markForCheck();
+        this.scrollToBottom();
+      },
+      error: () => {
+        this.typing = false;
+        this.messages = [
+          ...this.messages,
+          {
+            id: Date.now() + Math.random(),
+            role: 'bot',
+            text: 'Không thể kết nối server. Vui lòng kiểm tra kết nối mạng.',
+            time: new Date(),
+            files: [],
+          },
+        ];
+        this.cdr.markForCheck();
+        this.scrollToBottom();
+      },
+      complete: () => {
+        this.sending = false;
+        this.cdr.markForCheck();
+      },
+    });
   }
 
   renderText(text: string): string {
@@ -272,7 +511,7 @@ export class ChatbotComponent implements OnInit, OnDestroy {
             const jobs = data.data || [];
             const chatJobs = jobs.filter(
               (j) =>
-                j.id?.startsWith('chat_') &&
+                j.id != null && String(j.id).indexOf('chat_') === 0 &&
                 (j.created_at ?? 0) > this.lastSeenJobTime
             );
             if (chatJobs.length > 0) {

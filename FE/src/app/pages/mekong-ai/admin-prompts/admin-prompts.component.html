@@ -285,7 +285,7 @@
                   <td>
                     <code>{{ "{{" }}MATERIAL{{ '}}' }}</code>
                   </td>
-                  <td>Nguyên vật liệu</td>
+                  <td>Bảng quy đổi vật liệu VNT</td>
                   <td>Map AISI 1045 → S45C, EN AW-6061 → A6061…</td>
                 </tr>
                 <tr>
@@ -293,21 +293,21 @@
                     <code>{{ "{{" }}HEAT_TREAT{{ '}}' }}</code>
                   </td>
                   <td>Xử lý nhiệt</td>
-                  <td>Map 焼入れ焼戻し → Nhiệt toàn phần [HRC...]…</td>
+                  <td>Map 焼入れ焼戻し → Nhiệt toàn phần, HRC tiêu chuẩn…</td>
                 </tr>
                 <tr>
                   <td>
                     <code>{{ "{{" }}SURFACE{{ '}}' }}</code>
                   </td>
                   <td>Xử lý bề mặt</td>
-                  <td>Map 白アルマイト → Anod trang, Hard Anodize…</td>
+                  <td>Map 白アルマイト → Anod trắng, Hard Anodize…</td>
                 </tr>
                 <tr>
                   <td>
                     <code>{{ "{{" }}SHAPE{{ '}}' }}</code>
                   </td>
-                  <td>Phân loại hình dạng</td>
-                  <td>Map hình dạng → phương án gia công</td>
+                  <td>Phân loại hình dạng VNT</td>
+                  <td>Map hình dạng → phương án gia công, QT mã…</td>
                 </tr>
                 <tr>
                   <td>
@@ -315,7 +315,7 @@
                   </td>
                   <td>Kiến thức nội bộ VNT</td>
                   <td>
-                    Bảng lượng riêng, mã vật liệu, hình dạng, mã qui trình
+                    Bảng lượng riêng vật liệu + mã qui trình VNT
                   </td>
                 </tr>
               </tbody>
@@ -418,39 +418,45 @@
             ></textarea>
           </ng-container>
 
-          <!-- Drawing prompts: file upload -->
+          <!-- Drawing prompts: file upload (multi) -->
           <ng-container *ngIf="isDrawingPrompt()">
             <div class="debug-hint">
-              Upload file PDF bản vẽ, bấm <strong>Gửi AI</strong> để test
-              prompt. AI sẽ đọc file và trả kết quả phân tích ngay — không lưu
+              Upload nhiều file PDF bản vẽ cùng lúc, bấm <strong>Gửi AI</strong> để test
+              prompt. AI sẽ đọc từng file và trả kết quả phân tích ngay — không lưu
               vào phiếu.
             </div>
             <div class="debug-upload-area">
               <input
                 type="file"
                 accept=".pdf"
+                multiple
                 (change)="onFileSelected($event)"
                 #fileInput
                 style="display: none"
               />
-              <ng-container *ngIf="!debugFile">
+              <ng-container *ngIf="debugFiles.length === 0">
                 <div class="upload-placeholder" (click)="fileInput.click()">
                   <i class="pi pi-upload"></i>
-                  <div>Kéo thả PDF vào đây hoặc bấm để chọn file</div>
+                  <div>Kéo thả PDF vào đây hoặc bấm để chọn file (chọn nhiều)</div>
                   <div class="upload-sub">Chỉ chấp nhận file .pdf</div>
                 </div>
               </ng-container>
-              <ng-container *ngIf="debugFile">
-                <div class="file-selected">
-                  <i class="pi pi-file-pdf"></i>
-                  <span class="file-name">{{ debugFile.name }}</span>
-                  <span class="file-size">{{
-                    (debugFile.size / 1024 / 1024 | number : "1.1-1") + " MB"
-                  }}</span>
-                  <button class="file-clear" (click)="clearFile()">
-                    <i class="pi pi-times"></i>
-                  </button>
+              <ng-container *ngIf="debugFiles.length > 0">
+                <div class="file-list">
+                  <div class="file-selected" *ngFor="let file of debugFiles; let i = index">
+                    <i class="pi pi-file-pdf"></i>
+                    <span class="file-name">{{ file.name }}</span>
+                    <span class="file-size">{{
+                      (file.size / 1024 / 1024 | number : "1.1-1") + " MB"
+                    }}</span>
+                    <button class="file-clear" (click)="removeFile(i)">
+                      <i class="pi pi-times"></i>
+                    </button>
+                  </div>
                 </div>
+                <button class="add-more-btn" (click)="fileInput.click()">
+                  <i class="pi pi-plus"></i> Thêm file khác
+                </button>
               </ng-container>
             </div>
           </ng-container>

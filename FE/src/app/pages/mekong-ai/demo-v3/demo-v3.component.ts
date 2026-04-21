@@ -171,6 +171,7 @@ export class DemoV3Component implements OnInit, OnDestroy {
       ten_kh: '',
       han_giao: null,
       hinh_thuc_giao: null,
+      co_van_chuyen: null,
       xu_ly_be_mat: null,
       vat_lieu_chung_nhan: null,
       classify_output: null,

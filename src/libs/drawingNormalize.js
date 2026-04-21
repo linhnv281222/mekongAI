@@ -106,16 +106,20 @@ export function normalizeDrawingToFlat(raw) {
     };
   }
 
+  // Aliases: AI có thể trả tên field khác tùy prompt version
+  const maBv = raw.ma_ban_ve ?? raw.ma_so_ban_ve ?? "";
+  const vlRaw = raw.vat_lieu ?? raw.ma_nguyen_vat_lieu ?? "";
+
   const legacy =
     raw.ban_ve != null ||
-    (raw.vat_lieu != null && typeof raw.vat_lieu === "object") ||
+    (typeof vlRaw === "object" && vlRaw !== null) ||
     raw.kich_thuoc_bao != null;
 
   if (!legacy) {
     const sl = Number(raw.so_luong);
     return {
-      ma_ban_ve: toStr(raw.ma_ban_ve),
-      vat_lieu: materialToStr(raw.vat_lieu),
+      ma_ban_ve: toStr(maBv),
+      vat_lieu: materialToStr(vlRaw),
       so_luong: Number.isFinite(sl) && sl > 0 ? sl : 1,
       xu_ly_be_mat: toStr(raw.xu_ly_be_mat),
       xu_ly_nhiet: toStr(raw.xu_ly_nhiet),

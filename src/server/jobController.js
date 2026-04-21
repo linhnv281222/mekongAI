@@ -2,7 +2,7 @@ import express from "express";
 import fs from "fs";
 import path from "path";
 import { fileURLToPath } from "url";
-import { getJob, getJobs, getJobAsync, getJobsAsync, updateJob } from "../data/jobStore.js";
+import { getJob, getJobAsync, getJobs, getJobsAsync, updateJob, pool, normalizeDbRow } from "../data/jobStore.js";
 import {
   downloadAttachment,
   makeGmail,
@@ -61,26 +61,65 @@ async function loadAttachmentPdfBuffer(jobId, filename, res) {
     };
   }
 
-  const job = await getJobAsync(jobId);
+  // ── 0. Sanitize filename ngay — dùng cho cả DB lookup lẫn disk lookup ──
+  const safeName = String(filename).replace(/[^a-zA-Z0-9_\-. ]/g, "_");
+  const safeBaseName = path.basename(safeName, path.extname(safeName));
+
+  // ── 1. Lấy job từ DB: thử direct lookup trước, fallback bằng gmail_id ──
+  let job = await getJob(jobId);
+  if (!job && pool && jobId && typeof jobId === "string") {
+    const isNum = String(jobId).match(/^\d+$/);
+    if (!isNum) {
+      // String job ID → query bằng gmail_id (cho chat jobs)
+      try {
+        const byGmail = await pool.query(
+          "SELECT * FROM mekongai.agent_jobs WHERE gmail_id=$1 LIMIT 1",
+          [jobId]
+        );
+        if (byGmail.rows[0]) {
+          job = normalizeDbRow(byGmail.rows[0]);
+        }
+      } catch (_) {}
+    }
+  }
   if (!job)
     return { ok: false, status: 404, body: { error: "Khong tim thay job" } };
 
-  // ── 1. Thử lấy từ thư mục uploads (chat uploads / agent uploads) ──
+  // ── 2. Lấy actual chat job id từ gmail_id để construct file path ──
+  // gmail_id dạng: "chat_chat_mo8jum7g_jxpc"  → actual id: "chat_mo8jum7g_jxpc"
+  const isChatJob = job.source === "chat";
+  let chatJobId = jobId;
+  if (isChatJob && job.gmail_id) {
+    const match = job.gmail_id.match(/^(?:chat_)+(.+)$/);
+    chatJobId = match ? match[1] : jobId;
+  }
+
+  // ── 3. Thử lấy từ thư mục uploads (chat uploads) ──
   const PROJECT_ROOT = path.resolve(__dirname, "../..");
   const uploadsDir = path.join(PROJECT_ROOT, "uploads");
-  const safeName = filename.replace(/[^a-zA-Z0-9_\-. ]/g, "_");
-  const altPaths = [
-    path.join(uploadsDir, filename),
-    path.join(uploadsDir, jobId + "_" + filename),
-    // Pattern chat upload: chat_{jobId}_{baseName}.pdf  (bản archive copy)
-    path.join(uploadsDir, "chat_" + jobId + "_" + path.basename(filename)),
-    // Pattern safeName (đã sanitize)
-    path.join(uploadsDir, jobId + "_" + safeName),
-    // Pattern cũ: chat_full_{timestamp}_{originalName}
-    path.join(uploadsDir, "chat_full_" + filename),
+
+  // Extract hash filename from the incoming filename (may have chat prefix)
+  // Pattern: 16-char hex hash + .pdf anywhere in the string
+  const hashMatch = safeName.match(/([a-f0-9]{16}\.pdf)/i);
+  const hashFileName = hashMatch ? hashMatch[1] : null;
+
+  const diskPaths = [
+    // Safe name với job id (for short hash names like 53a24d8c25aa9915.pdf)
+    path.join(uploadsDir, chatJobId + "_" + safeName),
+    // Filename đã có prefix sẵn (e.g. chat_mo8p6wnm_6cys_53a24d8c25aa9915.pdf) → strip prefix
+    hashFileName ? path.join(uploadsDir, chatJobId + "_" + hashFileName) : null,
+    // Raw filename (encoded) — thử decode
+    path.join(uploadsDir, chatJobId + "_" + decodeURIComponent(filename)),
+    // Pattern cũ: chat_{jobId}_{baseName}.pdf (archive copy)
+    path.join(uploadsDir, "chat_" + chatJobId + "_" + safeBaseName + ".pdf"),
+    path.join(uploadsDir, "chat_" + chatJobId + "_" + decodeURIComponent(safeBaseName) + ".pdf"),
+    // Safe name không có prefix
+    path.join(uploadsDir, safeName),
+    // Pattern cũ: chat_full_{originalName}
     path.join(uploadsDir, "chat_full_" + safeName),
-  ];
-  for (const filePath of altPaths) {
+    path.join(uploadsDir, "chat_full_" + decodeURIComponent(filename)),
+  ].filter(Boolean);
+  for (const filePath of diskPaths) {
     if (fs.existsSync(filePath)) {
       try {
         const buf = fs.readFileSync(filePath);
@@ -93,15 +132,43 @@ async function loadAttachmentPdfBuffer(jobId, filename, res) {
     }
   }
 
-  // ── 2. Thử tìm trong attachments của job (upload trực tiếp) ──
+  // ── 3b. Fallback: scan uploads dir tìm file bằng hash filename hoặc chat job pattern ──
+  try {
+    const entries = fs.readdirSync(uploadsDir);
+    // Nếu có hash filename (16-char hex), tìm file chứa hash đó (bỏ qua prefix vì numeric DB jobs dùng full chat id)
+    if (hashFileName) {
+      for (const entry of entries) {
+        if (entry.includes(hashFileName) && entry.endsWith('.pdf')) {
+          const filePath = path.join(uploadsDir, entry);
+          try {
+            const buf = fs.readFileSync(filePath);
+            if (buf.length > 0) return { ok: true, buf };
+          } catch (_) {}
+        }
+      }
+    }
+    // Fallback: tìm bằng chat job id pattern
+    const chatPattern = new RegExp("^chat[_]?" + String(chatJobId).replace(/[.*+?^${}()|[\]\\]/g, "\\$&"));
+    for (const entry of entries) {
+      if (chatPattern.test(entry)) {
+        const filePath = path.join(uploadsDir, entry);
+        try {
+          const buf = fs.readFileSync(filePath);
+          if (buf.length > 0) return { ok: true, buf };
+        } catch (_) {}
+      }
+    }
+  } catch (_) {}
+
+  // ── 4. Thử tìm trong attachments của job (upload trực tiếp) ──
   let att = Array.isArray(job.attachments)
     ? job.attachments.find((a) => {
         const name = typeof a === "string" ? a : a?.name;
-        return name === filename;
+        return name === filename || name === safeName;
       })
     : null;
 
-  // ── 3. Thử Gmail (chỉ cho job từ email, có gmail_id) ──
+  // ── 5. Thử Gmail (chỉ cho job từ email) ──
   const isGmailJob = !!(job.gmail_id || job.gmailId) && job.source !== "chat";
   if ((!att || typeof att === "string") && isGmailJob) {
     try {
@@ -112,7 +179,7 @@ async function loadAttachmentPdfBuffer(jobId, filename, res) {
         attachmentId: a.attachmentId,
       }));
       updateJob(job.id, { attachments: refreshed });
-      att = refreshed.find((a) => a.name === filename);
+      att = refreshed.find((a) => a.name === filename || a.name === safeName);
       res.setHeader(
         "X-Job-Attachments",
         encodeURIComponent(JSON.stringify(refreshed))

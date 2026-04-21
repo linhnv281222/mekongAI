@@ -7,31 +7,47 @@
   title="Mekong AI Bot"
 >
   <svg viewBox="0 0 24 24" width="28" height="28">
-    <path fill="#fff" d="M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm0 13H5.17L4 17.17V4h16v11z"/>
-    <path fill="#fff" d="M7 9h10M7 12h7" stroke="#1565C0" stroke-width="1.5" stroke-linecap="round"/>
+    <path
+      fill="#fff"
+      d="M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm0 13H5.17L4 17.17V4h16v11z"
+    />
+    <path
+      fill="#fff"
+      d="M7 9h10M7 12h7"
+      stroke="#1565C0"
+      stroke-width="1.5"
+      stroke-linecap="round"
+    />
   </svg>
   <span class="fab-badge">1</span>
 </button>
 
 <!-- Chat Panel -->
 <div class="mekong-chat" [class.is-open]="panelOpen">
-
   <!-- Header -->
   <div class="mekong-chat-hd">
     <div class="mekong-chat-hd-avatar">
       <svg viewBox="0 0 24 24" width="22" height="22">
-        <path fill="#fff" d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 17.93c-3.95-.49-7-3.85-7-7.93 0-.62.08-1.21.21-1.79L9 15v1c0 1.1.9 2 2 2v1.93zm6.9-2.54c-.26-.81-1-1.39-1.9-1.39h-1v-3c0-.55-.45-1-1-1H8v-2h2c.55 0 1-.45 1-1V7h2c1.1 0 2-.9 2-2v-.41c2.93 1.19 5 4.06 5 7.41 0 2.08-.8 3.97-2.1 5.39z"/>
+        <path
+          fill="#fff"
+          d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 17.93c-3.95-.49-7-3.85-7-7.93 0-.62.08-1.21.21-1.79L9 15v1c0 1.1.9 2 2 2v1.93zm6.9-2.54c-.26-.81-1-1.39-1.9-1.39h-1v-3c0-.55-.45-1-1-1H8v-2h2c.55 0 1-.45 1-1V7h2c1.1 0 2-.9 2-2v-.41c2.93 1.19 5 4.06 5 7.41 0 2.08-.8 3.97-2.1 5.39z"
+        />
       </svg>
     </div>
     <div class="mekong-chat-hd-info">
       <div class="mekong-chat-hd-name">Mekong AI Bot</div>
       <div class="mekong-chat-hd-status">
         <span class="dot"></span>
-        Online — sẵn sàng phân tích báo giá
+        Online — Sẵn sàng phân tích báo giá
       </div>
     </div>
     <div class="mekong-chat-hd-actions">
-      <button class="mekong-chat-hd-btn" (click)="hidePanel()" type="button" title="Ẩn cửa sổ chat (giữ lịch sử)">
+      <button
+        class="mekong-chat-hd-btn"
+        (click)="hidePanel()"
+        type="button"
+        title="Ẩn cửa sổ chat"
+      >
         —
       </button>
     </div>
@@ -46,33 +62,196 @@
       [class.is-user]="msg.role === 'user'"
     >
       <div class="mekong-msg-avatar">
-        <!-- Bot avatar -->
-        <svg *ngIf="msg.role === 'bot'" viewBox="0 0 24 24" width="18" height="18">
-          <path fill="#2563eb" d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 17.93c-3.95-.49-7-3.85-7-7.93 0-.62.08-1.21.21-1.79L9 15v1c0 1.1.9 2 2 2v1.93zm6.9-2.54c-.26-.81-1-1.39-1.9-1.39h-1v-3c0-.55-.45-1-1-1H8v-2h2c.55 0 1-.45 1-1V7h2c1.1 0 2-.9 2-2v-.41c2.93 1.19 5 4.06 5 7.41 0 2.08-.8 3.97-2.1 5.39z"/>
+        <svg
+          *ngIf="msg.role === 'bot'"
+          viewBox="0 0 24 24"
+          width="18"
+          height="18"
+        >
+          <path
+            fill="#2563eb"
+            d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 17.93c-3.95-.49-7-3.85-7-7.93 0-.62.08-1.21.21-1.79L9 15v1c0 1.1.9 2 2 2v1.93zm6.9-2.54c-.26-.81-1-1.39-1.9-1.39h-1v-3c0-.55-.45-1-1-1H8v-2h2c.55 0 1-.45 1-1V7h2c1.1 0 2-.9 2-2v-.41c2.93 1.19 5 4.06 5 7.41 0 2.08-.8 3.97-2.1 5.39z"
+          />
         </svg>
-        <!-- User avatar -->
-        <svg *ngIf="msg.role === 'user'" viewBox="0 0 24 24" width="18" height="18">
-          <path fill="#475569" d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/>
+        <svg
+          *ngIf="msg.role === 'user'"
+          viewBox="0 0 24 24"
+          width="18"
+          height="18"
+        >
+          <path
+            fill="#475569"
+            d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"
+          />
         </svg>
       </div>
       <div>
-        <div
-          class="mekong-msg-bubble"
-          [innerHTML]="renderText(msg.text)"
-        ></div>
+        <!-- Text bubble -->
+        <div class="mekong-msg-bubble" [innerHTML]="renderText(msg.text)"></div>
+
+        <!-- Nut goi y mo form bao gia -->
+        <div *ngIf="msg.rfqPrompt && !pendingRfqForm" class="rfq-prompt-card">
+          <div class="rfq-prompt-icon">
+            <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M9 12h6m-6 4h6m2 5H7a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5.586a1 1 0 0 1 .707.293l5.414 5.414a1 1 0 0 1 .293.707V19a2 2 0 0 1-2 2z"/>
+            </svg>
+          </div>
+          <div class="rfq-prompt-body">
+            <div class="rfq-prompt-title">Bạn cần báo giá?</div>
+            <div class="rfq-prompt-desc">Nhấn nút bên dưới để điền form yêu cầu báo giá nhanh.</div>
+          </div>
+          <button type="button" class="rfq-prompt-btn" (click)="showFormFromPrompt()">
+            Điền form báo giá
+          </button>
+        </div>
+
+        <!-- File attachments -->
         <div *ngIf="msg.files.length > 0" class="mekong-msg-files">
           <div *ngFor="let f of msg.files" class="mekong-file-chip">
             <span class="chip-icon">
-              <svg *ngIf="isPdfFile(f.name)" viewBox="0 0 24 24" width="13" height="13">
-                <path fill="#ef4444" d="M14 2H6c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V8l-6-6zm-1 7V3.5L18.5 9H13z"/>
+              <svg
+                *ngIf="isPdfFile(f.name)"
+                viewBox="0 0 24 24"
+                width="13"
+                height="13"
+              >
+                <path
+                  fill="#ef4444"
+                  d="M14 2H6c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V8l-6-6zm-1 7V3.5L18.5 9H13z"
+                />
               </svg>
-              <svg *ngIf="!isPdfFile(f.name)" viewBox="0 0 24 24" width="13" height="13">
-                <path fill="#2563eb" d="M21 19V5c0-1.1-.9-2-2-2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2zM8.5 13.5l2.5 3.01L14.5 12l4.5 6H5l3.5-4.5z"/>
+              <svg
+                *ngIf="!isPdfFile(f.name)"
+                viewBox="0 0 24 24"
+                width="13"
+                height="13"
+              >
+                <path
+                  fill="#2563eb"
+                  d="M21 19V5c0-1.1-.9-2-2-2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2zM8.5 13.5l2.5 3.01L14.5 12l4.5 6H5l3.5-4.5z"
+                />
               </svg>
             </span>
             <span>{{ f.name }}</span>
           </div>
         </div>
+
+        <!-- ── RFQ Form trong chat ────────────────────────────────────── -->
+        <div *ngIf="msg.rfqForm && msg.role === 'bot'" class="mekong-rfq-form">
+          <!-- Drawings summary -->
+          <div
+            *ngIf="msg.drawingsSummary && msg.drawingsSummary.length > 0"
+            class="rfq-drawings-summary"
+          >
+            <div class="rfq-drawings-title">Bản vẽ đã phân tích:</div>
+            <div
+              *ngFor="let dw of msg.drawingsSummary"
+              class="rfq-drawing-item"
+            >
+              <svg
+                viewBox="0 0 24 24"
+                width="12"
+                height="12"
+                class="rfq-drawing-icon"
+              >
+                <path
+                  fill="#ef4444"
+                  d="M14 2H6c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V8l-6-6zm-1 7V3.5L18.5 9H13z"
+                />
+              </svg>
+              <span class="rfq-drawing-name">{{ dw.filename }}</span>
+              <span class="rfq-drawing-info">
+                {{ dw.data.ma_ban_ve || "?" }} | {{ dw.data.vat_lieu || "?" }} |
+                SL:{{ dw.data.so_luong || "?" }}
+              </span>
+            </div>
+          </div>
+
+          <!-- Form fields -->
+          <div class="rfq-fields">
+            <div *ngFor="let field of msg.rfqForm" class="rfq-field">
+              <label class="rfq-label">
+                {{ field.label }}
+                <span *ngIf="field.required" class="rfq-required">*</span>
+              </label>
+
+              <!-- Select -->
+              <select
+                *ngIf="field.type === 'select'"
+                class="rfq-input"
+                [(ngModel)]="rfqFormValues[field.key]"
+              >
+                <option *ngFor="let opt of field.options" [value]="opt">
+                  {{ opt }}
+                </option>
+              </select>
+
+              <!-- Textarea -->
+              <textarea
+                *ngIf="field.type === 'textarea'"
+                class="rfq-input rfq-textarea"
+                [(ngModel)]="rfqFormValues[field.key]"
+                [placeholder]="field.placeholder || ''"
+                rows="2"
+              ></textarea>
+
+              <!-- Number -->
+              <input
+                *ngIf="field.type === 'number'"
+                type="number"
+                class="rfq-input"
+                [(ngModel)]="rfqFormValues[field.key]"
+                [placeholder]="field.placeholder || ''"
+              />
+
+              <!-- Text / Email -->
+              <input
+                *ngIf="field.type === 'text' || field.type === 'email'"
+                [type]="field.type"
+                class="rfq-input"
+                [(ngModel)]="rfqFormValues[field.key]"
+                [placeholder]="field.placeholder || ''"
+              />
+            </div>
+          </div>
+
+          <!-- Form actions -->
+          <div class="rfq-actions">
+            <button
+              type="button"
+              class="rfq-cancel-btn"
+              (click)="cancelRfqForm()"
+            >
+              Huy
+            </button>
+            <button
+              type="button"
+              class="rfq-submit-btn"
+              (click)="submitRfqForm()"
+              [disabled]="sending"
+            >
+              <svg
+                *ngIf="sending"
+                class="rfq-spinner"
+                viewBox="0 0 24 24"
+                width="14"
+                height="14"
+              >
+                <circle
+                  cx="12"
+                  cy="12"
+                  r="10"
+                  stroke="currentColor"
+                  stroke-width="3"
+                  fill="none"
+                  stroke-dasharray="40 20"
+                />
+              </svg>
+              {{ sending ? "Đang gửi..." : "Hoàn tất yêu cầu" }}
+            </button>
+          </div>
+        </div>
+
         <div class="mekong-msg-time">{{ formatTime(msg.time) }}</div>
       </div>
     </div>
@@ -81,7 +260,10 @@
     <div *ngIf="typing" class="mekong-msg is-bot">
       <div class="mekong-msg-avatar">
         <svg viewBox="0 0 24 24" width="18" height="18">
-          <path fill="#2563eb" d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 17.93c-3.95-.49-7-3.85-7-7.93 0-.62.08-1.21.21-1.79L9 15v1c0 1.1.9 2 2 2v1.93zm6.9-2.54c-.26-.81-1-1.39-1.9-1.39h-1v-3c0-.55-.45-1-1-1H8v-2h2c.55 0 1-.45 1-1V7h2c1.1 0 2-.9 2-2v-.41c2.93 1.19 5 4.06 5 7.41 0 2.08-.8 3.97-2.1 5.39z"/>
+          <path
+            fill="#2563eb"
+            d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 17.93c-3.95-.49-7-3.85-7-7.93 0-.62.08-1.21.21-1.79L9 15v1c0 1.1.9 2 2 2v1.93zm6.9-2.54c-.26-.81-1-1.39-1.9-1.39h-1v-3c0-.55-.45-1-1-1H8v-2h2c.55 0 1-.45 1-1V7h2c1.1 0 2-.9 2-2v-.41c2.93 1.19 5 4.06 5 7.41 0 2.08-.8 3.97-2.1 5.39z"
+          />
         </svg>
       </div>
       <div class="mekong-typing">
@@ -94,16 +276,113 @@
     <div #msgsEnd></div>
   </div>
 
+  <!-- ── RFQ Form hien thi khi user nhan nut goi y (doc lap message) ─── -->
+  <div *ngIf="pendingRfqForm && pendingRfqForm.length > 0" class="mekong-rfq-form rfq-form-standalone">
+    <!-- Form fields -->
+    <div class="rfq-fields">
+      <div *ngFor="let field of pendingRfqForm" class="rfq-field">
+        <label class="rfq-label">
+          {{ field.label }}
+          <span *ngIf="field.required" class="rfq-required">*</span>
+        </label>
+
+        <select
+          *ngIf="field.type === 'select'"
+          class="rfq-input"
+          [(ngModel)]="rfqFormValues[field.key]"
+        >
+          <option *ngFor="let opt of field.options" [value]="opt">
+            {{ opt }}
+          </option>
+        </select>
+
+        <textarea
+          *ngIf="field.type === 'textarea'"
+          class="rfq-input rfq-textarea"
+          [(ngModel)]="rfqFormValues[field.key]"
+          [placeholder]="field.placeholder || ''"
+          rows="2"
+        ></textarea>
+
+        <input
+          *ngIf="field.type === 'number'"
+          type="number"
+          class="rfq-input"
+          [(ngModel)]="rfqFormValues[field.key]"
+          [placeholder]="field.placeholder || ''"
+        />
+
+        <input
+          *ngIf="field.type === 'text' || field.type === 'email'"
+          [type]="field.type"
+          class="rfq-input"
+          [(ngModel)]="rfqFormValues[field.key]"
+          [placeholder]="field.placeholder || ''"
+        />
+      </div>
+    </div>
+
+    <!-- File attachments within form -->
+    <div class="rfq-file-upload">
+      <div *ngIf="files.length > 0" class="mekong-chat-att-preview">
+        <div *ngFor="let f of files; let i = index" class="mekong-chat-att-item">
+          <div class="mekong-chat-att-thumb" [class.is-pdf]="isPdfFile(f.name)">
+            {{ isPdfFile(f.name) ? "PDF" : "IMG" }}
+          </div>
+          <button
+            type="button"
+            class="mekong-chat-att-remove"
+            (click)="removeFile(i)"
+          >
+            x
+          </button>
+          <div class="mekong-chat-att-name">{{ f.name }}</div>
+        </div>
+      </div>
+      <button
+        type="button"
+        class="rfq-attach-btn"
+        (click)="fileInputRef.nativeElement.click()"
+      >
+        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="m21.44 11.05-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/>
+        </svg>
+        Đính kèm bản vẽ (PDF)
+      </button>
+    </div>
+
+    <div class="rfq-actions">
+      <button type="button" class="rfq-cancel-btn" (click)="cancelRfqForm()">
+        Hủy
+      </button>
+      <button
+        type="button"
+        class="rfq-submit-btn"
+        [disabled]="sending"
+        (click)="submitRfqForm()"
+      >
+        <svg *ngIf="sending" class="rfq-spinner" viewBox="0 0 24 24" width="14" height="14">
+          <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="3" fill="none" stroke-dasharray="40 20"/>
+        </svg>
+        {{ sending ? 'Đang gửi...' : 'Hoàn tất yêu cầu' }}
+      </button>
+    </div>
+  </div>
+
   <!-- Input Area -->
   <div class="mekong-chat-input-area">
     <!-- File previews -->
     <div *ngIf="files.length > 0" class="mekong-chat-att-preview">
       <div *ngFor="let f of files; let i = index" class="mekong-chat-att-item">
         <div class="mekong-chat-att-thumb" [class.is-pdf]="isPdfFile(f.name)">
-          {{ isPdfFile(f.name) ? 'PDF' : 'IMG' }}
+          {{ isPdfFile(f.name) ? "PDF" : "IMG" }}
         </div>
-        <button type="button" class="mekong-chat-att-remove" (click)="removeFile(i)">
-          ✕
+        <button
+          type="button"
+          class="mekong-chat-att-remove"
+          (click)="removeFile(i)"
+        >
+          x
         </button>
         <div class="mekong-chat-att-name">{{ f.name }}</div>
       </div>
@@ -126,10 +405,21 @@
         (click)="fileInput.click()"
         title="Đính kèm file (PDF/ảnh, tối đa 100MB)"
       >
-        <svg class="mekong-chat-icon" viewBox="0 0 24 24" width="22" height="22"
-          fill="none" stroke="currentColor" stroke-width="2"
-          stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-          <path d="m21.44 11.05-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/>
+        <svg
+          class="mekong-chat-icon"
+          viewBox="0 0 24 24"
+          width="22"
+          height="22"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+          aria-hidden="true"
+        >
+          <path
+            d="m21.44 11.05-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"
+          />
         </svg>
       </button>
       <textarea
@@ -146,16 +436,24 @@
         class="mekong-chat-send-btn"
         [disabled]="sending || (!input.trim() && files.length === 0)"
         (click)="send()"
-        title="Gửi"
+        title="Gui"
       >
-        <svg class="mekong-chat-icon" viewBox="0 0 24 24" width="22" height="22"
-          fill="none" stroke="currentColor" stroke-width="2"
-          stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-          <line x1="22" y1="2" x2="11" y2="13"/>
-          <polygon points="22 2 15 22 11 13 2 9 22 2"/>
+        <svg
+          class="mekong-chat-icon"
+          viewBox="0 0 24 24"
+          width="22"
+          height="22"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+          aria-hidden="true"
+        >
+          <line x1="22" y1="2" x2="11" y2="13" />
+          <polygon points="22 2 15 22 11 13 2 9 22 2" />
         </svg>
       </button>
     </div>
   </div>
-
 </div>
