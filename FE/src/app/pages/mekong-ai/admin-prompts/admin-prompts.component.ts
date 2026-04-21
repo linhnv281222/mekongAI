@@ -80,7 +80,7 @@ export class AdminPromptsComponent implements OnInit {
   // Debug panel state
   showTestPanel: boolean = false;
   debugContent: string = ''; // textarea content
-  debugFile: File | null = null; // uploaded PDF for drawing prompts
+  debugFiles: File[] = []; // uploaded PDFs for drawing prompts (multi)
   debugResponse: string = ''; // AI response (data only, no payload)
   debugPayload: string = ''; // Request payload sent to AI
   isRunningAi: boolean = false;
@@ -100,6 +100,10 @@ export class AdminPromptsComponent implements OnInit {
   };
 
   knowledgeLabelsVi: { [key: string]: string } = {
+    'vnt-materials': 'Bảng quy đổi vật liệu VNT',
+    'vnt-heat-treat': 'Xử lý nhiệt VNT',
+    'vnt-surface': 'Xử lý bề mặt',
+    'vnt-shapes': 'Bảng phân loại hình dạng VNT',
     'vnt-knowledge': 'Kiến thức nội bộ VNT (Gemini)',
   };
 
@@ -109,27 +113,46 @@ export class AdminPromptsComponent implements OnInit {
   };
 
   knowledgeDescVi: { [key: string]: string } = {
-    'vnt-knowledge': 'Tóm tắt kiến thức cho bộ phân tích Gemini dự phòng',
+    'vnt-materials':
+      'Bảng quy đổi mã vật liệu quốc tế sang mã VNT + bảng lượng riêng',
+    'vnt-heat-treat': 'Bảng mã xử lý nhiệt Nhật Bản + tiêu chuẩn HRC VNT',
+    'vnt-surface': 'Bảng mã xử lý bề mặt Nhật Bản + tiêu chuẩn độ dày anod',
+    'vnt-shapes': 'Bảng phân loại hình dạng + phương án gia công VNT',
+    'vnt-knowledge': 'Bảng lượng riêng vật liệu + mã qui trình VNT',
   };
 
   varToKb: { [key: string]: string } = {
+    MATERIAL: 'vnt-materials',
+    HEAT_TREAT: 'vnt-heat-treat',
+    SURFACE: 'vnt-surface',
+    SHAPE: 'vnt-shapes',
     VNT_KNOWLEDGE: 'vnt-knowledge',
   };
 
-  knowledgeVars = new Set(['VNT_KNOWLEDGE']);
+  knowledgeVars = new Set([
+    'MATERIAL',
+    'HEAT_TREAT',
+    'SURFACE',
+    'SHAPE',
+    'VNT_KNOWLEDGE',
+  ]);
 
   kbVarLabels: { [key: string]: string } = {
-    VNT_KNOWLEDGE: 'Bảng lượng riêng, mã vật liệu, hình dạng, mã qui trình',
+    MATERIAL: 'Bảng quy đổi vật liệu quốc tế → mã VNT',
+    HEAT_TREAT: 'Bảng xử lý nhiệt Nhật Bản + tiêu chuẩn HRC',
+    SURFACE: 'Bảng xử lý bề mặt Nhật Bản + độ dày anod',
+    SHAPE: 'Bảng phân loại hình dạng + phương án gia công',
+    VNT_KNOWLEDGE: 'Bảng lượng riêng + mã qui trình VNT',
   };
 
   // Sample values for test panel
   sampleValues: { [key: string]: string } = {
     DRAWING_SCHEMA: '{\\n  "ban_ve": { "ma_ban_ve": "string" }\\n}',
-    VNT_MAT: 'NHOM: AlCu4MgSi→A2017 | AL6061→A6061\\nTHEP: S45C→S45C',
-    VNT_NHIET: 'NHIET TOAN PHAN: 焼入れ焼戻し→Nhiệt toàn phần [HRC...]',
-    VNT_BM: 'ANOD NHOM: 白アルマイト→Anod trang',
-    VNT_HINH: 'Phi tron dac→Tien CNC',
-    VNT_KNOWLEDGE: 'BANGLUONGRIENG: A2017=2.8\\nVATLIEU: AL6061→A6061',
+    MATERIAL: 'AlCu4MgSi→A2017 | AL6061→A6061\\nS45C→S45C',
+    HEAT_TREAT: '焼入れ焼戻し→Nhiệt toàn phần | 浸炭焼入れ→Tôi cứng bề mặt',
+    SURFACE: '白アルマイト→Anod trắng | 黒染め→Nhuộm đen',
+    SHAPE: 'Đường kính ngoài→Tiện CNC ngoài | Mặt phẳng→Phay CNC mặt',
+    VNT_KNOWLEDGE: 'A2017=2.8 g/cm³ | QT1xx→Tiện CNC',
     emailFrom: 'tanaka@example.jp',
     emailSubject: '見積依頼 — 精密部品見積もり',
     emailAttachments: 'drawing.pdf',
@@ -532,7 +555,7 @@ export class AdminPromptsComponent implements OnInit {
     this.showTestPanel = !this.showTestPanel;
     if (this.showTestPanel) {
       this.debugContent = '';
-      this.debugFile = null;
+      this.debugFiles = [];
       this.debugResponse = '';
       this.debugPayload = '';
     }
@@ -545,12 +568,22 @@ export class AdminPromptsComponent implements OnInit {
   onFileSelected(event: Event): void {
     const input = event.target as HTMLInputElement;
     if (input.files?.length) {
-      this.debugFile = input.files[0];
+      for (let i = 0; i < input.files.length; i++) {
+        const file = input.files[i];
+        if (!this.debugFiles.some(f => f.name === file.name && f.size === file.size)) {
+          this.debugFiles.push(file);
+        }
+      }
+      input.value = '';
     }
   }
 
   clearFile(): void {
-    this.debugFile = null;
+    this.debugFiles = [];
+  }
+
+  removeFile(index: number): void {
+    this.debugFiles.splice(index, 1);
   }
 
   async runAiTest(): Promise<void> {
@@ -558,8 +591,8 @@ export class AdminPromptsComponent implements OnInit {
 
     // Validate
     if (this.isDrawingPrompt()) {
-      if (!this.debugFile) {
-        this.showToast('Cần upload file PDF để debug', 'warn');
+      if (!this.debugFiles.length) {
+        this.showToast('Cần upload ít nhất 1 file PDF để debug', 'warn');
         return;
       }
     } else {
@@ -578,7 +611,7 @@ export class AdminPromptsComponent implements OnInit {
       if (this.isDrawingPrompt()) {
         result = await this.mekongAiService.debugPromptFile(
           this.currentPromptKey,
-          this.debugFile!
+          this.debugFiles
         );
       } else {
         result = await this.mekongAiService.debugPrompt(
@@ -587,6 +620,25 @@ export class AdminPromptsComponent implements OnInit {
         );
       }
 
+      // Drawing prompts: multi-file response
+      if (this.isDrawingPrompt()) {
+        const results = result?.results ?? [];
+        const formatted = results.map((r: any) => ({
+          filename: r.filename,
+          success: r.success,
+          data: r.data ?? null,
+          error: r.error ?? null,
+        }));
+        this.debugResponse = JSON.stringify(formatted, null, 2);
+        // Set payload panel from first file's request_payload
+        const firstPayload = results[0]?.request_payload;
+        if (firstPayload) {
+          this.debugPayload = JSON.stringify(firstPayload, null, 2);
+        }
+        return;
+      }
+
+      // Text/chat prompts: single result
       // Extract request payload
       const aiResult = result?.result;
       if (aiResult) {

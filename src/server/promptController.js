@@ -444,20 +444,26 @@ router.post("/debug", async (req, res) => {
   }
 });
 
-// POST /admin/prompts/debug/file — drawing prompts with PDF upload
-// Multipart: { key, file } — file = PDF
-router.post("/debug/file", debugUpload.single("file"), async (req, res) => {
-  if (!req.file) {
-    return res.status(400).json({ error: "PDF file is required" });
+// POST /admin/prompts/debug/file — drawing prompts with multi-PDF upload
+// Multipart: { key, files: PDF[] } — up to 20 files
+router.post("/debug/file", debugUpload.any(), async (req, res) => {
+  const files = (req.files || []).filter(
+    (f) => f.fieldname === "files" && (
+      f.mimetype === "application/pdf" ||
+      f.originalname.toLowerCase().endsWith(".pdf")
+    )
+  );
+  if (files.length === 0) {
+    return res.status(400).json({ error: "At least one PDF file is required" });
   }
-  const { key } = req.body;
+  if (files.length > 20) {
+    return res.status(400).json({ error: "Maximum 20 files allowed" });
+  }
+  const key = req.body.key;
   if (!key) return res.status(400).json({ error: "key is required" });
 
   if (!["gemini-drawing"].includes(key)) {
-    // Clean up uploaded file
-    try {
-      fs.unlinkSync(req.file.path);
-    } catch {}
+    files.forEach((f) => { try { fs.unlinkSync(f.path); } catch {} });
     return res
       .status(400)
       .json({ error: `Prompt "${key}" does not support file upload` });
@@ -465,17 +471,34 @@ router.post("/debug/file", debugUpload.single("file"), async (req, res) => {
 
   try {
     const { analyzeDrawingGemini } = await import("../ai/geminiAnalyzer.js");
-    const result = await analyzeDrawingGemini(req.file.path, null);
+    const results = [];
+    for (const file of files) {
+      try {
+        const result = await analyzeDrawingGemini(file.path, null);
+        results.push({
+          filename: file.originalname,
+          success: result.success,
+          data: result.data ?? null,
+          error: result.error ?? null,
+          request_payload: result.request_payload ?? null,
+        });
+      } catch (e) {
+        results.push({
+          filename: file.originalname,
+          success: false,
+          data: null,
+          error: e.message,
+        });
+      } finally {
+        try { fs.unlinkSync(file.path); } catch {}
+      }
+    }
     return res.json({
-      data: { key, provider: "gemini", filename: req.file.originalname, result },
+      data: { key, provider: "gemini", count: files.length, results },
     });
   } catch (e) {
     console.error("[debug/file] Error:", e);
     res.status(500).json({ error: e.message });
-  } finally {
-    try {
-      fs.unlinkSync(req.file.path);
-    } catch {}
   }
 });
 

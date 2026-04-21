@@ -17,6 +17,8 @@ export interface Job {
   ngon_ngu?: string;
   han_giao?: string | null;
   hinh_thuc_giao?: string | null;
+  co_van_chuyen?: boolean | null;
+  ma_khach_hang?: string | null;
   xu_ly_be_mat?: boolean | null;
   vat_lieu_chung_nhan?: string | null;
   ten_cong_ty?: string;
@@ -34,6 +36,7 @@ export interface ClassifyOutput {
   ngon_ngu?: string;
   han_giao_hang?: string;
   hinh_thuc_giao?: string;
+  co_van_chuyen?: boolean;
   xu_ly_be_mat?: boolean | string;
   vat_lieu_chung_nhan?: string;
   ten_cong_ty?: string;

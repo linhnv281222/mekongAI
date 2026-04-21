@@ -115,7 +115,13 @@ INSERT INTO mekongai.prompt_templates (key, name, description) VALUES
 -- v1 of each is active
 INSERT INTO mekongai.prompt_versions (template_id, version, content, variables, is_active, created_by, note)
 SELECT id, 1,
-  'Classify this incoming email...',
+  $$
+From: {{emailFrom}}
+Subject: {{emailSubject}}
+Attachments: {{emailAttachments}}
+Body (first 500 chars):
+{{emailBody}}
+$$,
   '["emailFrom","emailSubject","emailAttachments","emailBody"]'::jsonb,
   true, 'seed', 'Initial version'
 FROM mekongai.prompt_templates WHERE key = 'email-classify';
@@ -158,33 +164,52 @@ FROM mekongai.prompt_templates WHERE key = 'chat-classify';
 -- Seed Data — Knowledge Blocks (5 blocks cho gemini-drawing)
 -- ============================================================
 
--- vnt-materials: Bang luong rieng + Ma vat lieu VNT
+-- vnt-materials: Bang quy doi vat lieu VNT
 INSERT INTO mekongai.knowledge_blocks (key, name, description, content, format, headers, kb_rows) VALUES (
   'vnt-materials',
   'Nguyên vật liệu',
-  'Bang luong rieng va ma vat lieu VNT',
-  $$[BANG LƯỢNG RIÊNG]
+  'Bang quy doi vat lieu VNT',
+  $$
+[BANG QUY DOI VAT LIEU]
+|Nhóm vật liệu | Mã gốc (quốc tế) | Mã VNT | Ghi chú                            |
+|---------------|-------------------|--------|-------------------------------------|
+| Nhôm          | AlCu4MgSi         | A2017  | EN AW-2017 — Nhôm hợp kim         |
+| Nhôm          | EN AW-2017        | A2017  | EN AW-2017 — Nhôm hợp kim         |
+| Nhôm          | A2024             | A2024  | Nhôm hợp kim A2024                |
+| Nhôm          | A5052             | A5052  | Nhôm hợp kim A5052                |
+| Nhôm          | AL6061            | A6061  | EN AW-6061 — Nhôm hợp kim         |
+| Nhôm          | A6061             | A6061  | EN AW-6061 — Nhôm hợp kim         |
+| Nhôm          | A7075             | A7075  | Nhôm hợp kim A7075                |
+| Thép carbon   | S45C              | S45C   | AISI 1045 — Thép carbon trung bình |
+| Thép carbon   | S50C              | S50C   | Thép carbon trung bình            |
+| Thép hợp kim  | SCM415            | SCM415 | AISI 4115 — Thép hợp kim thấp    |
+| Thép hợp kim  | SCM440            | SCM440 | AISI 4140 — Thép hợp kim cao     |
+| Thép công cụ  | SKD11             | SKD11  | AISI D2 — Thép dụng cụ dập nguội |
+| Thép công cụ  | SKD61             | SKD61  | Thép dụng cụ dập nóng            |
+| Thép không gỉ | SUS303            | SUS303 | Thép không gỉ austenitic 303      |
+| Thép không gỉ | SUS304            | SUS304 | AISI 304 — Thép không gỉ 304      |
+| Thép không gỉ | AISI 304          | SUS304 | Thép không gỉ 304                |
+| Thép không gỉ | SUS316            | SUS316 | AISI 316 — Thép không gỉ 316     |
+| Thép không gỉ | AISI 316          | SUS316 | Thép không gỉ 316                |
+| Thép cấu trúc | SS400            | SS400  | Thép cacbon SS400                |
+| Đồng          | C1100             | C1100  | Copper 110 — Đồng nguyên chất    |
+| Đồng          | Copper 110        | C1100  | Đồng nguyên chất 99.9%          |
+| Đồng thau     | C3604             | C3604  | Free-cutting brass — Đồng thau   |
+| Đồng thau     | Laiton            | C3604  | Đồng thau dễ gia công           |
+| Nhựa kỹ thuật | POM              | POM    | Acetal — Nhựa kỹ thuật POM      |
+| Nhựa kỹ thuật | PTFE              | PTFE   | Teflon — Nhựa kỹ thuật PTFE     |
+
+[BANG LUONG RIENG]
 A2017=2.8 | A2024=2.78 | A5052=2.68 | A6061=2.7 | A7075=2.81
 SS400=7.85 | S45C=7.85 | S50C=7.85 | SCM415=7.85 | SCM440=7.85
 SKD11=7.7 | SKD61=7.8
 SUS303=8.0 | SUS304=7.93 | SUS316=8.0
 C1100=8.9 | C3604=8.5
 POM=1.41 | PTFE=2.2
-
-[MA VAT LIEU]
-AlCu4MgSi/EN AW-2017 → A2017
-AL6061/A6061 → A6061
-S45C/AISI 1045 → S45C
-SCM440/AISI 4140 → SCM440
-SUS304/AISI 304 → SUS304
-SUS316/AISI 316 → SUS316
-SKD11/D2 → SKD11
-C1100/Copper 110 → C1100
-C3604/Laiton → C3604
-POM/Acetal → POM$$,
+$$,
   'text',
-  '["Mã gốc","Mã VNT","Ghi chú"]'::jsonb,
-  '[{"from":"AlCu4MgSi","to":"A2017","note":"Nhôm A2017"},{"from":"EN AW-2017","to":"A2017","note":"Nhôm A2017"},{"from":"AL6061","to":"A6061","note":"Nhôm A6061"},{"from":"A6061","to":"A6061","note":"Nhôm A6061"},{"from":"S45C","to":"S45C","note":"Thép carbon S45C"},{"from":"AISI 1045","to":"S45C","note":"Thép carbon S45C"},{"from":"SCM440","to":"SCM440","note":"Thép hợp kim SCM440"},{"from":"AISI 4140","to":"SCM440","note":"Thép hợp kim SCM440"},{"from":"SUS304","to":"SUS304","note":"Thép không gỉ 304"},{"from":"AISI 304","to":"SUS304","note":"Thép không gỉ 304"},{"from":"SUS316","to":"SUS316","note":"Thép không gỉ 316"},{"from":"AISI 316","to":"SUS316","note":"Thép không gỉ 316"},{"from":"SKD11","to":"SKD11","note":"Thép dụng cụ SKD11"},{"from":"D2","to":"SKD11","note":"Thép dụng cụ D2"},{"from":"C1100","to":"C1100","note":"Đồng nguyên chất"},{"from":"Copper 110","to":"C1100","note":"Đồng nguyên chất"},{"from":"C3604","to":"C3604","note":"Đồng thau C3604"},{"from":"Laiton","to":"C3604","note":"Đồng thau"},{"from":"POM","to":"POM","note":"Nhựa kỹ thuật POM"},{"from":"Acetal","to":"POM","note":"Nhựa kỹ thuật POM"}]'::jsonb
+  '["Nhóm vật liệu","Mã gốc (quốc tế)","Mã VNT","Ghi chú"]'::jsonb,
+  '[{"group":"Nhôm","from":"AlCu4MgSi","to":"A2017","note":"EN AW-2017 — Nhôm hợp kim"},{"group":"Nhôm","from":"EN AW-2017","to":"A2017","note":"EN AW-2017 — Nhôm hợp kim"},{"group":"Nhôm","from":"A2024","to":"A2024","note":"Nhôm hợp kim A2024"},{"group":"Nhôm","from":"A5052","to":"A5052","note":"Nhôm hợp kim A5052"},{"group":"Nhôm","from":"AL6061","to":"A6061","note":"EN AW-6061 — Nhôm hợp kim"},{"group":"Nhôm","from":"A6061","to":"A6061","note":"EN AW-6061 — Nhôm hợp kim"},{"group":"Nhôm","from":"A7075","to":"A7075","note":"Nhôm hợp kim A7075"},{"group":"Thép carbon","from":"S45C","to":"S45C","note":"AISI 1045 — Thép carbon trung bình"},{"group":"Thép carbon","from":"S50C","to":"S50C","note":"Thép carbon trung bình"},{"group":"Thép hợp kim","from":"SCM415","to":"SCM415","note":"AISI 4115 — Thép hợp kim thấp"},{"group":"Thép hợp kim","from":"SCM440","to":"SCM440","note":"AISI 4140 — Thép hợp kim cao"},{"group":"Thép công cụ","from":"SKD11","to":"SKD11","note":"AISI D2 — Thép dụng cụ dập nguội"},{"group":"Thép công cụ","from":"SKD61","to":"SKD61","note":"Thép dụng cụ dập nóng"},{"group":"Thép không gỉ","from":"SUS303","to":"SUS303","note":"Thép không gỉ austenitic 303"},{"group":"Thép không gỉ","from":"SUS304","to":"SUS304","note":"AISI 304 — Thép không gỉ 304"},{"group":"Thép không gỉ","from":"AISI 304","to":"SUS304","note":"Thép không gỉ 304"},{"group":"Thép không gỉ","from":"SUS316","to":"SUS316","note":"AISI 316 — Thép không gỉ 316"},{"group":"Thép không gỉ","from":"AISI 316","to":"SUS316","note":"Thép không gỉ 316"},{"group":"Thép cấu trúc","from":"SS400","to":"SS400","note":"Thép cacbon SS400"},{"group":"Đồng","from":"C1100","to":"C1100","note":"Copper 110 — Đồng nguyên chất"},{"group":"Đồng","from":"Copper 110","to":"C1100","note":"Đồng nguyên chất 99.9%"},{"group":"Đồng thau","from":"C3604","to":"C3604","note":"Free-cutting brass — Đồng thau"},{"group":"Đồng thau","from":"Laiton","to":"C3604","note":"Đồng thau dễ gia công"},{"group":"Nhựa kỹ thuật","from":"POM","to":"POM","note":"Acetal — Nhựa kỹ thuật POM"},{"group":"Nhựa kỹ thuật","from":"PTFE","to":"PTFE","note":"Teflon — Nhựa kỹ thuật PTFE"}]'::jsonb
 );
 
 -- vnt-heat-treat: Xu ly nhiet
@@ -192,30 +217,29 @@ INSERT INTO mekongai.knowledge_blocks (key, name, description, content, format, 
   'vnt-heat-treat',
   'Xử lý nhiệt',
   'Bang ma xu ly nhiet VNT',
-  $$[BANG XU LY NHET]
-Nhiệt luyện toàn phần: 焼入れ焼戻し (Yakiire YakiModoshi)
-  → Nhiệt luyện toàn phần [HRC...]
+  $$
+[BANG XU LY NHET]
+|Nhóm xử lý | Ký hiệu gốc         | Kết quả VNT           | Ghi chú                              |
+|------------|---------------------|-----------------------|--------------------------------------|
+| Nhiệt luyện toàn phần | 焼入れ焼戻し     | Nhiệt luyện toàn phần | Yakiire YakiModoshi — Tôi + Ram    |
+| Nhiệt luyện toàn phần | Yakiire YakiModoshi | Nhiệt luyện toàn phần | Tiếng Anh: Quench & Tempering        |
+| Tôi cứng bề mặt | 浸炭焼入れ           | Tôi cứng bề mặt       | Shinsan Yakiire — Carburizing        |
+| Tôi cứng bề mặt | Shinsan Yakiire     | Tôi cứng bề mặt       | Thấm carbon + Tôi cứng              |
+| Tôi cứng thể tích | Induction Hardening | Tôi cứng induction     | Tôi cứng bằng cảm ứng              |
+| Ủ             | 焼なまし                | Ủ                     | YakiNaoshi — Annealing              |
+| Ủ             | YakiNaoshi             | Ủ                     | Ủ mềm — Làm mềm thép               |
+| Ram           | 焼戾し                | Ram                   | YakiModoshi — Tempering            |
+| Ram           | YakiModoshi            | Ram                   | Ram — Giảm giòn sau tôi            |
 
-Tôi cứng: 浸炭焼入れ (Shinsan Yakiire)
-  → Tôi cứng bề mặt [HRC...]
-
-Tôi thể tích: Induction Hardening
-  → Tôi cứng induction [HRC...]
-
-Ủ: 焼なまし (YakiNaoshi)
-  → Ủ (annealing)
-
-Ram: 焼戾し (YakiModoshi)
-  → Ram (tempering)
-
-Tiêu chuẩn HRC VNT:
-  Thép S45C: HRC 55-60 (tôi cứng)
-  Thép SCM415/440: HRC 58-62 (tôi cứng bề mặt)
-  Thép SKD11: HRC 58-62 (tôi cứng)
-  Thép SUJ2: HRC 62-66 (tôi cứng)$$,
+[TIEU CHUAN HRC VNT]
+Thép S45C: HRC 55-60 (tôi cứng)
+Thép SCM415/440: HRC 58-62 (tôi cứng bề mặt)
+Thép SKD11: HRC 58-62 (tôi cứng)
+Thép SUJ2: HRC 62-66 (tôi cứng)
+$$,
   'text',
-  '["Ký hiệu Nhật","Tên tiếng Việt","Mô tả"]'::jsonb,
-  '[{"from":"焼入れ焼戻し","to":"Nhiệt luyện toàn phần","note":"Yakiire YakiModoshi"},{"from":"Yakiire YakiModoshi","to":"Nhiệt luyện toàn phần","note":"Tôi + Ram"},{"from":"浸炭焼入れ","to":"Tôi cứng bề mặt","note":"Shinsan Yakiire - Carburizing"},{"from":"Shinsan Yakiire","to":"Tôi cứng bề mặt","note":"Carbon penetration"},{"from":"Induction Hardening","to":"Tôi cứng induction","note":"Tôi cứng bằng cảm ứng"},{"from":"焼なまし","to":"Ủ","note":"YakiNaoshi - Annealing"},{"from":"YakiNaoshi","to":"Ủ","note":"Ủ mềm"},{"from":"焼戾し","to":"Ram","note":"YakiModoshi - Tempering"}]'::jsonb
+  '["Nhóm xử lý","Ký hiệu gốc","Kết quả VNT","Ghi chú"]'::jsonb,
+  '[{"group":"Nhiệt luyện toàn phần","from":"焼入れ焼戻し","to":"Nhiệt luyện toàn phần","note":"Yakiire YakiModoshi — Tôi + Ram"},{"group":"Nhiệt luyện toàn phần","from":"Yakiire YakiModoshi","to":"Nhiệt luyện toàn phần","note":"Tiếng Anh: Quench & Tempering"},{"group":"Tôi cứng bề mặt","from":"浸炭焼入れ","to":"Tôi cứng bề mặt","note":"Shinsan Yakiire — Carburizing"},{"group":"Tôi cứng bề mặt","from":"Shinsan Yakiire","to":"Tôi cứng bề mặt","note":"Thấm carbon + Tôi cứng"},{"group":"Tôi cứng thể tích","from":"Induction Hardening","to":"Tôi cứng induction","note":"Tôi cứng bằng cảm ứng"},{"group":"Ủ","from":"焼なまし","to":"Ủ","note":"YakiNaoshi — Annealing"},{"group":"Ủ","from":"YakiNaoshi","to":"Ủ","note":"Ủ mềm — Làm mềm thép"},{"group":"Ram","from":"焼戾し","to":"Ram","note":"YakiModoshi — Tempering"},{"group":"Ram","from":"YakiModoshi","to":"Ram","note":"Ram — Giảm giòn sau tôi"}]'::jsonb
 );
 
 -- vnt-surface: Xu ly be mat
@@ -223,24 +247,29 @@ INSERT INTO mekongai.knowledge_blocks (key, name, description, content, format, 
   'vnt-surface',
   'Xử lý bề mặt',
   'Bang ma xu ly be mat VNT',
-  $$[BANG XU LY BE MAT]
-白アルマイト (Shiro Arumaito) → Anod trắng
-黒アルマイト (Kuro Arumaito) → Anod đen
-Hard Anodize → Anod cứng
-electroless nickel → Mạ niken không điện (EN)
-三価クロム (Sanka Kuromu) → Mạ crom 3 (Trivalent Chrome)
-硫酸皮膜 (Ryusan Himoaku) → Anod hóa bề mặt (Sulfuric acid anodizing)
-黒染め (Kurozome) → Nhuộm đen (Black oxide)
-研磨 (Kenma) → Mài bóng (Polishing)
-バレル研磨 (Barrel Kenma) → Đánh bóng thùng (Barrel polishing)
-発色アルマイト → Anod màu (Color anodizing)
+  $$
+[BANG XU LY BE MAT]
+|Nhóm xử lý | Ký hiệu gốc        | Kết quả VNT              | Ghi chú                            |
+|------------|--------------------|--------------------------|------------------------------------|
+| Anod nhôm  | 白アルマイト          | Anod trắng               | Shiro Arumaito — Anod hóa trắng   |
+| Anod nhôm  | Kuro Arumaito       | Anod đen                 | Anod hóa đen                       |
+| Anod nhôm  | 黒アルマイト          | Anod đen                 | Kuro Arumaito — Anod hóa đen      |
+| Anod nhôm  | Hard Anodize        | Anod cứng                | Hard anodizing — độ cứng cao      |
+| Anod nhôm  | 発色アルマイト        | Anod màu                 | Color anodizing                    |
+| Mạ kim loại| electroless nickel  | Mạ niken không điện     | EN — Electroless nickel           |
+| Mạ kim loại| 三価クロム            | Mạ crom 3                | Sanka Kuromu — Trivalent chrome   |
+| Mạ kim loại|硫酸皮膜              | Anod hóa bề mặt          | Sulfuric acid anodizing           |
+| Đánh bóng  | 黒染め               | Nhuộm đen                | Kurozome — Black oxide            |
+| Đánh bóng  | 研磨                 | Mài bóng                 | Kenma — Polishing                  |
+| Đánh bóng  | バレル研磨            | Đánh bóng thùng          | Barrel Kenma — Barrel polishing    |
 
-Tiêu chuẩn độ dày Anod VNT:
-  Anod trắng/đen: 5-15μm
-  Anod cứng (Hard): 25-50μm$$,
+[TIEU CHUAN DO DAY ANOD VNT]
+Anod trắng/đen: 5-15μm
+Anod cứng (Hard): 25-50μm
+$$,
   'text',
-  '["Ký hiệu Nhật","Tên tiếng Việt","Ghi chú"]'::jsonb,
-  '[{"from":"白アルマイト","to":"Anod trắng","note":"Shiro Arumaito"},{"from":"Shiro Arumaito","to":"Anod trắng","note":"Anod hóa trắng"},{"from":"黒アルマイト","to":"Anod đen","note":"Kuro Arumaito"},{"from":"Kuro Arumaito","to":"Anod đen","note":"Anod hóa đen"},{"from":"Hard Anodize","to":"Anod cứng","note":"Hard anodizing - độ cứng cao"},{"from":"electroless nickel","to":"Mạ niken không điện","note":"EN - Electroless nickel"},{"from":"三価クロム","to":"Mạ crom 3","note":"Sanka Kuromu - Trivalent chrome"},{"from":"硫酸皮膜","to":"Anod hóa bề mặt","note":"Sulfuric acid anodizing"},{"from":"黒染め","to":"Nhuộm đen","note":"Kurozome - Black oxide"},{"from":"研磨","to":"Mài bóng","note":"Kenma - Polishing"},{"from":"バレル研磨","to":"Đánh bóng thùng","note":"Barrel Kenma"},{"from":"発色アルマイト","to":"Anod màu","note":"Color anodizing"}]'::jsonb
+  '["Nhóm xử lý","Ký hiệu gốc","Kết quả VNT","Ghi chú"]'::jsonb,
+  '[{"group":"Anod nhôm","from":"白アルマイト","to":"Anod trắng","note":"Shiro Arumaito — Anod hóa trắng"},{"group":"Anod nhôm","from":"Kuro Arumaito","to":"Anod đen","note":"Anod hóa đen"},{"group":"Anod nhôm","from":"黒アルマイト","to":"Anod đen","note":"Kuro Arumaito — Anod hóa đen"},{"group":"Anod nhôm","from":"Hard Anodize","to":"Anod cứng","note":"Hard anodizing — độ cứng cao"},{"group":"Anod nhôm","from":"発色アルマイト","to":"Anod màu","note":"Color anodizing"},{"group":"Mạ kim loại","from":"electroless nickel","to":"Mạ niken không điện","note":"EN — Electroless nickel"},{"group":"Mạ kim loại","from":"三価クロム","to":"Mạ crom 3","note":"Sanka Kuromu — Trivalent chrome"},{"group":"Mạ kim loại","from":"硫酸皮膜","to":"Anod hóa bề mặt","note":"Sulfuric acid anodizing"},{"group":"Đánh bóng","from":"黒染め","to":"Nhuộm đen","note":"Kurozome — Black oxide"},{"group":"Đánh bóng","from":"研磨","to":"Mài bóng","note":"Kenma — Polishing"},{"group":"Đánh bóng","from":"バレル研磨","to":"Đánh bóng thùng","note":"Barrel Kenma — Barrel polishing"}]'::jsonb
 );
 
 -- vnt-shapes: Phan loai hinh dang
@@ -248,31 +277,37 @@ INSERT INTO mekongai.knowledge_blocks (key, name, description, content, format, 
   'vnt-shapes',
   'Phân loại hình dạng',
   'Bang hinh dang va phuong an gia cong VNT',
-  $$[BANG HINH DANG → PHUONG AN GIA CONG]
-Phi trondac → TienCNC
-Phitronong → TienCNC
-Hinhtam → PhayCNC
-Luclgiac → TienCNC
-Honhop → Tien+Phay
+  $$
+[BANG PHAN LOAI HINH DANG]
+|Loại phôi  | Đặc điểm           | Phương án gia công | Ghi chú                        |
+|------------|---------------------|---------------------|---------------------------------|
+| Tròn đặc   | Đường kính ngoài    | Tiện CNC ngoài      | Tiện CNC — Dao tiện ngoài     |
+| Tròn đặc   | Đường kính trong    | Tiện CNC trong      | Tiện CNC — Tiện lỗ             |
+| Tròn đặc   | Ren                 | Tiện ren            | Tiện CNC — Dao tiện ren       |
+| Tròn đặc   | Rãnh then           | Tiện rãnh / Phay rãnh | Tiện hoặc phay tùy chiều rộng |
+| Tròn đặc   | Lỗ xuyên tâm        | Khoan / Khoét        | Khoan qua hoặc khoét mở rộng  |
+| Tròn rỗng  | Đường kính ngoài    | Tiện CNC ngoài      | Tiện CNC — Phôi ống/lồng      |
+| Tròn rỗng  | Đường kính trong    | Tiện CNC trong      | Tiện CNC — Gia công thành ống |
+| Tròn rỗng  | Mặt đầu             | Tiện CNC mặt        | Tiện CNC — Mặt đầu ống       |
+| Vuông cạnh | Mặt phẳng           | Phay CNC mặt         | Phay CNC — Dao phay mặt       |
+| Vuông cạnh | Profile bất kỳ       | Phay contour          | Phay CNC — Theo biên dạng      |
+| Vuông cạnh | Lỗ                  | Khoan / Khoét / Tarô | Phay CNC — Gia công lỗ        |
+| Vuông cạnh | Rãnh                | Phay rãnh             | Phay CNC — Dao phay rãnh      |
+| Vuông cạnh | Lỗ ren              | Tarô ren              | Tarô ren — ren trong lỗ        |
+| Hình tam    | 3 cạnh / góc        | Phay CNC              | Phay CNC — Contour 3 cạnh     |
+| Lục giác   | 6 cạnh trong/lỗ    | Tiện CNC              | Tiện CNC — Lục giác trong     |
+| Lục giác   | 6 cạnh ngoài        | Tiện CNC              | Tiện CNC — Lục giác ngoài     |
+| Hỗn hợp    | Tròn + Vuông         | Tiện + Phay CNC      | Kết hợp cả hai quy trình      |
 
-Chi tiet tron xoay (tròn xoay):
-  - Đường kính ngoài: Tiện CNC ngoài
-  - Đường kính trong (lỗ): Tiện CNC trong
-  - Ren: Tiện ren
-  - Rãnh then: Tiện rãnh / Phay rãnh
-  - Lỗ xuyên tâm: Khoan / Khoét
-
-Chi tiet hop (vuông cạnh):
-  - Mat phẳng: Phay CNC mặt
-  - Profile bat ky: Phay contour
-  - Lỗ: Khoan / Khoét / Tarô
-  - Rãnh: Phay rãnh
-
-Chi tiet hon hop:
-  - Co ban la tròn xoay + mat phang → TienCNC + PhayCNC$$,
+[QUY UOC GIA CONG]
+- Đơn vị kích thước: mm
+- Kích thước nhỏ (<50mm): QT2xx — Phay nhỏ
+- Kích thước trung bình (50-200mm): QT6xx — Phay trung bình
+- Kích thước lớn (>200mm): QT4xx — Phay lớn
+$$,
   'text',
-  '["Mã hình dạng","Phương án gia công","Chi tiết"]'::jsonb,
-  '[{"from":"Phi trondac","to":"TienCNC","note":"Phôi tròn đặc - tiện ngoài"},{"from":"Phitronong","to":"TienCNC","note":"Phôi tròn rỗng - tiện trong"},{"from":"Hinhtam","to":"PhayCNC","note":"Hình tam - phay CNC"},{"from":"Luclgiac","to":"TienCNC","note":"Lục giác - tiện CNC"},{"from":"Honhop","to":"Tien+Phay","note":"Hỗn hợp tròn + vuông"}]'::jsonb
+  '["Loại phôi","Đặc điểm","Phương án gia công","Ghi chú"]'::jsonb,
+  '[{"group":"Tròn đặc","from":"Đường kính ngoài","to":"Tiện CNC ngoài","note":"Tiện CNC — Dao tiện ngoài"},{"group":"Tròn đặc","from":"Đường kính trong","to":"Tiện CNC trong","note":"Tiện CNC — Tiện lỗ"},{"group":"Tròn đặc","from":"Ren","to":"Tiện ren","note":"Tiện CNC — Dao tiện ren"},{"group":"Tròn đặc","from":"Rãnh then","to":"Tiện rãnh / Phay rãnh","note":"Tiện hoặc phay tùy chiều rộng"},{"group":"Tròn đặc","from":"Lỗ xuyên tâm","to":"Khoan / Khoét","note":"Khoan qua hoặc khoét mở rộng"},{"group":"Tròn rỗng","from":"Đường kính ngoài","to":"Tiện CNC ngoài","note":"Tiện CNC — Phôi ống/lồng"},{"group":"Tròn rỗng","from":"Đường kính trong","to":"Tiện CNC trong","note":"Tiện CNC — Gia công thành ống"},{"group":"Tròn rỗng","from":"Mặt đầu","to":"Tiện CNC mặt","note":"Tiện CNC — Mặt đầu ống"},{"group":"Vuông cạnh","from":"Mặt phẳng","to":"Phay CNC mặt","note":"Phay CNC — Dao phay mặt"},{"group":"Vuông cạnh","from":"Profile bất kỳ","to":"Phay contour","note":"Phay CNC — Theo biên dạng"},{"group":"Vuông cạnh","from":"Lỗ","to":"Khoan / Khoét / Tarô","note":"Phay CNC — Gia công lỗ"},{"group":"Vuông cạnh","from":"Rãnh","to":"Phay rãnh","note":"Phay CNC — Dao phay rãnh"},{"group":"Vuông cạnh","from":"Lỗ ren","to":"Tarô ren","note":"Tarô ren — ren trong lỗ"},{"group":"Hình tam","from":"3 cạnh / góc","to":"Phay CNC","note":"Phay CNC — Contour 3 cạnh"},{"group":"Lục giác","from":"6 cạnh trong/lỗ","to":"Tiện CNC","note":"Tiện CNC — Lục giác trong"},{"group":"Lục giác","from":"6 cạnh ngoài","to":"Tiện CNC","note":"Tiện CNC — Lục giác ngoài"},{"group":"Hỗn hợp","from":"Tròn + Vuông","to":"Tiện + Phay CNC","note":"Kết hợp cả hai quy trình"}]'::jsonb
 );
 
 -- vnt-knowledge: Kien thuc noi bo VNT (luong rieng + ma qui trinh)
@@ -280,28 +315,47 @@ INSERT INTO mekongai.knowledge_blocks (key, name, description, content, format, 
   'vnt-knowledge',
   'Kiến thức nội bộ VNT',
   'Bang luong rieng va ma qui trinh VNT',
-  $$[BANG LƯỢNG RIÊNG]
-A2017=2.8 | A2024=2.78 | A5052=2.68 | A6061=2.7 | A7075=2.81
-SS400=7.85 | S45C=7.85 | S50C=7.85 | SCM415=7.85 | SCM440=7.85
-SKD11=7.7 | SKD61=7.8
-SUS303=8.0 | SUS304=7.93 | SUS316=8.0
-C1100=8.9 | C3604=8.5
-POM=1.41 | PTFE=2.2
+  $$
+[BANG LUONG RIENG VAT LIEU]
+|Nhóm xử lý | Ký hiệu gốc | Kết quả VNT | Ghi chú                    |
+|------------|-------------|-------------|----------------------------|
+| Nhôm       | A2017       | 2.8 g/cm³   | Nhôm hợp kim EN AW-2017  |
+| Nhôm       | A2024       | 2.78 g/cm³  | Nhôm hợp kim              |
+| Nhôm       | A5052       | 2.68 g/cm³  | Nhôm hợp kim              |
+| Nhôm       | A6061       | 2.7 g/cm³   | Nhôm hợp kim EN AW-6061  |
+| Nhôm       | A7075       | 2.81 g/cm³  | Nhôm hợp kim              |
+| Thép       | SS400       | 7.85 g/cm³  | Thép cacbon SS400         |
+| Thép       | S45C        | 7.85 g/cm³  | Thép carbon trung bình    |
+| Thép       | S50C        | 7.85 g/cm³  | Thép carbon               |
+| Thép       | SCM415      | 7.85 g/cm³  | Thép hợp kim thấp        |
+| Thép       | SCM440      | 7.85 g/cm³  | Thép hợp kim cao          |
+| Thép       | SKD11       | 7.7 g/cm³   | Thép dụng cụ dập nguội   |
+| Thép       | SKD61       | 7.8 g/cm³   | Thép dụng cụ dập nóng    |
+| Thép không gỉ| SUS303     | 8.0 g/cm³   | Thép không gỉ austenitic  |
+| Thép không gỉ| SUS304     | 7.93 g/cm³  | Thép không gỉ 304         |
+| Thép không gỉ| SUS316     | 8.0 g/cm³   | Thép không gỉ 316         |
+| Đồng       | C1100       | 8.9 g/cm³   | Đồng nguyên chất 99.9%   |
+| Đồng thau  | C3604       | 8.5 g/cm³   | Đồng thau dễ gia công    |
+| Nhựa       | POM         | 1.41 g/cm³  | Acetal — Nhựa kỹ thuật   |
+| Nhựa       | PTFE        | 2.2 g/cm³   | Teflon — Nhựa kỹ thuật   |
 
 [MA QUI TRINH VNT]
-QT1xx → Tiện CNC
-QT2xx → Phay nhỏ (<50mm)
-QT4xx → Phay lớn (>200mm) + MI4
-QT6xx → Phay trung bình (50-200mm) + MI6
+|Nhóm xử lý | Ký hiệu gốc | Kết quả VNT              | Ghi chú           |
+|------------|-------------|--------------------------|-------------------|
+| Tiện CNC   | QT1xx       | Tiện CNC                 | Qui trình tiện    |
+| Phay nhỏ   | QT2xx       | Phay nhỏ (<50mm)        | Kích thước nhỏ   |
+| Phay trung bình | QT6xx  | Phay trung bình (50-200mm)| QT6xx + MI6     |
+| Phay lớn   | QT4xx       | Phay lớn (>200mm)        | QT4xx + MI4       |
 
-[QUY UOC]
+[QUY UOC VNT]
 - Đơn vị kích thước: mm
-- Mã bản vẽ: theo format VNT (VD: DV-XXXX)
+- Mã bản vẽ: format VNT (VD: DV-XXXX)
 - Số lượng: mặc định 1 nếu không ghi
-- Trạng thái: pending → approved → pushed$$,
+- Trạng thái: pending → approved → pushed
+$$,
   'text',
-  '["Mã","Giá trị","Ghi chú"]'::jsonb,
-  '[{"from":"QT1xx","to":"Tiện CNC","note":"Qui trình tiện"},{"from":"QT2xx","to":"Phay nhỏ","note":"<50mm"},{"from":"QT4xx","to":"Phay lớn","note":">200mm + MI4"},{"from":"QT6xx","to":"Phay trung bình","note":"50-200mm + MI6"}]'::jsonb
+  '["Nhóm xử lý","Ký hiệu gốc","Kết quả VNT","Ghi chú"]'::jsonb,
+  '[{"group":"Tiện CNC","from":"QT1xx","to":"Tiện CNC","note":"Qui trình tiện"},{"group":"Phay nhỏ","from":"QT2xx","to":"Phay nhỏ (<50mm)","note":"Kích thước nhỏ"},{"group":"Phay trung bình","from":"QT6xx","to":"Phay trung bình (50-200mm)","note":"QT6xx + MI6"},{"group":"Phay lớn","from":"QT4xx","to":"Phay lớn (>200mm)","note":"QT4xx + MI4"}]'::jsonb
 );
 
 COMMIT;

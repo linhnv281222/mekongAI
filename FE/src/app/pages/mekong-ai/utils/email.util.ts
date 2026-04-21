@@ -68,6 +68,9 @@ export function inferClassifyOutputFromJob(j: Job): ClassifyOutput | null {
   if (j.hinh_thuc_giao != null && j.hinh_thuc_giao !== '') {
     o.hinh_thuc_giao = j.hinh_thuc_giao;
   }
+  if (j.co_van_chuyen !== undefined && j.co_van_chuyen !== null) {
+    o.co_van_chuyen = j.co_van_chuyen;
+  }
   if (j.xu_ly_be_mat !== undefined && j.xu_ly_be_mat !== null) {
     o.xu_ly_be_mat = j.xu_ly_be_mat;
   }
@@ -120,6 +123,7 @@ export function mapJobRowToEmail(j: Job): EmailRow {
     ten_kh: j.ten_cong_ty || j.sender || '',
     han_giao: j.han_giao != null && j.han_giao !== '' ? j.han_giao : null,
     hinh_thuc_giao: j.hinh_thuc_giao || null,
+    co_van_chuyen: j.co_van_chuyen ?? null,
     xu_ly_be_mat: j.xu_ly_be_mat ?? null,
     vat_lieu_chung_nhan: j.vat_lieu_chung_nhan ?? null,
     classify_output: normalizeClassifyOutputFromJob(j),
@@ -207,6 +211,9 @@ export function resolveClassifyValue(
   }
   if (key === 'hinh_thuc_giao' && email.hinh_thuc_giao != null) {
     return email.hinh_thuc_giao;
+  }
+  if (key === 'co_van_chuyen' && email.co_van_chuyen != null) {
+    return email.co_van_chuyen;
   }
   if (key === 'xu_ly_be_mat' && email.xu_ly_be_mat != null) {
     return email.xu_ly_be_mat;

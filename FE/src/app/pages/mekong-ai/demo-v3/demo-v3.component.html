@@ -302,9 +302,9 @@
                   <div class="f">
                     <label>Vận chuyển <span class="ai-mark">AI</span></label>
                     <div class="radio-row">
-                      <label><input type="radio" name="vc_main" /> Có</label>
+                      <label><input type="radio" name="vc_main" [checked]="!!activeEmail.co_van_chuyen" /> Có</label>
                       <label
-                        ><input type="radio" name="vc_main" checked />
+                        ><input type="radio" name="vc_main" [checked]="!activeEmail.co_van_chuyen" />
                         Không</label
                       >
                     </div>
@@ -312,9 +312,9 @@
                   <div class="f">
                     <label>Xử lý bề mặt <span class="ai-mark">AI</span></label>
                     <div class="radio-row">
-                      <label><input type="radio" name="xlbm_main" /> Có</label>
+                      <label><input type="radio" name="xlbm_main" [checked]="activeEmail.xu_ly_be_mat === true" /> Có</label>
                       <label
-                        ><input type="radio" name="xlbm_main" checked />
+                        ><input type="radio" name="xlbm_main" [checked]="activeEmail.xu_ly_be_mat !== true" />
                         Không</label
                       >
                     </div>

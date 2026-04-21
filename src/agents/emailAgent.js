@@ -133,6 +133,9 @@ async function processEmail(gmail, msgId) {
       return;
     }
 
+    // RFQ + co PDF → bat dau xu ly, danh dau UNREAD ngay de chan race
+    await markRead(gmail, msgId);
+
     // 4. Xu ly tung file PDF — tach trang → AI doc → gom lai
     const allResults = [];
 
@@ -145,6 +148,7 @@ async function processEmail(gmail, msgId) {
           att.attachmentId,
           att.name
         );
+        console.log(`[Download] OK ${att.name} (${pdfBuffer.length} bytes)`);
       } catch (e) {
         console.error(`[Download] Loi ${att.name}:`, e.message);
         continue;
@@ -154,6 +158,7 @@ async function processEmail(gmail, msgId) {
       let pages;
       try {
         pages = await splitPdf(pdfBuffer, att.name);
+        console.log(`[SplitPDF] ${att.name} → ${pages.length} trang`);
       } catch (e) {
         console.error(`[SplitPDF] Loi:`, e.message);
         // Fallback: gui nguyen 1 file
@@ -173,6 +178,8 @@ async function processEmail(gmail, msgId) {
           const flat = normalizeDrawingToFlat(d);
 
           if (!drawingHasMinimalData(flat)) {
+            console.warn(`[BV] Skip trang ${pg.page} (${pg.name}) — khong du du lieu AI tra ve`);
+            console.warn(`[BV]   ma_ban_ve="${flat.ma_ban_ve}" vat_lieu="${flat.vat_lieu}" kich_thuoc="${flat.kich_thuoc}"`);
             continue;
           }
 
@@ -241,11 +248,8 @@ async function processEmail(gmail, msgId) {
     await updateJob(jobId, {
       gmail_id: msgId,
       status: "pending_review",
-      lines_count: parseInt(allResults.length, 10),
+      lines_count: Number(allResults.length),
     });
-
-    // 6. Mark email da doc
-    await markRead(gmail, msgId);
   } finally {
     inflightMsgIds.delete(msgId);
   }

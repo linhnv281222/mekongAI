@@ -18,6 +18,8 @@ export async function initJobDB() {
       { col: "classify_ai_payload", type: "JSONB" },
       { col: "drawing_ai_payload", type: "JSONB" },
       { col: "ghi_chu", type: "TEXT" },
+      { col: "co_van_chuyen", type: "BOOLEAN" },
+      { col: "ma_khach_hang", type: "TEXT" },
       { col: "pushed_at", type: "TIMESTAMPTZ" },
     ];
     for (const { col, type } of missing) {
@@ -33,7 +35,7 @@ export async function initJobDB() {
 
 // ─── Public API ───────────────────────────────────────────────────────────
 
-function normalizeDbRow(row) {
+export function normalizeDbRow(row) {
   return {
     id: row.id,
     gmail_id: row.gmail_id || row.gmailId || null,
@@ -46,10 +48,12 @@ function normalizeDbRow(row) {
     ngon_ngu: row.ngon_ngu || null,
     classify_output: row.classify_output || null,
     ten_cong_ty: row.ten_cong_ty || null,
+    ma_khach_hang: row.ma_khach_hang || null,
     han_giao: row.han_giao || null,
     hinh_thuc_giao: row.hinh_thuc_giao || null,
     xu_ly_be_mat: row.xu_ly_be_mat ?? null,
     vat_lieu_chung_nhan: row.vat_lieu_chung_nhan || null,
+    co_van_chuyen: row.co_van_chuyen ?? null,
     ghi_chu: row.ghi_chu || null,
     attachments: row.attachments || [],
     drawings: row.drawings || [],
@@ -84,10 +88,10 @@ export async function saveJob(jobData) {
       INSERT INTO mekongai.agent_jobs
         (gmail_id, subject, sender_email, sender_name, sender_company,
          classify, ngon_ngu, status, lines_count, error, raw_email, extracted,
-         attachments, ten_cong_ty, han_giao, hinh_thuc_giao,
-         xu_ly_be_mat, vat_lieu_chung_nhan, drawings,
+         attachments, ten_cong_ty, ma_khach_hang, han_giao, hinh_thuc_giao,
+         xu_ly_be_mat, vat_lieu_chung_nhan, co_van_chuyen, drawings,
          classify_output, classify_ai_payload, drawing_ai_payload, ghi_chu)
-      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23)
+      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24,$25)
       ON CONFLICT (gmail_id) DO UPDATE SET
         subject=EXCLUDED.subject,
         sender_email=EXCLUDED.sender_email,
@@ -102,10 +106,12 @@ export async function saveJob(jobData) {
         extracted=EXCLUDED.extracted,
         attachments=EXCLUDED.attachments,
         ten_cong_ty=EXCLUDED.ten_cong_ty,
+        ma_khach_hang=EXCLUDED.ma_khach_hang,
         han_giao=EXCLUDED.han_giao,
         hinh_thuc_giao=EXCLUDED.hinh_thuc_giao,
         xu_ly_be_mat=EXCLUDED.xu_ly_be_mat,
         vat_lieu_chung_nhan=EXCLUDED.vat_lieu_chung_nhan,
+        co_van_chuyen=EXCLUDED.co_van_chuyen,
         drawings=EXCLUDED.drawings,
         classify_output=EXCLUDED.classify_output,
         classify_ai_payload=EXCLUDED.classify_ai_payload,
@@ -129,10 +135,12 @@ export async function saveJob(jobData) {
         JSON.stringify({}),
         job.attachments ? JSON.stringify(job.attachments) : "[]",
         job.ten_cong_ty || null,
+        job.ma_khach_hang || null,
         job.han_giao || job.han_giao_hang || null,
         job.hinh_thuc_giao || null,
         job.xu_ly_be_mat ?? null,
         job.vat_lieu_chung_nhan || null,
+        job.co_van_chuyen ?? null,
         job.drawings ? JSON.stringify(job.drawings) : "[]",
         job.classify_output ? JSON.stringify(job.classify_output) : null,
         job.classify_ai_payload ? JSON.stringify(job.classify_ai_payload) : null,
@@ -169,21 +177,31 @@ export async function updateJob(idOrFields, fields) {
 
   try {
     if (jobDbId && !Number.isNaN(jobDbId)) {
+      const keys = Object.keys(updates);
+      const linesIdx = keys.indexOf("lines_count");
+      // Reorder values to match keys order, cast lines_count explicitly
+      const vals = keys.map((k, i) =>
+        k === "lines_count" ? Number(updates.lines_count) || 0 : updates[k]
+      );
       const result = await pool.query(
         `UPDATE mekongai.agent_jobs
-         SET ${Object.keys(updates).map((k, i) => `${k}=$${i + 2}`).join(",")}, updated_at=NOW()
-         WHERE id=$${Object.keys(updates).length + 1}
+         SET ${keys.map((k, i) => `${k}=$${i + 2}`).join(",")}, updated_at=NOW()
+         WHERE id=$${keys.length + 1}
            AND status NOT IN ('pending_review', 'pushed')`,
-        [...Object.values(updates), jobDbId]
+        [...vals, jobDbId]
       );
       return (result.rowCount ?? 0) > 0;
     } else if (updates.gmail_id) {
+      const keys = Object.keys(updates);
+      const vals = keys.map((k) =>
+        k === "lines_count" ? Number(updates.lines_count) || 0 : updates[k]
+      );
       const result = await pool.query(
         `UPDATE mekongai.agent_jobs
-         SET ${Object.keys(updates).map((k, i) => `${k}=$${i + 2}`).join(",")}, updated_at=NOW()
-         WHERE gmail_id=$${Object.keys(updates).length + 1}
+         SET ${keys.map((k, i) => `${k}=$${i + 2}`).join(",")}, updated_at=NOW()
+         WHERE gmail_id=$${keys.length + 1}
            AND status NOT IN ('pending_review', 'pushed')`,
-        [...Object.values(updates), updates.gmail_id]
+        [...vals, updates.gmail_id]
       );
       return (result.rowCount ?? 0) > 0;
     }

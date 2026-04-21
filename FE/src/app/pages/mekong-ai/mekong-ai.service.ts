@@ -444,16 +444,18 @@ export class MekongAiService {
   }
 
   /**
-   * Debug drawing prompt: upload PDF file và nhận kết quả phân tích.
+   * Debug drawing prompt: upload nhiều PDF file và nhận kết quả phân tích.
    * @param promptKey - Key của prompt (gemini-drawing)
-   * @param file - File PDF
+   * @param files - Mảng File PDF
    * @returns Promise<any>
    */
-  async debugPromptFile(promptKey: string, file: File): Promise<any> {
+  async debugPromptFile(promptKey: string, files: File[]): Promise<any> {
     try {
       const formData = new FormData();
       formData.append('key', promptKey);
-      formData.append('file', file);
+      for (const file of files) {
+        formData.append('files', file);
+      }
 
       const response = await firstValueFrom(
         this.http.post<any>(

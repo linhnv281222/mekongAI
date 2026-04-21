@@ -21,6 +21,7 @@ export interface EmailRow {
   ten_kh: string;
   han_giao: string | null;
   hinh_thuc_giao: string | null;
+  co_van_chuyen: boolean | null;
   xu_ly_be_mat: boolean | null;
   vat_lieu_chung_nhan: string | null;
   classify_output: ClassifyOutput | null;

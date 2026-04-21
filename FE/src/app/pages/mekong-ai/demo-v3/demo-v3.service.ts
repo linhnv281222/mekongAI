@@ -87,6 +87,7 @@ export class DemoV3Service implements OnDestroy {
       han_giao:
         job.han_giao != null && job.han_giao !== '' ? job.han_giao : null,
       hinh_thuc_giao: job.hinh_thuc_giao || null,
+      co_van_chuyen: job.co_van_chuyen ?? null,
       xu_ly_be_mat: job.xu_ly_be_mat ?? null,
       vat_lieu_chung_nhan: job.vat_lieu_chung_nhan ?? null,
       classify_output: normalizeClassifyOutputFromJob(job),
