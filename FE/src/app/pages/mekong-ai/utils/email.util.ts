@@ -101,7 +101,7 @@ export function normalizeClassifyOutputFromJob(j: Job): ClassifyOutput | null {
 export function mapJobRowToEmail(j: Job): EmailRow {
   return {
     id: j.id,
-    from: j.sender || 'Agent',
+    from: j.ten_cong_ty || j.sender || 'Agent',
     email: j.sender_email || '',
     subject: j.subject ?? '',
     preview: `${(j as unknown as { lines_count?: number }).lines_count || 0} trang da doc`,

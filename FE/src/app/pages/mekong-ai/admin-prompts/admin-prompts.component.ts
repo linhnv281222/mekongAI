@@ -696,34 +696,39 @@ export class AdminPromptsComponent implements OnInit {
 
   // ── Header → field mapping cho knowledge table ─────────────────────────────────
   // Mỗi header name → field name trong KnowledgeRow
-  private readonly HEADER_FIELD_MAP: { [header: string]: keyof KnowledgeRow } = {
-    'Nhóm': 'group',
-    'Nhóm vật liệu': 'group',
-    'Nhóm xử lý': 'group',
-    'Loại phôi': 'group',
-    'Mã gốc': 'from',
-    'Mã gốc (quốc tế)': 'from',
-    'Ký hiệu gốc': 'from',
-    'Đặc điểm': 'from',
-    'Ký hiệu Nhật': 'from',
-    'Ký hiệu': 'from',
-    'Mã VNT': 'to',
-    'Kết quả VNT': 'to',
-    'Phương án gia công': 'to',
-    'Tên tiếng Việt': 'to',
-    'Giá trị': 'to',
-    'Ghi chú': 'note',
-  };
+  private readonly HEADER_FIELD_MAP: { [header: string]: keyof KnowledgeRow } =
+    {
+      Nhóm: 'group',
+      'Nhóm vật liệu': 'group',
+      'Nhóm xử lý': 'group',
+      'Loại phôi': 'group',
+      'Mã gốc': 'from',
+      'Mã gốc (quốc tế)': 'from',
+      'Ký hiệu gốc': 'from',
+      'Đặc điểm': 'from',
+      'Ký hiệu Nhật': 'from',
+      'Ký hiệu': 'from',
+      'Mã VNT': 'to',
+      'Kết quả VNT': 'to',
+      'Phương án gia công': 'to',
+      'Tên tiếng Việt': 'to',
+      'Giá trị': 'to',
+      'Ghi chú': 'note',
+    };
 
   getKbCellVal(header: string, row: KnowledgeRow): string {
-    const field = this.HEADER_FIELD_MAP[header] as keyof KnowledgeRow | undefined;
+    const field = this.HEADER_FIELD_MAP[header] as
+      | keyof KnowledgeRow
+      | undefined;
     if (!field) return '';
     const val = row[field];
     return typeof val === 'string' ? val : '';
   }
 
   setKbCellVal(header: string, row: KnowledgeRow, value: string): void {
-    const field = this.HEADER_FIELD_MAP[header] as keyof KnowledgeRow | undefined;
+    const field = this.HEADER_FIELD_MAP[header] as
+      | keyof KnowledgeRow
+      | undefined;
     if (!field) return;
     (row as any)[field] = value;
   }
