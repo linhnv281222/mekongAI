@@ -52,8 +52,9 @@ mekongAI/
 │   │   └── pdfSplitter.js         # Tách trang PDF
 │   │
 │   ├── data/                      # Lưu trữ
-│   │   ├── drawRepository.js      # Bảng drawings (PostgreSQL)
-│   │   └── jobStore.js            # Bảng agent_jobs (PostgreSQL + JSON)
+│   │   ├── drawRepository.js  # Bảng drawings (PostgreSQL)
+│   │   ├── jobStore.js        # Bảng agent_jobs (PostgreSQL + JSON)
+│   │   └── referenceData.js   # Bảng tra từ DB (materials, operations...
 │   │
 │   ├── prompts/                   # Prompt & kiến thức
 │   │   ├── promptStore.js         # CRUD prompt + knowledge blocks
@@ -218,38 +219,42 @@ NHOM: AlCu4MgSi/EN AW-2017→A2017 | AlMg1SiCu/EN AW-6061/AL6061/A6061→A6061
 **Sau khi AI trả JSON**, backend tính thêm 3 trường bổ sung. Bước này **hoàn toàn do code tự tính**, không qua AI.
 
 ```javascript
-// src/processors/processRouter.js — dòng 368
-export function enrichWithF7F8(aiData) {
+// src/processors/processRouter.js
+export async function enrichWithF7F8(aiData) {
   // F7: Tính khối lượng
-  const kl = tinhKhoiLuong(kieu_phoi, kich_thuoc, ma_vl);
-  //   └─ tra KL_RIENG["S45C"] = 7.85 g/cm³
-  //   └─ nhân với thể tích từ kích thước → kg
+  const kl = await tinhKhoiLuong(kieu_phoi, kich_thuoc, ma_vl);
+  //   -> getMaterialDensity("S45C") = 7.85 g/cm3
 
   // F8: Chọn mã quy trình gia công
-  const qt = chonQuyTrinh(kieu_phoi, loai_vl, kichThuocMax, soMat, soLoRen);
-  //   └─ tra QUY_TRINH["QT612"] → ["MAL","MI6","MC11","MC12","XLN","QC","ĐGTP","NK"]
+  const qt = await chonQuyTrinh(kieu_phoi, loai_vl, kichThuocMax, soMat, soLoRen);
+  //   -> getProcessOperations("QT612") => ["MAL","MI6","MC11","MC12","XLN","QC","DGTP","NK"]
 
   // F9: Tính hệ số phức tạp
   const pt = phanTichDoPhucTap(aiData);
-  //   └─ tra BANG_KICH_THUOC, BANG_KHOI_LUONG, HE_SO_VL, BANG_DO_KHO...
+  //   -> lookupSizeCoeff(), lookupWeightCoeff(), getMaterialCoeffData()...
 }
 ```
 
-**Bảng tra trong code:**
+**Nguồn dữ liệu tham chiếu:** 4 bảng trong database + fallback hardcoded trong code.
 
-| Bảng | Mục đích | Sửa ở đâu |
+**Bảng tra trong database (`src/data/referenceData.js` → DB):**
+
+| Bảng | Mục đích | DB Table |
 |---|---|---|
-| `KL_RIENG` | Trọng lượng riêng từng vật liệu (g/cm³) | `processRouter.js` dòng 2–43 |
-| `QUY_TRINH` | Mã QT → danh sách nguyên công chi tiết | `processRouter.js` dòng 46–220 |
-| `OPERATION_INFO` | Đơn giá & thời gian từng nguyên công | `processRouter.js` dòng 432–463 |
-| `BANG_KICH_THUOC` | Kích thước → hệ số nhân | `processRouter.js` dòng 467–476 |
-| `BANG_KHOI_LUONG` | Khối lượng → hệ số nhân | `processRouter.js` dòng 478–486 |
-| `HE_SO_VL` | Loại vật liệu → hệ số nhân | `processRouter.js` dòng 488–497 |
-| `BANG_DO_KHO` | Cấp độ khó → mã STW + thời gian setup | `processRouter.js` dòng 515–523 |
+| `materials` | Trọng lượng riêng từng vật liệu (g/cm³) | `mekongai.materials` |
+| `process_templates` | Mã QT → danh sách nguyên công chi tiết | `mekongai.process_templates` |
+| `operations` | Đơn giá & thời gian từng nguyên công | `mekongai.operations` |
+| `coefficient_tables` | Bảng hệ số (size, weight, material, weld, tolerance, difficulty, quantity) | `mekongai.coefficient_tables` |
 
-**Cách sửa:** Muốn thêm vật liệu mới / mã QT mới / hệ số mới → sửa trực tiếp `processRouter.js`. Không qua Admin UI.
+**Cách sửa:** Chạy migration + seed SQL trong `migrations/`, sau đó UPDATE trực tiếp vào database. Không cần deploy lại code.
 
-**Ưu điểm:** 100% chính xác, không AI sai được.
+**Chạy migration:**
+```bash
+psql -U postgres -d mechanical_ai -f migrations/002-reference-data.sql
+psql -U postgres -d mechanical_ai -f migrations/002-seed-reference-data.sql
+```
+
+**Fallback:** Nếu DB chưa migrate hoặc không kết nối được, `referenceData.js` tự động dùng fallback data (giữ nguyên logic cũ) — đảm bảo hệ thống vẫn hoạt động.
 
 ---
 
@@ -321,7 +326,7 @@ F9 — Hệ số phức tạp:
 1. Tạo file mới trong `src/prompts/defaults/`, ví dụ `vnt-my-data.txt`
 2. Thêm vào `promptStore.js` để đăng ký key mới
 3. Trong `claudeAnalyzer.js`, thêm `getKnowledgeBlock("vnt-my-data")` và `replaceAll("{{VNT_MY_DATA}}", data)`
-4. Trong `drawing-system.txt`, thêm biến `{{VNT_MY_DATA}}` vào vị trí cần
+4. Trong `gemini-drawing.txt`, thêm biến `{{VNT_MY_DATA}}` vào vị trí cần
 5. Quản lý qua Admin Prompts UI
 
 **Thêm vào Lớp 2 (Backend Code):**

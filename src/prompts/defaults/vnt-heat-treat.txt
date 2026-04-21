@@ -1,4 +1,0 @@
-BANG XU LY NHIET:
-NHIET TOAN PHAN: 焼入れ焼戻し | 焼入れ・焼戻し | Trempe/Hardening | HRC58~60/HRC50-60/HRC45以上/HRC61±1 | 真空焼入し | traite(trempe+revenu) | Surface harden | Press Tempering → "Nhiệt toàn phần [HRC...]"
-NHIET MOT PHAN: 高周波焼入れ | 図示部 高周波焼入れ | toi cao tan → "Nhiệt một phần/cao tần [HRC...][sâu...]"
-DIEU CHAT: 調質 | HRC22~30 | HRC22~25 | HRC27-35 | Pretraite Rm 1000-1200MPa → "Điều chất [HRC...]"

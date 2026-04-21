@@ -678,6 +678,35 @@
   text-align: center !important;
 }
 
+/* ── Reference Data guide panel ──────────────────────── */
+.ref-guide-panel {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 14px 16px;
+  margin-bottom: 16px;
+  background: #f0f9ff;
+  border: 1px solid #bae6fd;
+  border-radius: 8px;
+  font-size: 13px;
+  line-height: 1.6;
+  color: #0c4a6e;
+}
+
+.ref-guide-icon {
+  font-size: 20px;
+  flex-shrink: 0;
+  margin-top: 1px;
+}
+
+.ref-guide-body {
+  flex: 1;
+}
+
+.ref-guide-body strong {
+  color: #0369a1;
+}
+
 /* ── Knowledge table toolbar ────────────────────────── */
 .kb-table-toolbar {
   display: flex;
@@ -754,11 +783,51 @@
   border: 1px solid var(--v3-line2, #cbd5e1) !important;
   border-radius: 5px !important;
   box-sizing: border-box !important;
+  background: #fff !important;
 }
 
 .cell-input:focus {
   border-color: var(--v3-brand, #4f46e5) !important;
   outline: none !important;
+}
+
+/* ── PrimeNG p-inputNumber inside table cells ─────── */
+:host ::ng-deep .p-datatable .cell-input,
+:host ::ng-deep .p-datatable .p-inputnumber,
+:host ::ng-deep .p-datatable .p-inputnumber-input {
+  width: 100% !important;
+  min-width: 0 !important;
+  box-sizing: border-box !important;
+}
+
+:host ::ng-deep .p-datatable .p-inputnumber-input {
+  height: 32px !important;
+  padding: 0 8px !important;
+  font-size: 13px !important;
+  border: 1px solid var(--v3-line2, #cbd5e1) !important;
+  border-radius: 5px !important;
+  background: #fff !important;
+}
+
+:host ::ng-deep .p-datatable .p-inputnumber-input:focus {
+  border-color: var(--v3-brand, #4f46e5) !important;
+  outline: none !important;
+  box-shadow: none !important;
+}
+
+/* ── Remove all inline width overrides on table inputs ─ */
+.kb-table td input[type="text"],
+.kb-table td input[type="number"],
+.kb-table td select {
+  width: 100% !important;
+  min-width: 0 !important;
+  max-width: none !important;
+  box-sizing: border-box !important;
+}
+
+/* ── Force cell td to not constrain children ──────── */
+.kb-table .p-datatable-tbody > tr > td {
+  overflow: visible !important;
 }
 
 /* ── Debug panel ──────────────────────────────────────── */
@@ -1142,4 +1211,137 @@ th:hover .th-edit-btn {
   cursor: pointer;
   width: 16px;
   height: 16px;
+}
+
+/* ── Reference Data Section ───────────────────────── */
+.ref-section-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--accent);
+  margin-bottom: 8px;
+  padding-bottom: 4px;
+  border-bottom: 1px solid var(--border);
+}
+
+/* ── Form Grid (used in modals) ─────────────────── */
+.form-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  padding: 4px 0;
+}
+.form-grid .form-field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.form-grid .form-field[style*="grid-column: 1 / -1"],
+.form-grid .form-field[style*="grid-column:1/-1"] {
+  grid-column: 1 / -1;
+}
+.form-grid label {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-secondary, #6b7280);
+}
+.form-grid .required {
+  color: #ef4444;
+}
+.form-grid input,
+.form-grid .p-inputtext {
+  width: 100%;
+}
+.form-grid p-inputNumber,
+.form-grid p-dropdown {
+  width: 100%;
+}
+.form-grid p-inputSwitch {
+  margin-top: 4px;
+}
+
+/* ── Reference Data Tables (matching knowledge table style) ── */
+.ref-table-wrap {
+  background: var(--v3-surface, #ffffff);
+  border: 1px solid var(--v3-line, #e2e8f0);
+  border-radius: 8px;
+  overflow: hidden;
+  margin-bottom: 24px;
+}
+
+.ref-table-wrap .p-datatable-header {
+  background: var(--v3-surf, #f5f7fa);
+  border-bottom: 1px solid var(--v3-line, #e2e8f0);
+  padding: 10px 12px;
+}
+
+:host ::ng-deep .ref-table-wrap .p-datatable-thead > tr > th {
+  background: var(--v3-surf, #f5f7fa) !important;
+  border-bottom: 1px solid var(--v3-line, #e2e8f0) !important;
+  font-size: 11px !important;
+  font-weight: 700 !important;
+  color: var(--v3-muted, #64748b) !important;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  padding: 8px 12px !important;
+}
+
+:host ::ng-deep .ref-table-wrap .p-datatable-tbody > tr > td {
+  padding: 8px 12px !important;
+  border-bottom: 1px solid var(--v3-line, #e2e8f0) !important;
+  font-size: 13px;
+}
+
+:host ::ng-deep .ref-table-wrap .p-datatable-tbody > tr:last-child > td {
+  border-bottom: none !important;
+}
+
+:host ::ng-deep .ref-table-wrap .p-datatable-tbody > tr:hover > td {
+  background: rgba(5, 150, 105, 0.05) !important;
+}
+
+/* ── Chip colors for material groups ─────────────── */
+.chip-nhom  { background: #dbeafe; color: #1d4ed8; }
+.chip-thep  { background: #fef3c7; color: #92400e; }
+.chip-inox  { background: #d1fae5; color: #065f46; }
+.chip-dong  { background: #fee2e2; color: #991b1b; }
+.chip-nhua  { background: #ede9fe; color: #5b21b6; }
+.chip-accent { background: #f0f9ff; color: #0369a1; }
+
+.p-datatable-sm .p-datatable-tbody > tr > td {
+  padding: 6px 10px;
+  font-size: 13px;
+}
+.p-datatable-sm .p-datatable-thead > tr > th {
+  padding: 6px 10px;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-secondary, #6b7280);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+/* ── Dirty row highlight ─────────────────────────────── */
+.row-dirty {
+  background: rgba(79, 70, 229, 0.04) !important;
+}
+.row-dirty td {
+  border-left: 3px solid var(--v3-brand, #4f46e5) !important;
+}
+
+/* ── Cell select (inline dropdown) ───────────────────── */
+.cell-select {
+  width: 100%;
+  height: 32px;
+  padding: 0 8px;
+  font-size: 13px;
+  border: 1px solid var(--v3-line2, #cbd5e1);
+  border-radius: 5px;
+  box-sizing: border-box;
+  background: #fff;
+  color: var(--v3-ink, #0f172a);
+  cursor: pointer;
+}
+.cell-select:focus {
+  border-color: var(--v3-brand, #4f46e5);
+  outline: none;
 }

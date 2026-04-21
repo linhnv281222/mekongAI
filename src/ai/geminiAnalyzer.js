@@ -3,7 +3,6 @@ import fs from "fs";
 import path from "path";
 import { aiCfg } from "../libs/config.js";
 import { generateContentWithRetry } from "../libs/geminiGenerateRetry.js";
-import { enrichWithF7F8 } from "../processors/processRouter.js";
 import { getKnowledgeBlock, getPrompt } from "../prompts/promptStore.js";
 
 const geminiAi = new GoogleGenAI({ apiKey: aiCfg.geminiKey });
@@ -27,9 +26,20 @@ export async function analyzeDrawingGemini(pdfPath, model = null) {
     const pdfBuffer = fs.readFileSync(pdfPath);
     const base64 = pdfBuffer.toString("base64");
 
-    const vntKnowledge = await getKnowledgeBlock("vnt-knowledge");
+    const [vntKnowledge, materials, heatTreat, surface, shapes] =
+      await Promise.all([
+        getKnowledgeBlock("vnt-knowledge"),
+        getKnowledgeBlock("vnt-materials"),
+        getKnowledgeBlock("vnt-heat-treat"),
+        getKnowledgeBlock("vnt-surface"),
+        getKnowledgeBlock("vnt-shapes"),
+      ]);
     const promptText = await getPrompt("gemini-drawing", {
       VNT_KNOWLEDGE: vntKnowledge ?? "",
+      MATERIAL: materials ?? "",
+      HEAT_TREAT: heatTreat ?? "",
+      SURFACE: surface ?? "",
+      SHAPE: shapes ?? "",
     });
 
     const requestPayload = {
@@ -83,8 +93,7 @@ export async function analyzeDrawingGemini(pdfPath, model = null) {
       .replace(/```\s*$/m, "")
       .trim();
 
-    let parsed = JSON.parse(cleaned);
-    parsed = enrichWithF7F8(parsed);
+    const parsed = JSON.parse(cleaned);
 
     return {
       success: true,

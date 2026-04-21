@@ -5,7 +5,8 @@ import { MekongAiService } from 'src/app/pages/mekong-ai/mekong-ai.service';
 import { MessageService } from 'primeng/api';
 
 interface ViewState {
-  type: 'overview' | 'prompt' | 'knowledge';
+  type: 'overview' | 'prompt' | 'knowledge' | 'refdata';
+  refTab?: 'materials' | 'operations' | 'processes' | 'coefficients';
   key?: string;
 }
 
@@ -94,56 +95,30 @@ export class AdminPromptsComponent implements OnInit {
 
   // Labels mapping
   promptLabelsVi: { [key: string]: string } = {
-    'drawing-system': 'Phân tích bản vẽ — Prompt hệ thống',
     'email-classify': 'Phân loại email — Prompt',
     'gemini-drawing': 'Phân tích bản vẽ (Gemini) — Prompt',
   };
 
   knowledgeLabelsVi: { [key: string]: string } = {
-    'vnt-materials': 'Bảng quy đổi vật liệu VNT',
-    'vnt-heat-treat': 'Bảng xử lý nhiệt VNT',
-    'vnt-surface': 'Bảng xử lý bề mặt VNT',
-    'vnt-shapes': 'Bảng phân loại hình dạng VNT',
     'vnt-knowledge': 'Kiến thức nội bộ VNT (Gemini)',
   };
 
   promptDescVi: { [key: string]: string } = {
-    'drawing-system':
-      'Prompt hệ thống chính cho Claude Sonnet 4.6 — phân tích bản vẽ',
     'email-classify': 'Prompt phân loại email đến (Haiku)',
     'gemini-drawing': 'Prompt phân tích bản vẽ dự phòng bằng Gemini 2.5',
   };
 
   knowledgeDescVi: { [key: string]: string } = {
-    'vnt-materials':
-      'Quy đổi tiêu chuẩn vật liệu (DIN/AISI/JIS) sang mã JIS nội bộ VNT',
-    'vnt-heat-treat': 'Ký hiệu xử lý nhiệt (JP/EN/FR) sang tên tiếng Việt VNT',
-    'vnt-surface': 'Ký hiệu xử lý bề mặt (JP/EN) sang tên tiếng Việt VNT',
-    'vnt-shapes': 'Phân loại phôi và hướng gia công',
     'vnt-knowledge': 'Tóm tắt kiến thức cho bộ phân tích Gemini dự phòng',
   };
 
   varToKb: { [key: string]: string } = {
-    MATERIAL: 'vnt-materials',
-    HEAT_TREAT: 'vnt-heat-treat',
-    SURFACE: 'vnt-surface',
-    SHAPE: 'vnt-shapes',
     VNT_KNOWLEDGE: 'vnt-knowledge',
   };
 
-  knowledgeVars = new Set([
-    'MATERIAL',
-    'HEAT_TREAT',
-    'SURFACE',
-    'SHAPE',
-    'VNT_KNOWLEDGE',
-  ]);
+  knowledgeVars = new Set(['VNT_KNOWLEDGE']);
 
   kbVarLabels: { [key: string]: string } = {
-    MATERIAL: 'Bảng quy đổi mã vật liệu quốc tế → mã VNT',
-    HEAT_TREAT: 'Bảng ký hiệu xử lý nhiệt → tên tiếng Việt VNT',
-    SURFACE: 'Bảng ký hiệu xử lý bề mặt → tên tiếng Việt VNT',
-    SHAPE: 'Bảng phân loại hình dạng phôi & phương án gia công',
     VNT_KNOWLEDGE: 'Bảng lượng riêng, mã vật liệu, hình dạng, mã qui trình',
   };
 
@@ -564,10 +539,7 @@ export class AdminPromptsComponent implements OnInit {
   }
 
   isDrawingPrompt(): boolean {
-    return (
-      this.currentPromptKey === 'drawing-system' ||
-      this.currentPromptKey === 'gemini-drawing'
-    );
+    return this.currentPromptKey === 'gemini-drawing';
   }
 
   onFileSelected(event: Event): void {
@@ -722,17 +694,38 @@ export class AdminPromptsComponent implements OnInit {
     }
   }
 
-  kbGetCellVal(row: KnowledgeRow, colIndex: number): string {
-    switch (colIndex) {
-      case 0:
-        return row.group || '';
-      case 1:
-        return row.from || '';
-      case 2:
-        return row.to || '';
-      default:
-        return row.note || '';
-    }
+  // ── Header → field mapping cho knowledge table ─────────────────────────────────
+  // Mỗi header name → field name trong KnowledgeRow
+  private readonly HEADER_FIELD_MAP: { [header: string]: keyof KnowledgeRow } = {
+    'Nhóm': 'group',
+    'Nhóm vật liệu': 'group',
+    'Nhóm xử lý': 'group',
+    'Loại phôi': 'group',
+    'Mã gốc': 'from',
+    'Mã gốc (quốc tế)': 'from',
+    'Ký hiệu gốc': 'from',
+    'Đặc điểm': 'from',
+    'Ký hiệu Nhật': 'from',
+    'Ký hiệu': 'from',
+    'Mã VNT': 'to',
+    'Kết quả VNT': 'to',
+    'Phương án gia công': 'to',
+    'Tên tiếng Việt': 'to',
+    'Giá trị': 'to',
+    'Ghi chú': 'note',
+  };
+
+  getKbCellVal(header: string, row: KnowledgeRow): string {
+    const field = this.HEADER_FIELD_MAP[header] as keyof KnowledgeRow | undefined;
+    if (!field) return '';
+    const val = row[field];
+    return typeof val === 'string' ? val : '';
+  }
+
+  setKbCellVal(header: string, row: KnowledgeRow, value: string): void {
+    const field = this.HEADER_FIELD_MAP[header] as keyof KnowledgeRow | undefined;
+    if (!field) return;
+    (row as any)[field] = value;
   }
 
   onCellChange(rowIndex: number, colIndex: number, value: string): void {
@@ -886,5 +879,9 @@ export class AdminPromptsComponent implements OnInit {
     severity: 'success' | 'error' | 'warn' | 'info'
   ): void {
     this.messageService.add({ severity, summary: message, life: 3500 });
+  }
+
+  backToOverview(): void {
+    this.currentView = { type: 'overview' };
   }
 }

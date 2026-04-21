@@ -1,6 +1,0 @@
-PHAN LOAI HINH DANG & KIEU PHOI:
-Phi tron dac: tron xoay dac, truc bac,ulong,chot,bac dac → Tien CNC, phoi thanh tron
-Phi tron ong: tron xoay co lo xuyen tâm lớn >30% ĐK ngoài, bac rong, vong → Tien CNC, phoi ong
-Hinh tam: khoi hop/tam phang, cao <50% dai, de/bich/block → Phay CNC, phoi tam
-Luc giac: phoi luc giac, dau ulong luc giac → Tien CNC
-Hon hop: vua tron xoay vua mat phang phuc tap → Tien + Phay

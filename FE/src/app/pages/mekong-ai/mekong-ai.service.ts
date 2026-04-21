@@ -445,7 +445,7 @@ export class MekongAiService {
 
   /**
    * Debug drawing prompt: upload PDF file và nhận kết quả phân tích.
-   * @param promptKey - Key của prompt (drawing-system hoặc gemini-drawing)
+   * @param promptKey - Key của prompt (gemini-drawing)
    * @param file - File PDF
    * @returns Promise<any>
    */

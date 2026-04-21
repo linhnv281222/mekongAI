@@ -72,7 +72,7 @@
         >
         </p-dropdown>
         <div class="model-status">
-          → {{ selectedModel === 'claude' ? '💬 Claude' : '☁ Gemini' }}
+          → {{ selectedModel === "claude" ? "💬 Claude" : "☁ Gemini" }}
         </div>
       </div>
     </div>
@@ -129,7 +129,7 @@
                 v
               }}</span>
             </td>
-            <td>{{ prompt.active ? 'CSDL' : 'mặc định' }}</td>
+            <td>{{ prompt.active ? "CSDL" : "mặc định" }}</td>
             <td>
               <p-button
                 label="Sửa"
@@ -166,7 +166,7 @@
               }}</code>
             </td>
             <td><p-tag value="kiến thức" severity="info"></p-tag></td>
-            <td>{{ item.content ? 'CSDL' : 'mặc định' }}</td>
+            <td>{{ item.content ? "CSDL" : "mặc định" }}</td>
             <td>
               <p-button
                 label="Sửa"
@@ -264,23 +264,68 @@
       <div class="knowledge-guide" id="kbGuidePanel">
         <details>
           <summary class="guide-summary">
-            <span class="guide-icon">📂</span> Hướng dẫn dùng kiến thức trong prompt
+            <span class="guide-icon">📂</span> Hướng dẫn dùng kiến thức trong
+            prompt
           </summary>
           <div class="guide-body">
-            <p>Khi AI đọc bản vẽ, nó sẽ <strong>tự tra bảng</strong> để map về mã VNT nội bộ. Chèn biến kiến thức vào vị trí phù hợp trong prompt:</p>
+            <p>
+              Khi AI đọc bản vẽ, nó sẽ <strong>tự tra bảng</strong> để map về mã
+              VNT nội bộ. Chèn biến kiến thức vào vị trí phù hợp trong prompt:
+            </p>
             <table class="guide-table">
               <thead>
-                <tr><th>Biến</th><th>Bảng kiến thức</th><th>Mục đích</th></tr>
+                <tr>
+                  <th>Biến</th>
+                  <th>Bảng kiến thức</th>
+                  <th>Mục đích</th>
+                </tr>
               </thead>
               <tbody>
-                <tr><td><code>{{ '{{' }}MATERIAL{{ '}}' }}</code></td><td>Nguyên vật liệu</td><td>Map AISI 1045 → S45C, EN AW-6061 → A6061…</td></tr>
-                <tr><td><code>{{ '{{' }}HEAT_TREAT{{ '}}' }}</code></td><td>Xử lý nhiệt</td><td>Map 焼入れ焼戻し → Nhiệt toàn phần [HRC...]…</td></tr>
-                <tr><td><code>{{ '{{' }}SURFACE{{ '}}' }}</code></td><td>Xử lý bề mặt</td><td>Map 白アルマイト → Anod trang, Hard Anodize…</td></tr>
-                <tr><td><code>{{ '{{' }}SHAPE{{ '}}' }}</code></td><td>Phân loại hình dạng</td><td>Map hình dạng → phương án gia công</td></tr>
-                <tr><td><code>{{ '{{' }}VNT_KNOWLEDGE{{ '}}' }}</code></td><td>Kiến thức nội bộ VNT</td><td>Bảng lượng riêng, mã vật liệu, hình dạng, mã qui trình</td></tr>
+                <tr>
+                  <td>
+                    <code>{{ "{{" }}MATERIAL{{ '}}' }}</code>
+                  </td>
+                  <td>Nguyên vật liệu</td>
+                  <td>Map AISI 1045 → S45C, EN AW-6061 → A6061…</td>
+                </tr>
+                <tr>
+                  <td>
+                    <code>{{ "{{" }}HEAT_TREAT{{ '}}' }}</code>
+                  </td>
+                  <td>Xử lý nhiệt</td>
+                  <td>Map 焼入れ焼戻し → Nhiệt toàn phần [HRC...]…</td>
+                </tr>
+                <tr>
+                  <td>
+                    <code>{{ "{{" }}SURFACE{{ '}}' }}</code>
+                  </td>
+                  <td>Xử lý bề mặt</td>
+                  <td>Map 白アルマイト → Anod trang, Hard Anodize…</td>
+                </tr>
+                <tr>
+                  <td>
+                    <code>{{ "{{" }}SHAPE{{ '}}' }}</code>
+                  </td>
+                  <td>Phân loại hình dạng</td>
+                  <td>Map hình dạng → phương án gia công</td>
+                </tr>
+                <tr>
+                  <td>
+                    <code>{{ "{{" }}VNT_KNOWLEDGE{{ '}}' }}</code>
+                  </td>
+                  <td>Kiến thức nội bộ VNT</td>
+                  <td>
+                    Bảng lượng riêng, mã vật liệu, hình dạng, mã qui trình
+                  </td>
+                </tr>
               </tbody>
             </table>
-            <p class="guide-tip">⚠️ Chip <span class="chip-demo chip-knowledge">xanh dương</span> = biến kiến thức (bấm để xem bảng). Chip <span class="chip-demo chip-prompt">xám</span> = biến prompt thường (bấm để chèn).</p>
+            <p class="guide-tip">
+              ⚠️ Chip <span class="chip-demo chip-knowledge">xanh dương</span> =
+              biến kiến thức (bấm để xem bảng). Chip
+              <span class="chip-demo chip-prompt">xám</span> = biến prompt
+              thường (bấm để chèn).
+            </p>
           </div>
         </details>
       </div>
@@ -298,7 +343,7 @@
             [title]="kbVarLabels[v] + ' - Bấm để xem/sửa bảng'"
           >
             <span class="chip-icon">📋</span>
-            <span class="chip-name">{{ '{{' }}{{ v }}{{ '}}' }}</span>
+            <span class="chip-name">{{ "{{" }}{{ v }}{{ '}}' }}</span>
             <span class="chip-ref">{{ kbNames[v] }}</span>
           </span>
           <span
@@ -307,8 +352,8 @@
             (click)="insertVariable(v)"
             [title]="kbVarLabels[v] || ''"
           >
-            <span class="chip-icon">{{ '{}' }}</span>
-            <span class="chip-name">{{ '{{' }}{{ v }}{{ '}}' }}</span>
+            <span class="chip-icon">{{ "{}" }}</span>
+            <span class="chip-name">{{ "{{" }}{{ v }}{{ '}}' }}</span>
           </span>
         </ng-container>
       </div>
@@ -325,7 +370,7 @@
 
       <!-- Editor -->
       <div class="editor-hint">
-        Nội dung prompt (cú pháp {{ '{{' }}TEN_BIEN{{ '}}' }}):
+        Nội dung prompt (cú pháp {{ "{{" }}TEN_BIEN{{ '}}' }}):
       </div>
       <div class="editor-wrap">
         <textarea
@@ -359,8 +404,10 @@
           <!-- Text prompts: textarea -->
           <ng-container *ngIf="!isDrawingPrompt()">
             <div class="debug-hint">
-              Dán email cần phân tích (hoặc dùng định dạng <code>From: ...</code>, <code>Subject: ...</code>, <code>Body: ...</code>),
-              bấm <strong>Gửi AI</strong> để test prompt.
+              Dán email cần phân tích (hoặc dùng định dạng
+              <code>From: ...</code>, <code>Subject: ...</code>,
+              <code>Body: ...</code>), bấm <strong>Gửi AI</strong> để test
+              prompt.
             </div>
             <textarea
               pTextArea
@@ -374,8 +421,9 @@
           <!-- Drawing prompts: file upload -->
           <ng-container *ngIf="isDrawingPrompt()">
             <div class="debug-hint">
-              Upload file PDF bản vẽ, bấm <strong>Gửi AI</strong> để test prompt.
-              AI sẽ đọc file và trả kết quả phân tích ngay — không lưu vào phiếu.
+              Upload file PDF bản vẽ, bấm <strong>Gửi AI</strong> để test
+              prompt. AI sẽ đọc file và trả kết quả phân tích ngay — không lưu
+              vào phiếu.
             </div>
             <div class="debug-upload-area">
               <input
@@ -396,7 +444,9 @@
                 <div class="file-selected">
                   <i class="pi pi-file-pdf"></i>
                   <span class="file-name">{{ debugFile.name }}</span>
-                  <span class="file-size">{{ (debugFile.size / 1024 / 1024 | number:'1.1-1') + ' MB' }}</span>
+                  <span class="file-size">{{
+                    (debugFile.size / 1024 / 1024 | number : "1.1-1") + " MB"
+                  }}</span>
                   <button class="file-clear" (click)="clearFile()">
                     <i class="pi pi-times"></i>
                   </button>
@@ -412,12 +462,13 @@
               <div class="debug-section">
                 <div class="debug-section-title">
                   Request Payload
-                  <span class="debug-provider">{{ selectedModel === 'gemini' ? 'Gemini' : 'Claude' }}</span>
+                  <span class="debug-provider">{{
+                    selectedModel === "gemini" ? "Gemini" : "Claude"
+                  }}</span>
                 </div>
-                <pre
-                  class="debug-pre"
-                  [class.debug-empty]="!debugPayload"
-                >{{ debugPayload || '(chưa có)' }}</pre>
+                <pre class="debug-pre" [class.debug-empty]="!debugPayload">{{
+                  debugPayload || "(chưa có)"
+                }}</pre>
               </div>
               <!-- AI Response -->
               <div class="debug-section">
@@ -425,7 +476,12 @@
                 <pre
                   class="debug-pre"
                   [class.debug-empty]="!debugResponse && !isRunningAi"
-                >{{ isRunningAi ? 'Đang chờ AI phản hồi...' : (debugResponse || '—') }}</pre>
+                  >{{
+                    isRunningAi
+                      ? "Đang chờ AI phản hồi..."
+                      : debugResponse || "—"
+                  }}</pre
+                >
               </div>
             </div>
           </div>
@@ -501,7 +557,7 @@
         >
           <ng-template pTemplate="header">
             <tr>
-              <th style="width: 50px; text-align: center;">
+              <th style="width: 50px; text-align: center">
                 <input
                   type="checkbox"
                   [(ngModel)]="selectAllRows"
@@ -515,12 +571,16 @@
               >
                 <ng-container *ngIf="editingHeaderIndex !== i; else editHeader">
                   <div class="th-inner">
-                    <span class="th-label" id="thLabel{{ i }}">{{ header }}</span>
+                    <span class="th-label" id="thLabel{{ i }}">{{
+                      header
+                    }}</span>
                     <button
                       class="th-edit-btn"
                       (click)="startEditHeader(i, header)"
                       title="Đổi tên cột"
-                    >✏</button>
+                    >
+                      ✏
+                    </button>
                   </div>
                 </ng-container>
                 <ng-template #editHeader>
@@ -535,59 +595,28 @@
                   />
                 </ng-template>
               </th>
-              <th style="width: 80px">Xóa</th>
+              <th style="width: 70px; text-align: center">Xóa</th>
             </tr>
           </ng-template>
           <ng-template pTemplate="body" let-row let-i="rowIndex">
             <tr>
-              <td style="text-align: center;">
+              <td style="text-align: center">
                 <input
                   type="checkbox"
                   [(ngModel)]="row._selected"
                   class="kb-row-check"
                 />
               </td>
-              <td>
+              <td *ngFor="let header of knowledgeHeaders">
                 <input
                   type="text"
                   pInputText
-                  [(ngModel)]="row.group"
-                  (ngModelChange)="onCellChange(i, 0, $event)"
+                  [ngModel]="getKbCellVal(header, row)"
+                  (ngModelChange)="setKbCellVal(header, row, $event)"
                   class="cell-input"
-                  style="width: 100%"
                 />
               </td>
-              <td>
-                <input
-                  type="text"
-                  pInputText
-                  [(ngModel)]="row.from"
-                  (ngModelChange)="onCellChange(i, 1, $event)"
-                  class="cell-input"
-                  style="width: 100%"
-                />
-              </td>
-              <td>
-                <input
-                  type="text"
-                  pInputText
-                  [(ngModel)]="row.to"
-                  (ngModelChange)="onCellChange(i, 2, $event)"
-                  class="cell-input"
-                  style="width: 100%"
-                />
-              </td>
-              <td>
-                <input
-                  type="text"
-                  pInputText
-                  [(ngModel)]="row.note"
-                  (ngModelChange)="onCellChange(i, 3, $event)"
-                  class="cell-input"
-                  style="width: 100%"
-                />
-              </td>
-              <td>
+              <td style="text-align: center">
                 <p-button
                   icon="pi pi-trash"
                   styleClass="p-button-danger p-button-text p-button-sm"
@@ -623,17 +652,16 @@
         <p>Chọn một prompt hoặc kiến thức từ sidebar để chỉnh sửa.</p>
       </div>
     </ng-container>
+
+    <p-toast position="top-right"></p-toast>
+
+    <!-- Hidden file input for CSV import -->
+    <input
+      type="file"
+      #csvInput
+      accept=".csv,.txt"
+      style="display: none"
+      (change)="importCsv($event)"
+    />
   </div>
 </div>
-
-<!-- Toast -->
-<p-toast position="top-right"></p-toast>
-
-<!-- Hidden file input for CSV import -->
-<input
-  type="file"
-  #csvInput
-  accept=".csv,.txt"
-  style="display: none"
-  (change)="importCsv($event)"
-/>

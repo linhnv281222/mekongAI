@@ -3,23 +3,29 @@ const API = "/admin/prompts";
 // ── Knowledge variable config ────────────────────────────────────────────────
 /** Map từ biến trong prompt → key knowledge block tương ứng */
 const VAR_TO_KB = {
-  MATERIAL:      "vnt-materials",
-  HEAT_TREAT:    "vnt-heat-treat",
-  SURFACE:       "vnt-surface",
-  SHAPE:         "vnt-shapes",
   VNT_KNOWLEDGE: "vnt-knowledge",
+  MATERIAL: "vnt-materials",
+  HEAT_TREAT: "vnt-heat-treat",
+  SURFACE: "vnt-surface",
+  SHAPE: "vnt-shapes",
 };
 
 /** Biến nào là "knowledge" (hiển thị chip xanh, click → mở bảng) */
-const KNOWLEDGE_VARS = new Set(["MATERIAL", "HEAT_TREAT", "SURFACE", "SHAPE", "VNT_KNOWLEDGE"]);
+const KNOWLEDGE_VARS = new Set([
+  "VNT_KNOWLEDGE",
+  "MATERIAL",
+  "HEAT_TREAT",
+  "SURFACE",
+  "SHAPE",
+]);
 
 /** Mô tả ngắn cho từng biến knowledge (hiện trong tooltip/guide) */
 const KB_VAR_LABELS = {
-  MATERIAL:      "Bảng quy đổi mã vật liệu quốc tế → mã VNT",
-  HEAT_TREAT:    "Bảng ký hiệu xử lý nhiệt → tên tiếng Việt VNT",
-  SURFACE:       "Bảng ký hiệu xử lý bề mặt → tên tiếng Việt VNT",
-  SHAPE:         "Bảng phân loại hình dạng phôi & phương án gia công",
   VNT_KNOWLEDGE: "Bảng lượng riêng, mã vật liệu, hình dạng, mã qui trình VNT",
+  MATERIAL: "Nguyên vật liệu — Map AISI 1045 → S45C, EN AW-6061 → A6061…",
+  HEAT_TREAT: "Xử lý nhiệt — Map 焼入れ焼戻し → Nhiệt toàn phần [HRC…]",
+  SURFACE: "Xử lý bề mặt — Map 白アルマイト → Anod trang, Hard Anodize…",
+  SHAPE: "Phân loại hình dạng — Map hình dạng → phương án gia công",
 };
 
 /**
@@ -36,29 +42,17 @@ function detectVarType(name) {
 
 /** Tên hiển thị tiếng Việt (ưu tiên hơn tên tiếng Anh từ API) */
 const PROMPT_LABELS_VI = {
-  "drawing-system": "Phân tích bản vẽ — Prompt hệ thống",
   "email-classify": "Phân loại email — Prompt",
   "gemini-drawing": "Phân tích bản vẽ (Gemini) — Prompt",
 };
 const KNOWLEDGE_LABELS_VI = {
-  "vnt-materials": "Bảng quy đổi vật liệu VNT",
-  "vnt-heat-treat": "Bảng xử lý nhiệt VNT",
-  "vnt-surface": "Bảng xử lý bề mặt VNT",
-  "vnt-shapes": "Bảng phân loại hình dạng VNT",
   "vnt-knowledge": "Kiến thức nội bộ VNT (Gemini)",
 };
 const PROMPT_DESC_VI = {
-  "drawing-system":
-    "Prompt hệ thống chính cho Claude Sonnet 4.6 — phân tích bản vẽ",
   "email-classify": "Prompt phân loại email đến (Haiku)",
   "gemini-drawing": "Prompt phân tích bản vẽ dự phòng bằng Gemini 2.5",
 };
 const KNOWLEDGE_DESC_VI = {
-  "vnt-materials":
-    "Quy đổi tiêu chuẩn vật liệu (DIN/AISI/JIS) sang mã JIS nội bộ VNT",
-  "vnt-heat-treat": "Ký hiệu xử lý nhiệt (JP/EN/FR) sang tên tiếng Việt VNT",
-  "vnt-surface": "Ký hiệu xử lý bề mặt (JP/EN) sang tên tiếng Việt VNT",
-  "vnt-shapes": "Phân loại phôi và hướng gia công",
   "vnt-knowledge": "Tóm tắt kiến thức cho bộ phân tích Gemini dự phòng",
 };
 function labelVi(key, fallback) {
@@ -1045,11 +1039,8 @@ async function runKBTest() {
     const headers = kb?.headers || ["Mã gốc", "Mã VNT"];
     const rows = kb?.rows || [];
     const text = renderKbToText(headers, rows);
-    const result = await testPrompt("drawing-system", {
-      MATERIAL: text,
-      HEAT_TREAT: "",
-      SURFACE: "",
-      SHAPE: "",
+    const result = await testPrompt("gemini-drawing", {
+      VNT_KNOWLEDGE: text,
     });
     document.getElementById("testResult").textContent =
       result.content?.substring(0, 1000) || "(trống)";

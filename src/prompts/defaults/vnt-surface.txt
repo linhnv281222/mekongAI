@@ -1,4 +1,0 @@
-BANG XU LY BE MAT:
-ANOD NHOM: 白アルマイト/AA10/Anodize(clear)/Anodisation naturelle→"Anod trang" | 黒アルマイト/Anodize(Black)→"Anod den" | Hard Anodize→"Hard Anodize" | Sulphuric Anodize Type 2/MIL-A-8625→"Anodize Type 2 Clear"
-MA: 無電解ニッケル/無電解Ni/Elp-Fe/Ni-P5→"Ma Niken" | MFZN2-C/Zn12µm/Unichrome/三価ホワイト→"Ma kẽm" | 黒染め/Black wash/SOB→"Nhuộm đen SOB" | Phosphat.manganese→"Ma photphat" | Raydent/レイデント→"Raydent"
-KHONG XU LY: As machined/Leave as machined/生地/無処理 → null
