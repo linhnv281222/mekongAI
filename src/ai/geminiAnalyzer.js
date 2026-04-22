@@ -11,9 +11,10 @@ const geminiAi = new GoogleGenAI({ apiKey: aiCfg.geminiKey });
  * Doc ban ve PDF = Gemini (SDK moi @google/genai).
  * @param {string} pdfPath
  * @param {string} model — 'gemini-3-flash-preview' hoac 'gemini-3.5-flash-preview'
+ * @param {string|null} emailContext — nội dung email/chat để ưu tiên đúng nguồn
  * @returns {object} { success, data, raw, usage, request_payload }
  */
-export async function analyzeDrawingGemini(pdfPath, model = null) {
+export async function analyzeDrawingGemini(pdfPath, model = null, emailContext = null) {
   if (!aiCfg.geminiKey) {
     return { success: false, error: "GEMINI_API_KEY not set" };
   }
@@ -34,12 +35,14 @@ export async function analyzeDrawingGemini(pdfPath, model = null) {
         getKnowledgeBlock("vnt-surface"),
         getKnowledgeBlock("vnt-shapes"),
       ]);
+
     const promptText = await getPrompt("gemini-drawing", {
       VNT_KNOWLEDGE: vntKnowledge ?? "",
       MATERIAL: materials ?? "",
       HEAT_TREAT: heatTreat ?? "",
       SURFACE: surface ?? "",
       SHAPE: shapes ?? "",
+      EMAIL_CONTEXT: emailContext ?? "",
     });
 
     const requestPayload = {
@@ -115,8 +118,8 @@ export async function analyzeDrawingGemini(pdfPath, model = null) {
 /**
  * Gemini backup khi correction that bai.
  */
-export async function correctDrawingGemini(currentData, userMessage) {
-  return analyzeDrawingGemini(null, aiCfg.geminiFlashModel);
+export async function correctDrawingGemini(currentData, userMessage, emailContext = null) {
+  return analyzeDrawingGemini(null, aiCfg.geminiFlashModel, emailContext);
 }
 
 /**

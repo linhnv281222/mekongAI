@@ -57,11 +57,14 @@ async function processEmail(gmail, msgId) {
     );
 
     // 3. Classify = Haiku
-
     const classify = await classifyEmail(emailData);
     console.log(
       `[Classify] → ${classify.loai} | ${classify.ngon_ngu} | ${classify.ly_do}`
     );
+
+    // Build email context for drawing analysis (Gemini uses this to prioritize email > drawing)
+    const emailContext = await buildEmailContext(emailData, classify);
+    console.log(`[EmailContext] ${emailContext.slice(0, 120)}...`);
 
     // AI Debug: extract request payload from classify result
     const classifyAiPayload = classify._ai_request_payload || null;
@@ -173,7 +176,7 @@ async function processEmail(gmail, msgId) {
       // Doc tung trang = AI
       for (const pg of pages) {
         try {
-          const result = await analyzeDrawingApi(pg.path, pg.name);
+          const result = await analyzeDrawingApi(pg.path, pg.name, emailContext);
           const d = result.data;
           const flat = normalizeDrawingToFlat(d);
 
@@ -195,6 +198,8 @@ async function processEmail(gmail, msgId) {
             ...result,
             data: flat,
             filename: att.name,
+            page: pg.page,
+            fileIndex: 0,
           });
         } catch (e) {
           console.error(`[BV] Loi trang ${pg.page}:`, e.message);
@@ -255,17 +260,54 @@ async function processEmail(gmail, msgId) {
   }
 }
 
+// ─── BUILD EMAIL CONTEXT FOR DRAWING ANALYSIS ────────────────────────────────
+
+/**
+ * Xay dung chuoi context tu email de truyen vao Gemini drawing analysis.
+ * Gemini se uu tien: email > drawing.
+ * Format: cac truong quan trong nhat, ngan gon, de AI hieu.
+ */
+async function buildEmailContext(emailData, classify) {
+  const parts = [];
+
+  if (emailData.body) {
+    parts.push(`[NỘI DUNG EMAIL]\n${emailData.body.slice(0, 2000)}`);
+  }
+
+  if (emailData.attachments && emailData.attachments.length) {
+    const names = emailData.attachments.map((a) => a.name).join(", ");
+    parts.push(`[FILE ĐÍNH KÈM] ${names}`);
+  }
+
+  if (classify) {
+    const extras = [];
+    if (classify.ten_cong_ty) extras.push(`Công ty: ${classify.ten_cong_ty}`);
+    if (classify.ngon_ngu) extras.push(`Ngôn ngữ: ${classify.ngon_ngu}`);
+    if (classify.han_giao_hang) extras.push(`Hạn giao: ${classify.han_giao_hang}`);
+    if (classify.xu_ly_be_mat) extras.push(`Xử lý bề mặt: ${classify.xu_ly_be_mat}`);
+    if (classify.vat_lieu_chung_nhan) extras.push(`VAT liệu: ${classify.vat_lieu_chung_nhan}`);
+    if (extras.length) {
+      parts.push(`[THÔNG TIN PHÂN LOẠI]\n${extras.join(" | ")}`);
+    }
+  }
+
+  if (!parts.length) return "";
+
+  return parts.join("\n\n");
+}
+
 // ─── GOI API SERVER DE DOC BAN VE ───────────────────────────────────────
 
-async function analyzeDrawingApi(pdfPath, filename) {
+async function analyzeDrawingApi(pdfPath, filename, emailContext = null) {
   console.log(
-    `[analyzeDrawingApi] POST ${agentCfg.banveApiUrl}/drawings?provider=gemini — file: ${filename}`
+    `[analyzeDrawingApi] POST ${agentCfg.banveApiUrl}/drawings?provider=gemini — file: ${filename}${emailContext ? " [HAS_EMAIL_CONTEXT]" : ""}`
   );
   const data = await postPdfToDrawingsApi({
     pdfPath,
     filename,
     baseUrl: agentCfg.banveApiUrl,
     provider: "gemini",
+    emailContext,
   });
 
   return data;

@@ -10,12 +10,14 @@ import path from "path";
  * @param {string} opts.filename — tên hiển thị trong multipart
  * @param {string} opts.baseUrl — ví dụ http://localhost:3000
  * @param {string} [opts.provider=gemini]
+ * @param {string} [opts.emailContext] — nội dung email/chat để Gemini ưu tiên đúng nguồn
  */
 export async function postPdfToDrawingsApi({
   pdfPath,
   filename,
   baseUrl,
   provider = "gemini",
+  emailContext = null,
 }) {
   const buf = fs.readFileSync(pdfPath);
   const blob = new Blob([buf], { type: "application/pdf" });
@@ -26,10 +28,11 @@ export async function postPdfToDrawingsApi({
       : "drawing.pdf";
   form.append("file", blob, name);
 
-  const url = `${String(baseUrl).replace(
-    /\/$/,
-    ""
-  )}/drawings?provider=${encodeURIComponent(provider)}`;
+  let url = `${String(baseUrl).replace(/\/$/, "")}/drawings?provider=${encodeURIComponent(provider)}`;
+  if (emailContext) {
+    url += `&email_context=1`;
+    form.append("emailContext", emailContext);
+  }
   const res = await fetch(url, { method: "POST", body: form });
   const data = await res.json().catch(() => ({}));
   if (!res.ok) throw new Error(data.error || "Lỗi đọc bản vẽ");
