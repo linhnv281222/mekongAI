@@ -11,8 +11,13 @@ import {
   normalizeDrawingToFlat,
 } from "../libs/drawingNormalize.js";
 import { agentCfg, aiCfg } from "../libs/config.js";
+import { GoogleGenAI } from "@google/genai";
+import { generateContentWithRetry } from "../libs/geminiGenerateRetry.js";
+import { getPrompt, getKnowledgeBlock } from "../prompts/promptStore.js";
 import { saveJob } from "../data/jobStore.js";
 import { chatAssistantReply } from "../ai/chatAssistant.js";
+
+const chatAi = new GoogleGenAI({ apiKey: aiCfg.geminiKey });
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const PROJECT_ROOT = path.resolve(__dirname, "../..");
@@ -52,12 +57,13 @@ const chatUpload = multer({
 });
 
 // ─── GOI API DOC BAN VE ─────────────────────────────────────────────────────
-async function analyzeDrawingApi(pdfPath, filename) {
+async function analyzeDrawingApi(pdfPath, filename, emailContext = null) {
   return postPdfToDrawingsApi({
     pdfPath,
     filename,
     baseUrl: agentCfg.banveApiUrl,
     provider: "gemini",
+    emailContext,
   });
 }
 
@@ -82,14 +88,6 @@ const RFQ_FORM_FIELDS = [
   { key: "email", label: "Email liên hệ", type: "email", placeholder: "VD: tanaka@abc.co.jp" },
   { key: "co_vat", label: "Có VAT không?", type: "select", options: ["Có", "Không"], required: true },
   { key: "xu_ly_be_mat", label: "Có xử lý bề mặt không?", type: "select", options: ["Có", "Không"], required: true },
-  {
-    key: "so_luong_theo_ve",
-    label: "Số lượng theo bản vẽ?",
-    type: "select",
-    options: ["Theo bản vẽ", "Khác"],
-    required: true,
-  },
-  { key: "so_luong_khac", label: "Số lượng khác (nếu khác bản vẽ)", type: "number", placeholder: "VD: 50" },
   { key: "co_van_chuyen", label: "Có vận chuyển không?", type: "select", options: ["Có", "Không"], required: true },
   { key: "ghi_chu_noi_bo", label: "Ghi chú nội bộ", type: "textarea", placeholder: "Ghi chú chỉ hiển thị trong hệ thống..." },
 ];
@@ -136,11 +134,121 @@ function isBaoGiaIntent(message, files) {
 // ─── PHAN TICH FILE (dung chung cho ca 2 luong) ─────────────────────────────
 
 /**
+ * Xây dựng chuỗi context từ chat message để truyền vào Gemini drawing analysis.
+ * Gemini sẽ ưu tiên: nội dung chat > bản vẽ.
+ */
+async function buildChatContext(chatMessage) {
+  const text = (chatMessage || "").trim();
+  if (!text) return "";
+  return `[NỘI DUNG CHAT]\n${text.slice(0, 3000)}`;
+}
+
+/**
+ * Chuan hoa ket qua tu chat-classify: fix loi AI thuong gap va build chat_luu_y
+ * tu so_luong khi AI khong tra dung.
+ */
+function normalizeChatInfo(chatInfo) {
+  if (!chatInfo || typeof chatInfo !== "object") return null;
+
+  // Fix loi chinh ta: "so_luang" → "so_luong"
+  let soLuong = chatInfo.so_luong ?? chatInfo.so_luang ?? null;
+
+  // Chuan hoa so_luong
+  if (typeof soLuong === "string") {
+    soLuong = soLuong.trim();
+    if (!soLuong) soLuong = null;
+  }
+
+  // Neu so_luong la "unknown" → null de tranh logic
+  if (soLuong === "unknown" || soLuong === "Unknown") {
+    soLuong = null;
+  }
+
+  // Build chat_luu_y: uu tien AI tra, fallback tu so_luong
+  let chatLuuY = chatInfo.chat_luu_y ?? null;
+
+  // Loc cac gia tri vô nghĩa mà AI hay trả nhầm
+  const invalidValues = ["无", "无内容", "none", "none.", "không có", "n/a", "null", ""];
+  const isInvalid = (v) => !v || invalidValues.includes(String(v).toLowerCase().trim());
+
+  if (isInvalid(chatLuuY) && soLuong) {
+    // Fallback: build tu so_luong
+    if (String(soLuong).includes("(áp dụng cho tất cả)")) {
+      const num = String(soLuong).replace(/\s*\(áp dụng cho tất cả\)/, "").trim();
+      chatLuuY = `Số lượng từ chat: ${num} pcs — áp dụng cho TẤT CẢ các bản vẽ`;
+    } else if (soLuong.includes(":")) {
+      // dạng "MA1: 100 pcs, MA2: 50 pcs"
+      chatLuuY = `Số lượng từ chat: ${soLuong} — mỗi mã có số lượng riêng`;
+    } else {
+      chatLuuY = `Số lượng từ chat: ${soLuong} pcs — áp dụng cho TẤT CẢ các bản vẽ`;
+    }
+  } else if (isInvalid(chatLuuY)) {
+    chatLuuY = null;
+  }
+
+  return {
+    ...chatInfo,
+    so_luong: soLuong,
+    chat_luu_y: chatLuuY,
+  };
+}
+
+/**
+ * Build context cho Gemini drawing analyzer.
+ * Chi chèn nội dung chat + chat_luu_y (AI đã suy luận rule trong prompt).
+ * Gemini drawing prompt tự xử lý theo rule trong chat_luu_y.
+ * @param {string|null} chatMessage
+ * @param {object|null} chatInfo — ket qua classify (co the co chat_luu_y)
+ */
+function buildChatContextForAnalyzer(chatMessage, chatInfo = null) {
+  // Chuan hoa chatInfo: fix loi AI + build chat_luu_y fallback
+  const info = normalizeChatInfo(chatInfo);
+
+  const lines = [];
+
+  if (chatMessage?.trim()) {
+    lines.push(`[NỘI DUNG CHAT TỪ KHÁCH HÀNG]`);
+    lines.push(chatMessage.trim().slice(0, 3000));
+  }
+
+  // Luu y tu chat — luon co (duoc build tu normalizeChatInfo)
+  if (info?.chat_luu_y) {
+    lines.push("");
+    lines.push(`[LƯU Ý TỪ PHÂN TÍCH CHAT — ÁP DỤNG CHO TẤT CẢ BẢN VẼ]`);
+    lines.push(info.chat_luu_y);
+  }
+
+  if (info) {
+    const parts = [];
+    if (info.ten_cong_ty && info.ten_cong_ty !== "unknown") {
+      parts.push(`Tên công ty: ${info.ten_cong_ty}`);
+    }
+    if (info.ten_nguoi_lien_he && info.ten_nguoi_lien_he !== "unknown") {
+      parts.push(`Người liên hệ: ${info.ten_nguoi_lien_he}`);
+    }
+    if (info.email_khach_hang && info.email_khach_hang !== "unknown") {
+      parts.push(`Email: ${info.email_khach_hang}`);
+    }
+    if (info.ngon_ngu && info.ngon_ngu !== "unknown") {
+      parts.push(`Ngôn ngữ: ${info.ngon_ngu}`);
+    }
+    if (parts.length > 0) {
+      lines.push("");
+      lines.push("[THÔNG TIN KHÁCH HÀNG TỪ CHAT]");
+      lines.push(...parts);
+    }
+  }
+
+  return lines.length > 0 ? lines.join("\n") : "";
+}
+
+/**
  * Phan tich file PDF, tra ve { drawings, fileErrors }.
  * @param {Array<{path: string, originalname: string}>} files
  * @param {string} jobId
+ * @param {string|null} emailContext — chuỗi context đã build sẵn (từ buildChatContextForAnalyzer)
  */
-async function analyzeFilesForJob(files, jobId) {
+async function analyzeFilesForJob(files, jobId, emailContext = null) {
   const allResults = [];
   const fileErrors = [];
 
@@ -170,7 +278,7 @@ async function analyzeFilesForJob(files, jobId) {
 
       for (const pg of pages) {
         try {
-          const result = await analyzeDrawingApi(pg.path, pg.name);
+          const result = await analyzeDrawingApi(pg.path, pg.name, emailContext);
           const flat = normalizeDrawingToFlat(result.data);
 
           if (!drawingHasMinimalData(flat)) {
@@ -185,6 +293,7 @@ async function analyzeFilesForJob(files, jobId) {
             data: flat,
             filename: safeFileName,
             page: pg.page,
+            fileIndex: 0,
           });
 
           console.log(
@@ -218,10 +327,66 @@ async function analyzeFilesForJob(files, jobId) {
   return { allResults, fileErrors };
 }
 
+// ─── Phan tich chat truoc khi xu ly ban ve ──────────────────────────────────
+
+/**
+ * Goị AI phan tich tin nhan chat de trich xuat so_luong, ten_kh, email...
+ * Ket qua tra ve: { so_luong, ten_cong_ty, email, ... } hoac null neu that bai.
+ */
+async function classifyChatMessage(chatMessage) {
+  if (!chatMessage?.trim() || !aiCfg.geminiKey) return null;
+
+  try {
+    const [materials, heatTreat, surface] = await Promise.all([
+      getKnowledgeBlock("vnt-materials"),
+      getKnowledgeBlock("vnt-heat-treat"),
+      getKnowledgeBlock("vnt-surface"),
+    ]);
+
+    const promptText = await getPrompt("chat-classify", {
+      chatMessage: chatMessage.trim(),
+      MATERIAL: materials ?? "",
+      HEAT_TREAT: heatTreat ?? "",
+      SURFACE: surface ?? "",
+    });
+
+    const response = await generateContentWithRetry(
+      chatAi,
+      {
+        model: aiCfg.geminiModel,
+        contents: [
+          {
+            parts: [{ text: promptText }],
+          },
+        ],
+      },
+      "chat-classify"
+    );
+
+    const raw = response.candidates?.[0]?.content?.parts?.[0]?.text ?? "";
+    const jsonStr = raw.replace(/^```json\s*/i, "").replace(/\s*```$/i, "").trim();
+    const parsed = JSON.parse(jsonStr);
+    console.log("[chat-classify] Ket qua:", JSON.stringify(parsed));
+    return parsed;
+  } catch (e) {
+    console.error("[chat-classify] Loi phan tich:", e.message);
+    return null;
+  }
+}
+
 // ─── STEP 1: Phan tich ban ve + tra form ───────────────────────────────────
 
 async function handleBaoGiaChat(message, files, jobId) {
-  const { allResults, fileErrors } = await analyzeFilesForJob(files, jobId);
+  // Buoc 0: Phan tich chat de trich xuat thong tin (so_luong, ten_kh, email, chat_luu_y...)
+  const chatInfo = await classifyChatMessage(message);
+  console.log("[handleBaoGiaChat] classify result:", JSON.stringify(chatInfo));
+
+  // Buoc 1: Build emailContext — chat_luu_y da co rule, chi can truyen vao
+  const emailContext = buildChatContextForAnalyzer(message, chatInfo);
+  console.log("[handleBaoGiaChat] emailContext:", emailContext?.slice(0, 200) ?? "empty");
+
+  // Buoc 2: Phan tich cac file PDF
+  const { allResults, fileErrors } = await analyzeFilesForJob(files, jobId, emailContext);
 
   // Tao reply tra ve cho user
   let reply = "";
@@ -256,6 +421,7 @@ async function handleBaoGiaChat(message, files, jobId) {
     drawings: allResults,
     fileErrors,
     message: message || "",
+    chatInfo: chatInfo || null,
   });
 
   // Tra ve response co form
@@ -291,7 +457,7 @@ async function handleRfqFormSubmission(jobId, formData, files) {
   } else if (files && files.length > 0) {
     // Khong co pending nhung co file -> phan tich ngay
     console.log("[ChatRfq] Khong co pending, phan tich " + files.length + " file truc tiep...");
-    const analyzed = await analyzeFilesForJob(files, jobId);
+    const analyzed = await analyzeFilesForJob(files, jobId, message || null);
     allResults = analyzed.allResults;
     fileErrors = analyzed.fileErrors;
   }
@@ -305,8 +471,6 @@ async function handleRfqFormSubmission(jobId, formData, files) {
   const maKhachHang = parsed.ma_khach_hang || "";
   const coVat = parsed.co_vat || "Không";
   const xuLyBeMat = parsed.xu_ly_be_mat || "Không";
-  const slTheoVe = parsed.so_luong_theo_ve || "Theo bản vẽ";
-  const slKhac = parsed.so_luong_khac || null;
   const coVanChuyen = parsed.co_van_chuyen || "Không";
   const ghiChuNoiBo = parsed.ghi_chu_noi_bo || "";
 
@@ -346,7 +510,6 @@ async function handleRfqFormSubmission(jobId, formData, files) {
     ten_cong_ty: tenCongTy,
     ma_khach_hang: maKhachHang,
     ghi_chu: ghiChuNoiBo || "",
-    so_luong_khac: slKhac ? Number(slKhac) : null,
     co_van_chuyen: coVanChuyen === "Có",
     attachments: (files || []).map((f) => ({
       // Use the actual safe filename from the file on disk, not f.originalname
@@ -378,7 +541,6 @@ async function handleRfqFormSubmission(jobId, formData, files) {
   if (email) reply += "- Email: " + email + "\n";
   reply += "- VAT: " + coVat + "\n";
   reply += "- XLBM: " + xuLyBeMat + "\n";
-  reply += "- Số lượng: " + (slTheoVe === "Khác" && slKhac ? slKhac : slTheoVe) + "\n";
   reply += "- Vận chuyển: " + coVanChuyen + "\n";
 
   if (allResults.length > 0) {

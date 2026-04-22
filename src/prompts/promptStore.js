@@ -24,14 +24,14 @@ const PROMPT_DEFAULTS = {
     name: "Drawing Analysis — Gemini Prompt",
     description: "Prompt for backup drawing analysis using Gemini 2.5",
     file: "gemini-drawing.txt",
-    variables: ["MATERIAL", "HEAT_TREAT", "SURFACE", "SHAPE", "VNT_KNOWLEDGE"],
+    variables: ["MATERIAL", "HEAT_TREAT", "SURFACE", "SHAPE", "VNT_KNOWLEDGE", "EMAIL_CONTEXT"],
   },
   "chat-classify": {
     name: "Chat Classification — AI Extraction",
     description:
       "AI prompt to extract structured info from chat messages (replaces regex)",
     file: "chat-classify.txt",
-    variables: ["chatMessage"],
+    variables: ["chatMessage", "MATERIAL", "HEAT_TREAT", "SURFACE"],
   },
 };
 

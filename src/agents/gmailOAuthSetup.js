@@ -2,6 +2,7 @@ import "dotenv/config";
 import { google } from "googleapis";
 import http from "http";
 import url from "url";
+import { exec } from "child_process";
 
 const CLIENT_ID = process.env.GMAIL_CLIENT_ID;
 const CLIENT_SECRET = process.env.GMAIL_CLIENT_SECRET;
@@ -53,6 +54,28 @@ console.log(
   "  APIs & Services -> Credentials -> OAuth client -> Authorized redirect URIs\n"
 );
 
+// Mo trinh duyet tu dong
+function openBrowser(targetUrl) {
+  if (process.platform === "win32") {
+    exec(`start "" "${targetUrl}"`, (err) => {
+      if (err) console.error("Khong the mo trinh duyet:", err.message);
+    });
+  } else if (process.platform === "darwin") {
+    exec(`open "${targetUrl}"`, (err) => {
+      if (err) console.error("Khong the mo trinh duyet:", err.message);
+    });
+  } else {
+    exec(`xdg-open "${targetUrl}"`, (err) => {
+      if (err) console.error("Khong the mo trinh duyet:", err.message);
+    });
+  }
+}
+
+openBrowser(authUrl);
+console.log("\nDa mo trinh duyet. Neu khong, truy cap URL sau:\n");
+console.log(authUrl);
+console.log("\nDang cho callback... (xac nhan tu Google)\n");
+
 const HDR_HTML_UTF8 = { "Content-Type": "text/html; charset=utf-8" };
 const HDR_TEXT_UTF8 = { "Content-Type": "text/plain; charset=utf-8" };
 
@@ -89,9 +112,15 @@ const server = http.createServer(async (req, res) => {
   try {
     const { tokens } = await oauth2Client.getToken(code);
 
+    console.log("\n\n========== GMAIL_REFRESH_TOKEN ==========");
+    console.log(tokens.refresh_token);
+    console.log("==========================================\n");
+    console.log("Copy token tren vao GMAIL_REFRESH_TOKEN trong file .env\n");
+
     const body = `
       <h2 style="color:#0891B2">&#10003; Thành công!</h2>
-      <p>Đã lấy được Refresh Token. Quay lại terminal để copy vào file <code>.env</code>.</p>`;
+      <p>Refresh Token da duoc hien thi trong terminal.</p>
+      <p style="color:#d97706">Quay lai terminal de copy token vao file <code>.env</code>.</p>`;
     res.writeHead(200, HDR_HTML_UTF8);
     res.end(htmlPage("OAuth — Thành công", body));
 
@@ -117,4 +146,6 @@ function escapeHtml(s) {
     .replace(/"/g, "&quot;");
 }
 
-server.listen(CALLBACK_PORT, CALLBACK_HOST, () => {});
+server.listen(CALLBACK_PORT, CALLBACK_HOST, () => {
+  console.log(`Dang lang nghe callback tai http://localhost:${CALLBACK_PORT}/oauth2callback ...\n`);
+});

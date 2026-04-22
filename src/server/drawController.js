@@ -69,7 +69,8 @@ router.post("/", upload.single("file"), async (req, res) => {
   try {
     const providerHint = req.query.provider || null;
     const { fn: analyzer, label: provider } = selectAnalyzer(providerHint);
-    const result = await analyzer(req.file.path);
+    const emailContext = req.body.emailContext || req.query.email_context || null;
+    const result = await analyzer(req.file.path, null, emailContext);
 
     if (!result.success) return res.status(422).json({ error: result.error });
 
@@ -80,6 +81,8 @@ router.post("/", upload.single("file"), async (req, res) => {
       id,
       data: flat,
       filename: req.file.originalname,
+      page: 1,
+      fileIndex: 0,
       request_payload: result.request_payload,
     });
   } catch (e) {
@@ -104,6 +107,7 @@ router.post("/batch", upload.single("file"), async (req, res) => {
 
   const providerHint = req.query.provider || null;
   const { fn: analyzer, label: provider } = selectAnalyzer(providerHint);
+  const emailContext = req.body.emailContext || null;
 
   let pages = [];
   try {
@@ -115,7 +119,7 @@ router.post("/batch", upload.single("file"), async (req, res) => {
   const results = [];
   for (const pg of pages) {
     try {
-      const result = await analyzer(pg.path);
+      const result = await analyzer(pg.path, null, emailContext);
       if (result.success) {
         const flat = normalizeDrawingToFlat(result.data);
         if (!drawingHasMinimalData(flat)) {
@@ -130,6 +134,8 @@ router.post("/batch", upload.single("file"), async (req, res) => {
         const id = await saveDrawing(`trang_${pg.page}.pdf`, flat);
         results.push({
           page: pg.page,
+          filename: req.file.originalname,
+          fileIndex: 0,
           id,
           data: flat,
           request_payload: result.request_payload,

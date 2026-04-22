@@ -56,14 +56,6 @@ const RFQ_FORM_FIELDS: RfqFormField[] = [
   { key: "email", label: "Email liên hệ", type: "email", placeholder: "VD: tanaka@abc.co.jp" },
   { key: "co_vat", label: "Có VAT không?", type: "select", options: ["Có", "Không"], required: true },
   { key: "xu_ly_be_mat", label: "Có xử lý bề mặt không?", type: "select", options: ["Có", "Không"], required: true },
-  {
-    key: "so_luong_theo_ve",
-    label: "Số lượng theo bản vẽ?",
-    type: "select",
-    options: ["Theo bản vẽ", "Khác"],
-    required: true,
-  },
-  { key: "so_luong_khac", label: "Số lượng khác (nếu khác bản vẽ)", type: "number", placeholder: "VD: 50" },
   { key: "co_van_chuyen", label: "Có vận chuyển không?", type: "select", options: ["Có", "Không"], required: true },
   { key: "ghi_chu_noi_bo", label: "Ghi chú nội bộ", type: "textarea", placeholder: "Ghi chú chỉ hiển thị trong hệ thống..." },
 ];
