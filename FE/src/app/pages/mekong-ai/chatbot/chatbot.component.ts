@@ -4,8 +4,8 @@ import {
   OnDestroy,
   ViewChild,
   ElementRef,
+  NgZone,
   ChangeDetectorRef,
-  ChangeDetectionStrategy,
 } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Subscription, interval } from 'rxjs';
@@ -81,7 +81,6 @@ const INITIAL_BOT_MESSAGE: ChatMessage = {
   selector: 'app-chatbot',
   templateUrl: './chatbot.component.html',
   styleUrls: ['./chatbot.component.css'],
-  changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class ChatbotComponent implements OnInit, OnDestroy {
   @ViewChild('msgsEnd') msgsEndRef!: ElementRef<HTMLDivElement>;
@@ -111,7 +110,7 @@ export class ChatbotComponent implements OnInit, OnDestroy {
   private readonly MAX_FILE_SIZE = 100 * 1024 * 1024;
   private cdr: ChangeDetectorRef;
 
-  constructor(private http: HttpClient, cdr: ChangeDetectorRef) {
+  constructor(private http: HttpClient, private ngZone: NgZone, cdr: ChangeDetectorRef) {
     this.cdr = cdr;
   }
 
@@ -186,18 +185,34 @@ export class ChatbotComponent implements OnInit, OnDestroy {
   /**
    * Convert a filename to a safe ASCII name to avoid multipart encoding corruption of CJK chars.
    * Since non-ASCII chars get corrupted, we derive a name from file content hash instead.
+   * Falls back to sanitized original name if hashing fails (e.g., crypto.subtle unavailable).
    */
   async makeSafeFilename(originalName: string, fileContent: Blob): Promise<string> {
     const lastDot = originalName.lastIndexOf('.');
+    const base = lastDot >= 0 ? originalName.slice(0, lastDot) : originalName;
     const ext = lastDot >= 0 ? originalName.slice(lastDot).toLowerCase() : '';
-    // Hash first 64KB of file to get a unique, safe ASCII name
-    const chunk = fileContent.slice(0, 65536);
-    const hashBuffer = await crypto.subtle.digest('SHA-256', await chunk.arrayBuffer());
-    const hashHex = Array.from(new Uint8Array(hashBuffer))
-      .map(b => b.toString(16).padStart(2, '0'))
-      .join('')
-      .slice(0, 16);
-    return hashHex + ext;
+
+    try {
+      if (typeof crypto === 'undefined' || typeof crypto.subtle === 'undefined') {
+        throw new Error('crypto.subtle unavailable');
+      }
+      const chunk = fileContent.slice(0, 65536);
+      const hashBuffer = await crypto.subtle.digest('SHA-256', await chunk.arrayBuffer());
+      const hashHex = Array.from(new Uint8Array(hashBuffer))
+        .map(b => b.toString(16).padStart(2, '0'))
+        .join('')
+        .slice(0, 16);
+      return hashHex + ext;
+    } catch (e) {
+      // Fallback: sanitize original name (remove CJK, spaces, special chars)
+      const safeBase = base
+        .replace(/[^\x00-\x7F]/g, '_')
+        .replace(/[^a-zA-Z0-9_.-]/g, '_')
+        .replace(/__+/g, '_')
+        .slice(0, 24);
+      const safeName = safeBase || 'file';
+      return safeName + ext;
+    }
   }
 
   onFileChange(event: Event): void {
@@ -234,8 +249,18 @@ export class ChatbotComponent implements OnInit, OnDestroy {
 
   /** Submit form RFQ từ embedded form trong chat */
   async submitRfqForm(): Promise<void> {
+    console.log("[ChatBot] submitRfqForm called", {
+      sending: this.sending,
+      pendingJobId: this.pendingJobId,
+      pendingRfqForm: !!this.pendingRfqForm,
+      filesCount: this.files.length,
+    });
     if (this.sending) return;
-    if (!this.pendingJobId || !this.pendingRfqForm) return;
+    if (!this.pendingJobId || !this.pendingRfqForm) {
+      console.log("[ChatBot] submitRfqForm: pendingJobId hoặc pendingRfqForm bị null");
+      alert("submitRfqForm: pendingJobId hoặc pendingRfqForm bị null — kiểm tra console");
+      return;
+    }
 
     const requiredFields = this.pendingRfqForm.filter((f) => f.required);
     for (const field of requiredFields) {
@@ -362,6 +387,8 @@ export class ChatbotComponent implements OnInit, OnDestroy {
 
     const text = this.input.trim();
     if (!text && this.files.length === 0) return;
+
+    console.log("[ChatBot] send() called", { textLength: text.length, filesCount: this.files.length });
 
     const userMsg: ChatMessage = {
       id: Date.now(),
