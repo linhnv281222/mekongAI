@@ -1,11 +1,67 @@
 import { GoogleGenAI } from "@google/genai";
 import fs from "fs";
 import path from "path";
+import { fileURLToPath } from "url";
 import { aiCfg } from "../libs/config.js";
 import { generateContentWithRetry } from "../libs/geminiGenerateRetry.js";
 import { getKnowledgeBlock, getPrompt } from "../prompts/promptStore.js";
 
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const AI_CONFIG_FILE = path.join(__dirname, "../../data/ai-model-config.json");
+
+/** Extract JSON — thử parse trực tiếp, thất bại thì tìm balanced { ... } trong text */
+function extractJson(text) {
+  const cleaned = String(text || "").replace(/^```json\s*/m, "").replace(/```\s*$/m, "").trim();
+  try { return JSON.parse(cleaned); } catch {}
+  const objMatch = findBalancedBraces(cleaned, '{', '}');
+  if (objMatch) {
+    try { return JSON.parse(objMatch); } catch {}
+  }
+  const arrMatch = findBalancedBraces(cleaned, '[', ']');
+  if (arrMatch) {
+    try { return JSON.parse(arrMatch); } catch {}
+  }
+  throw new Error("Khong the extract JSON from response");
+}
+
+/** Tim text con bat dau boi openChar va ket thuc boi closeChar (da can bang) */
+function findBalancedBraces(text, openChar, closeChar) {
+  let start = -1;
+  for (let i = 0; i < text.length; i++) {
+    if (text[i] === openChar) { start = i; break; }
+  }
+  if (start === -1) return null;
+  let depth = 0, inString = false, escaped = false;
+  for (let i = start; i < text.length; i++) {
+    const ch = text[i];
+    if (escaped) { escaped = false; continue; }
+    if (ch === '\\') { escaped = true; continue; }
+    if (ch === '"' || ch === "'") { inString = !inString; continue; }
+    if (inString) continue;
+    if (ch === openChar) depth++;
+    else if (ch === closeChar) depth--;
+    if (depth === 0) return text.slice(start, i + 1);
+  }
+  return null;
+}
+
 const geminiAi = new GoogleGenAI({ apiKey: aiCfg.geminiKey });
+
+function loadAiConfig() {
+  try {
+    if (fs.existsSync(AI_CONFIG_FILE)) {
+      const raw = JSON.parse(fs.readFileSync(AI_CONFIG_FILE, "utf8"));
+      return { provider: raw?.provider || "gemini", model: raw?.model || null };
+    }
+  } catch {}
+  return { provider: "gemini", model: null };
+}
+
+function geminiModel() {
+  const { model } = loadAiConfig();
+  if (model && model.trim()) return model.trim();
+  return aiCfg.geminiModel || "gemini-3.1-pro-preview";
+}
 
 /**
  * Doc ban ve PDF = Gemini (SDK moi @google/genai).
@@ -19,13 +75,15 @@ export async function analyzeDrawingGemini(pdfPath, model = null, emailContext =
     return { success: false, error: "GEMINI_API_KEY not set" };
   }
 
-  const modelName = model || aiCfg.geminiModel;
+  const modelName = model || geminiModel();
+  console.log('[GeminiAnalyzer] START model=' + modelName + ' pdf=' + pdfPath + ' memMB=' + Math.round(process.memoryUsage().heapUsed / 1024 / 1024));
 
   let debugPayload = null;
 
   try {
     const pdfBuffer = fs.readFileSync(pdfPath);
     const base64 = pdfBuffer.toString("base64");
+    console.log('[GeminiAnalyzer] PDF loaded size=' + pdfBuffer.length + ' memMB=' + Math.round(process.memoryUsage().heapUsed / 1024 / 1024));
 
     const [vntKnowledge, materials, heatTreat, surface, shapes] =
       await Promise.all([
@@ -84,19 +142,16 @@ export async function analyzeDrawingGemini(pdfPath, model = null, emailContext =
       })),
     };
 
+    console.log('[GeminiAnalyzer] Calling Gemini API... memMB=' + Math.round(process.memoryUsage().heapUsed / 1024 / 1024));
     const response = await generateContentWithRetry(
       geminiAi,
       requestPayload,
       "GeminiAnalyzer"
     );
+    console.log('[GeminiAnalyzer] API done memMB=' + Math.round(process.memoryUsage().heapUsed / 1024 / 1024));
 
     const raw = response.text ?? "";
-    const cleaned = raw
-      .replace(/^```json\s*/m, "")
-      .replace(/```\s*$/m, "")
-      .trim();
-
-    const parsed = JSON.parse(cleaned);
+    const parsed = extractJson(raw);
 
     return {
       success: true,
@@ -106,6 +161,7 @@ export async function analyzeDrawingGemini(pdfPath, model = null, emailContext =
       request_payload: debugPayload,
     };
   } catch (e) {
+    console.error('[GeminiAnalyzer] EXCEPTION:', e.message, e.stack?.split('\n')[1] ?? '');
     return {
       success: false,
       error: e.message,
@@ -119,7 +175,7 @@ export async function analyzeDrawingGemini(pdfPath, model = null, emailContext =
  * Gemini backup khi correction that bai.
  */
 export async function correctDrawingGemini(currentData, userMessage, emailContext = null) {
-  return analyzeDrawingGemini(null, aiCfg.geminiFlashModel, emailContext);
+  return analyzeDrawingGemini(null, geminiModel(), emailContext);
 }
 
 /**
@@ -140,7 +196,7 @@ export async function debugPromptGemini(
     return { success: false, error: "GEMINI_API_KEY not set" };
   }
 
-  const modelName = aiCfg.geminiModel;
+  const modelName = geminiModel();
 
   const instruction = schema
     ? `Phan tich yeu cau ben duoi va tra ve JSON theo schema:\n${schema}\n\nLuu y: Tra ve JSON thuan tuy, khong markdown, khong giai thich.`
@@ -166,11 +222,7 @@ export async function debugPromptGemini(
 
     let data;
     try {
-      const cleaned = raw
-        .replace(/^```json\s*/m, "")
-        .replace(/```\s*$/m, "")
-        .trim();
-      data = JSON.parse(cleaned);
+      data = extractJson(raw);
     } catch {
       data = raw;
     }

@@ -72,7 +72,7 @@
         >
         </p-dropdown>
         <div class="model-status">
-          → {{ selectedModel === "claude" ? "💬 Claude" : "☁ Gemini" }}
+          → {{ selectedModel.startsWith('gemini') ? '☁ ' + selectedModel : '💬 ' + selectedModel }}
         </div>
       </div>
     </div>

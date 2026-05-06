@@ -37,6 +37,7 @@
     "ngx-mask": "^14.2.4",
     "ngx-ui-loader": "^13.0.0",
     "ngx-ui-tour-md-menu": "^10.7.0",
+    "pdfjs-dist": "^4.9.155",
     "primeflex": "^4.0.0",
     "primeicons": "^7.0.0",
     "primeng": "^17.18.11",

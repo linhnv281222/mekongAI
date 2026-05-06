@@ -50,14 +50,58 @@ interface RfqFormValue {
 }
 
 const RFQ_FORM_FIELDS: RfqFormField[] = [
-  { key: "ma_khach_hang", label: "Mã khách hàng", type: "text", placeholder: "VD: CUST-001" },
-  { key: "ten_cong_ty", label: "Tên công ty khách hàng", type: "text", placeholder: "VD: ABC Precision Co., Ltd", required: true },
-  { key: "nguoi_lien_he", label: "Người liên hệ", type: "text", placeholder: "VD: Tanaka Yamada" },
-  { key: "email", label: "Email liên hệ", type: "email", placeholder: "VD: tanaka@abc.co.jp" },
-  { key: "co_vat", label: "Có VAT không?", type: "select", options: ["Có", "Không"], required: true },
-  { key: "xu_ly_be_mat", label: "Có xử lý bề mặt không?", type: "select", options: ["Có", "Không"], required: true },
-  { key: "co_van_chuyen", label: "Có vận chuyển không?", type: "select", options: ["Có", "Không"], required: true },
-  { key: "ghi_chu_noi_bo", label: "Ghi chú nội bộ", type: "textarea", placeholder: "Ghi chú chỉ hiển thị trong hệ thống..." },
+  {
+    key: 'ma_khach_hang',
+    label: 'Mã khách hàng',
+    type: 'text',
+    placeholder: 'VD: CUST-001',
+  },
+  {
+    key: 'ten_cong_ty',
+    label: 'Tên công ty khách hàng',
+    type: 'text',
+    placeholder: 'VD: ABC Precision Co., Ltd',
+    required: true,
+  },
+  {
+    key: 'nguoi_lien_he',
+    label: 'Người liên hệ',
+    type: 'text',
+    placeholder: 'VD: Tanaka Yamada',
+  },
+  {
+    key: 'email',
+    label: 'Email liên hệ',
+    type: 'email',
+    placeholder: 'VD: tanaka@abc.co.jp',
+  },
+  {
+    key: 'co_vat',
+    label: 'Có VAT không?',
+    type: 'select',
+    options: ['Có', 'Không'],
+    required: true,
+  },
+  {
+    key: 'xu_ly_be_mat',
+    label: 'Có xử lý bề mặt không?',
+    type: 'select',
+    options: ['Có', 'Không'],
+    required: true,
+  },
+  {
+    key: 'co_van_chuyen',
+    label: 'Có vận chuyển không?',
+    type: 'select',
+    options: ['Có', 'Không'],
+    required: true,
+  },
+  {
+    key: 'ghi_chu_noi_bo',
+    label: 'Ghi chú',
+    type: 'textarea',
+    placeholder: 'Ghi chú chỉ hiển thị trong hệ thống...',
+  },
 ];
 
 const INITIAL_BOT_MESSAGE: ChatMessage = {
@@ -98,11 +142,17 @@ export class ChatbotComponent implements OnInit, OnDestroy {
   private pollSub?: Subscription;
   private lastSeenJobTime = Date.now();
   private readonly POLL_INTERVAL = 15000;
+  /** Active SSE connection for real-time job progress */
+  private activeEventSource: EventSource | null = null;
   private readonly MAX_FILES = 20;
   private readonly MAX_FILE_SIZE = 100 * 1024 * 1024;
   private cdr: ChangeDetectorRef;
 
-  constructor(private http: HttpClient, private ngZone: NgZone, cdr: ChangeDetectorRef) {
+  constructor(
+    private http: HttpClient,
+    private ngZone: NgZone,
+    cdr: ChangeDetectorRef
+  ) {
     this.cdr = cdr;
   }
 
@@ -112,16 +162,131 @@ export class ChatbotComponent implements OnInit, OnDestroy {
 
   ngOnDestroy(): void {
     this.stopPolling();
+    if (this.activeEventSource) {
+      this.activeEventSource.close();
+      this.activeEventSource = null;
+    }
+  }
+
+  /**
+   * Connect to SSE stream for a job and handle real-time events.
+   * Replaces the blocking-polling pattern for file analysis.
+   */
+  private connectSse(jobId: string): void {
+    // Close existing connection
+    if (this.activeEventSource) {
+      this.activeEventSource.close();
+    }
+
+    const url = `/chat/stream/${encodeURIComponent(jobId)}`;
+    const es = new EventSource(url);
+    this.activeEventSource = es;
+
+    es.addEventListener('connected', () => {
+      console.log('[ChatBot] SSE connected for job', jobId);
+    });
+
+    es.addEventListener('progress', (e: MessageEvent) => {
+      const data = JSON.parse(e.data) as {
+        phase: string;
+        current: number;
+        total: number;
+        message: string;
+      };
+      console.log('[ChatBot] SSE progress:', data);
+      // Update the typing indicator with progress message
+      this.cdr.markForCheck();
+    });
+
+    es.addEventListener('done', (e: MessageEvent) => {
+      console.log('[ChatBot] SSE done for job', jobId);
+      const { result } = JSON.parse(e.data) as {
+        result: {
+          reply: string;
+          step: string;
+          job_id: string;
+          rfq_form?: RfqFormField[];
+          drawings_summary?: DrawingSummary[];
+          askClarify?: boolean;
+        };
+      };
+      es.close();
+      this.activeEventSource = null;
+      this.typing = false;
+
+      // Step 1 complete: show RFQ form to fill
+      if (result.step === '2' && result.rfq_form) {
+        this.pendingRfqForm = result.rfq_form;
+        this.pendingJobId = result.job_id;
+        this.pendingDrawingsSummary = result.drawings_summary || null;
+        this.rfqFormValues = {};
+        for (const field of result.rfq_form) {
+          this.rfqFormValues[field.key] =
+            field.type === 'select' && field.options?.length ? field.options[0] : '';
+        }
+      } else {
+        // Step 2 complete (RFQ submitted, no form needed)
+        this.pendingRfqForm = null;
+        this.pendingJobId = null;
+        this.pendingDrawingsSummary = null;
+      }
+
+      this.messages = [
+        ...this.messages,
+        {
+          id: Date.now() + Math.random(),
+          role: 'bot',
+          text: result.reply,
+          time: new Date(),
+          files: [],
+        },
+      ];
+      this.cdr.markForCheck();
+      this.scrollToBottom();
+    });
+
+    es.addEventListener('error', (e: MessageEvent) => {
+      console.error('[ChatBot] SSE error for job', jobId, e);
+      es.close();
+      this.activeEventSource = null;
+      this.typing = false;
+      this.messages = [
+        ...this.messages,
+        {
+          id: Date.now() + Math.random(),
+          role: 'bot',
+          text: 'Đã xảy ra lỗi khi xử lý yêu cầu. Vui lòng thử lại.',
+          time: new Date(),
+          files: [],
+        },
+      ];
+      this.cdr.markForCheck();
+      this.scrollToBottom();
+    });
+
+    // Generic error handler
+    es.onerror = () => {
+      // Don't close on transient errors — let the server-side heartbeat + cleanup handle it
+      console.warn('[ChatBot] SSE onerror (not closing — waiting for reconnect)');
+    };
   }
 
   /** Hien thi form RFQ khi user nhan nut goi y */
   showFormFromPrompt(): void {
     this.pendingRfqForm = RFQ_FORM_FIELDS;
-    this.pendingJobId = 'chat_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2, 6);
+    this.pendingJobId =
+      'chat_' +
+      Date.now().toString(36) +
+      '_' +
+      Math.random().toString(36).slice(2, 6);
     this.pendingDrawingsSummary = null;
     this.rfqFormValues = {};
     for (const field of RFQ_FORM_FIELDS) {
-      if (field.type === 'select' && field.options && field.options.length > 0) {
+      if (
+        field.type === 'select' &&
+        field.options &&
+        field.options.length > 0
+      ) {
         this.rfqFormValues[field.key] = field.options[0];
       } else {
         this.rfqFormValues[field.key] = '';
@@ -179,19 +344,28 @@ export class ChatbotComponent implements OnInit, OnDestroy {
    * Since non-ASCII chars get corrupted, we derive a name from file content hash instead.
    * Falls back to sanitized original name if hashing fails (e.g., crypto.subtle unavailable).
    */
-  async makeSafeFilename(originalName: string, fileContent: Blob): Promise<string> {
+  async makeSafeFilename(
+    originalName: string,
+    fileContent: Blob
+  ): Promise<string> {
     const lastDot = originalName.lastIndexOf('.');
     const base = lastDot >= 0 ? originalName.slice(0, lastDot) : originalName;
     const ext = lastDot >= 0 ? originalName.slice(lastDot).toLowerCase() : '';
 
     try {
-      if (typeof crypto === 'undefined' || typeof crypto.subtle === 'undefined') {
+      if (
+        typeof crypto === 'undefined' ||
+        typeof crypto.subtle === 'undefined'
+      ) {
         throw new Error('crypto.subtle unavailable');
       }
       const chunk = fileContent.slice(0, 65536);
-      const hashBuffer = await crypto.subtle.digest('SHA-256', await chunk.arrayBuffer());
+      const hashBuffer = await crypto.subtle.digest(
+        'SHA-256',
+        await chunk.arrayBuffer()
+      );
       const hashHex = Array.from(new Uint8Array(hashBuffer))
-        .map(b => b.toString(16).padStart(2, '0'))
+        .map((b) => b.toString(16).padStart(2, '0'))
         .join('')
         .slice(0, 16);
       return hashHex + ext;
@@ -241,16 +415,21 @@ export class ChatbotComponent implements OnInit, OnDestroy {
 
   /** Submit form RFQ từ embedded form trong chat */
   async submitRfqForm(): Promise<void> {
-    console.log("[ChatBot] submitRfqForm called", {
+    console.log('[ChatBot] submitRfqForm called', {
       sending: this.sending,
       pendingJobId: this.pendingJobId,
       pendingRfqForm: !!this.pendingRfqForm,
       filesCount: this.files.length,
     });
+    const t0 = Date.now();
     if (this.sending) return;
     if (!this.pendingJobId || !this.pendingRfqForm) {
-      console.log("[ChatBot] submitRfqForm: pendingJobId hoặc pendingRfqForm bị null");
-      alert("submitRfqForm: pendingJobId hoặc pendingRfqForm bị null — kiểm tra console");
+      console.log(
+        '[ChatBot] submitRfqForm: pendingJobId hoặc pendingRfqForm bị null'
+      );
+      alert(
+        'submitRfqForm: pendingJobId hoặc pendingRfqForm bị null — kiểm tra console'
+      );
       return;
     }
 
@@ -298,11 +477,40 @@ export class ChatbotComponent implements OnInit, OnDestroy {
       formData.append('files', f.slice(), safeName);
     }
 
+    console.log('[ChatBot] HTTP POST /chat/message (RFQ) — elapsed=' + (Date.now() - t0) + 'ms');
     this.http.post<unknown>('/chat/message', formData).subscribe({
       next: (data) => {
+        console.log('[ChatBot] submitRfqForm() SUCCESS', {
+          data,
+          step: (data as any)?.step,
+          hasReply: !!(data as any)?.reply,
+          error: (data as any)?.error,
+        });
         this.typing = false;
         const d = data as Record<string, unknown>;
         const reply = d['reply'] as string | undefined;
+        const step = d['step'] as string | undefined;
+        const stepJobId = d['job_id'] as string | undefined;
+
+        // ── Processing (async): connect SSE for real-time updates ─────────────
+        if (step === 'processing' && stepJobId) {
+          this.messages = [
+            ...this.messages,
+            {
+              id: Date.now() + Math.random(),
+              role: 'bot',
+              text: reply || 'Đang phân tích file đính kèm. Bạn đợi một chút nhé...',
+              time: new Date(),
+              files: [],
+            },
+          ];
+          this.cdr.markForCheck();
+          this.scrollToBottom();
+          this.connectSse(stepJobId);
+          return;
+        }
+
+        // ── Normal reply ─────────────────────────────────────────────────────
         if (reply) {
           this.messages = [
             ...this.messages,
@@ -329,7 +537,14 @@ export class ChatbotComponent implements OnInit, OnDestroy {
         this.cdr.markForCheck();
         this.scrollToBottom();
       },
-      error: () => {
+      error: (err) => {
+        console.error('[ChatBot] send() ERROR (RFQ)', {
+          status: err.status,
+          statusText: err.statusText,
+          message: err.message,
+          url: err.url,
+          error: err.error,
+        });
         this.typing = false;
         this.messages = [
           ...this.messages,
@@ -379,8 +594,8 @@ export class ChatbotComponent implements OnInit, OnDestroy {
 
     const text = this.input.trim();
     if (!text && this.files.length === 0) return;
-
-    console.log("[ChatBot] send() called", { textLength: text.length, filesCount: this.files.length });
+    console.log('[ChatBot] send() START', { textLen: text.length, filesCount: this.files.length });
+    const t0 = Date.now();
 
     const userMsg: ChatMessage = {
       id: Date.now(),
@@ -404,20 +619,32 @@ export class ChatbotComponent implements OnInit, OnDestroy {
 
     const formData = new FormData();
     if (text) formData.append('message', text);
-    await Promise.all(userMsg.files.map(async (f) => {
-      const safeName = await this.makeSafeFilename(f.name, f);
-      formData.append('files', f.slice(), safeName);
-    }));
+    await Promise.all(
+      userMsg.files.map(async (f) => {
+        const safeName = await this.makeSafeFilename(f.name, f);
+        formData.append('files', f.slice(), safeName);
+      })
+    );
 
+    console.log('[ChatBot] HTTP POST /chat/message — elapsed=' + (Date.now() - t0) + 'ms');
     this.http.post<unknown>('/chat/message', formData).subscribe({
       next: (data) => {
+        console.log('[ChatBot] send() SUCCESS', {
+          data,
+          step: (data as any)?.step,
+          hasReply: !!(data as any)?.reply,
+          isBotReply: (data as any)?.isBotReply,
+          error: (data as any)?.error,
+        });
         this.typing = false;
         const d = data as Record<string, unknown>;
         const reply = d['reply'] as string | undefined;
         const step = d['step'] != null ? String(d['step']) : null;
         const jobId = d['job_id'] as string | undefined;
         const rfqForm = d['rfq_form'] as RfqFormField[] | undefined;
-        const drawingsSummary = d['drawings_summary'] as DrawingSummary[] | undefined;
+        const drawingsSummary = d['drawings_summary'] as
+          | DrawingSummary[]
+          | undefined;
         const error = d['error'] as string | undefined;
 
         // ── Step 2: Server trả form RFQ ───────────────────────────────────
@@ -429,7 +656,11 @@ export class ChatbotComponent implements OnInit, OnDestroy {
           // Khởi tạo default values
           this.rfqFormValues = {};
           for (const field of rfqForm) {
-            if (field.type === 'select' && field.options && field.options.length > 0) {
+            if (
+              field.type === 'select' &&
+              field.options &&
+              field.options.length > 0
+            ) {
               this.rfqFormValues[field.key] = field.options[0];
             } else {
               this.rfqFormValues[field.key] = '';
@@ -454,7 +685,35 @@ export class ChatbotComponent implements OnInit, OnDestroy {
           return;
         }
 
+        // ── Processing (async): start SSE listener ──────────────────────────
+        if (step === 'processing' && jobId) {
+          // Keep typing indicator showing
+          this.typing = true;
+          // Append the "đợi một chút" message from server
+          this.messages = [
+            ...this.messages,
+            {
+              id: Date.now() + Math.random(),
+              role: 'bot',
+              text: reply || 'Đang phân tích...',
+              time: new Date(),
+              files: [],
+            },
+          ];
+          this.cdr.markForCheck();
+          this.scrollToBottom();
+          // Connect to SSE for real-time updates
+          this.connectSse(jobId);
+          return;
+        }
+
         // ── Reply bình thường ───────────────────────────────────────────
+        console.log('[ChatBot] send() SUCCESS (step1)', {
+          hasReply: !!reply,
+          hasError: !!error,
+          step,
+          keys: Object.keys(d),
+        });
         if (reply) {
           this.messages = [
             ...this.messages,
@@ -492,14 +751,20 @@ export class ChatbotComponent implements OnInit, OnDestroy {
         this.cdr.markForCheck();
         this.scrollToBottom();
       },
-      error: () => {
+      error: (err) => {
+        console.error('[ChatBot] HTTP Error (step1):', {
+          status: err?.status,
+          statusText: err?.statusText,
+          message: err?.message,
+          url: err?.url,
+        });
         this.typing = false;
         this.messages = [
           ...this.messages,
           {
             id: Date.now() + Math.random(),
             role: 'bot',
-            text: 'Không thể kết nối server. Vui lòng kiểm tra kết nối mạng.',
+            text: 'Không thể kết nối server. Vui lòng kiểm tra kết nối mạng. (HTTP ' + (err?.status || '?') + ')',
             time: new Date(),
             files: [],
           },
@@ -530,7 +795,8 @@ export class ChatbotComponent implements OnInit, OnDestroy {
             const jobs = data.data || [];
             const chatJobs = jobs.filter(
               (j) =>
-                j.id != null && String(j.id).indexOf('chat_') === 0 &&
+                j.id != null &&
+                String(j.id).indexOf('chat_') === 0 &&
                 (j.created_at ?? 0) > this.lastSeenJobTime
             );
             if (chatJobs.length > 0) {

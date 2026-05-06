@@ -4,6 +4,7 @@ import path from "path";
 import { fileURLToPath } from "url";
 
 import { classifyEmail } from "../ai/emailClassifier.js";
+import { loadAiConfig } from "../ai/aiConfig.js";
 import { isJobProcessed, saveJob, updateJob } from "../data/jobStore.js";
 import { agentCfg, gmailCfg } from "../libs/config.js";
 import { postPdfToDrawingsApi } from "../libs/postDrawingUpload.js";
@@ -56,10 +57,10 @@ async function processEmail(gmail, msgId) {
       }`
     );
 
-    // 3. Classify = Haiku
+    // 3. Classify
     const classify = await classifyEmail(emailData);
     console.log(
-      `[Classify] → ${classify.loai} | ${classify.ngon_ngu} | ${classify.ly_do}`
+      `[Classify] config=${classify._model_used} | api=${classify._model_from_api} | body_len=${classify._body_len}/${classify._body_sent} → ${classify.loai} | ${classify.ngon_ngu} | ${classify.ly_do}`
     );
 
     // Build email context for drawing analysis (Gemini uses this to prioritize email > drawing)
@@ -180,6 +181,14 @@ async function processEmail(gmail, msgId) {
           const d = result.data;
           const flat = normalizeDrawingToFlat(d);
 
+          // Override so_luong tu email classify
+          if (classify.so_luong_chung && !classify.so_luong_theo_ma) {
+            flat.so_luong = classify.so_luong_chung;
+          } else if (classify.so_luong_theo_ma) {
+            const override = classify.so_luong_theo_ma[flat.ma_ban_ve];
+            if (override) flat.so_luong = override;
+          }
+
           if (!drawingHasMinimalData(flat)) {
             console.warn(`[BV] Skip trang ${pg.page} (${pg.name}) — khong du du lieu AI tra ve`);
             console.warn(`[BV]   ma_ban_ve="${flat.ma_ban_ve}" vat_lieu="${flat.vat_lieu}" kich_thuoc="${flat.kich_thuoc}"`);
@@ -233,7 +242,7 @@ async function processEmail(gmail, msgId) {
       xu_ly_be_mat: classify.xu_ly_be_mat,
       vat_lieu_chung_nhan: classify.vat_lieu_chung_nhan,
       ten_cong_ty: classify.ten_cong_ty,
-      ghi_chu: emailData.body.slice(0, 500),
+      ghi_chu: emailData.body.slice(0, 5000),
       attachments: emailData.attachments.map((a) => ({
         name: a.name,
         attachmentId: a.attachmentId,
@@ -247,14 +256,6 @@ async function processEmail(gmail, msgId) {
     };
 
     await saveJob(jobData);
-
-    const reviewUrl = `${agentCfg.banveApiUrl}/src/web/demoV3.html`;
-
-    await updateJob(jobId, {
-      gmail_id: msgId,
-      status: "pending_review",
-      lines_count: Number(allResults.length),
-    });
   } finally {
     inflightMsgIds.delete(msgId);
   }
@@ -286,6 +287,8 @@ async function buildEmailContext(emailData, classify) {
     if (classify.han_giao_hang) extras.push(`Hạn giao: ${classify.han_giao_hang}`);
     if (classify.xu_ly_be_mat) extras.push(`Xử lý bề mặt: ${classify.xu_ly_be_mat}`);
     if (classify.vat_lieu_chung_nhan) extras.push(`VAT liệu: ${classify.vat_lieu_chung_nhan}`);
+    if (classify.so_luong_chung) extras.push(`Số lượng chung: ${classify.so_luong_chung}`);
+    if (classify.so_luong_theo_ma) extras.push(`Số lượng theo mã: ${JSON.stringify(classify.so_luong_theo_ma)}`);
     if (extras.length) {
       parts.push(`[THÔNG TIN PHÂN LOẠI]\n${extras.join(" | ")}`);
     }
@@ -299,14 +302,15 @@ async function buildEmailContext(emailData, classify) {
 // ─── GOI API SERVER DE DOC BAN VE ───────────────────────────────────────
 
 async function analyzeDrawingApi(pdfPath, filename, emailContext = null) {
+  const { provider } = loadAiConfig();
   console.log(
-    `[analyzeDrawingApi] POST ${agentCfg.banveApiUrl}/drawings?provider=gemini — file: ${filename}${emailContext ? " [HAS_EMAIL_CONTEXT]" : ""}`
+    `[analyzeDrawingApi] POST ${agentCfg.banveApiUrl}/drawings — provider=${provider} — file: ${filename}${emailContext ? " [HAS_EMAIL_CONTEXT]" : ""}`
   );
   const data = await postPdfToDrawingsApi({
     pdfPath,
     filename,
     baseUrl: agentCfg.banveApiUrl,
-    provider: "gemini",
+    provider,
     emailContext,
   });
 

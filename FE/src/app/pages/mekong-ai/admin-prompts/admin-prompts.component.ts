@@ -74,7 +74,7 @@ export class AdminPromptsComponent implements OnInit {
 
   // UI state
   apiStatus: 'online' | 'offline' = 'online';
-  selectedModel: string = 'claude';
+  selectedModel: string = 'claude-sonnet-4-7';
   fileMode: boolean = false;
 
   // Debug panel state
@@ -87,8 +87,11 @@ export class AdminPromptsComponent implements OnInit {
 
   // PrimeNG options
   aiModelOptions = [
-    { label: 'Claude', value: 'claude' },
-    { label: 'Gemini', value: 'gemini' },
+    { label: 'Gemini 3.1 Pro', value: 'gemini-3.1-pro-preview' },
+    { label: 'Gemini 2.5 Flash', value: 'gemini-2.5-flash-preview' },
+    { label: 'Claude Opus 4.7', value: 'claude-opus-4-7' },
+    { label: 'Claude Sonnet 4.6', value: 'claude-sonnet-4-6' },
+    { label: 'Claude Haiku 4', value: 'claude-haiku-4-5' },
   ];
   promptVersionOptions: { label: string; value: number }[] = [];
   availableVariables: string[] = [];
@@ -220,7 +223,12 @@ export class AdminPromptsComponent implements OnInit {
       }
 
       if (config) {
-        this.selectedModel = config.provider === 'gemini' ? 'gemini' : 'claude';
+        // Nếu config có model cụ thể thì dùng, không thì infer từ provider
+        if (config.model && config.model.trim()) {
+          this.selectedModel = config.model.trim();
+        } else {
+          this.selectedModel = config.provider === 'gemini' ? 'gemini-3.1-pro-preview' : 'claude-sonnet-4-7';
+        }
       }
     } catch (e: any) {
       this.showToast('Không tải được cấu hình: ' + e.message, 'error');
@@ -897,18 +905,18 @@ export class AdminPromptsComponent implements OnInit {
   // Model
   async onModelChange(): Promise<void> {
     try {
-      await this.mekongAiService.updateAiProvider(this.selectedModel);
-      this.showToast(
-        `Đã đổi sang ${this.selectedModel === 'gemini' ? 'Gemini' : 'Claude'}`,
-        'success'
-      );
+      const model = this.selectedModel.trim();
+      const provider = model.startsWith('gemini') ? 'gemini' : 'claude';
+      await this.mekongAiService.updateAiProvider(provider, model);
+      const display = this.aiModelOptions.find(o => o.value === model)?.label ?? model;
+      this.showToast(`Đã đổi sang ${display}`, 'success');
     } catch (e: any) {
       this.showToast('Lỗi: ' + e.message, 'error');
     }
   }
 
   getProviderIcon(): string {
-    return this.selectedModel === 'gemini' ? '☁' : '💬';
+    return this.selectedModel.startsWith('gemini') ? '☁' : '💬';
   }
 
   // Helpers

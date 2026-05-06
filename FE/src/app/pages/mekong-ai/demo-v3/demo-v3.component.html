@@ -650,19 +650,19 @@
                     </span>
                   </div>
                   <div class="bv-preview-body">
+                    <app-pdf-viewer
+                      *ngIf="previewData && !previewLoading"
+                      [pdfData]="previewData"
+                      [currentPage]="previewPage"
+                      [fileName]="previewName || ''"
+                      (pageChange)="onPageChange($event)"
+                    ></app-pdf-viewer>
                     <div *ngIf="previewLoading" class="bv-preview-loading">
                       <i class="pi pi-spin pi-spinner"></i>
                       Đang tải bản xem trước…
                     </div>
-                    <ng-container *ngIf="previewSrc && !previewLoading">
-                      <iframe
-                        [src]="previewSrc"
-                        class="bv-preview-frame"
-                        [title]="previewName || 'Xem trước'"
-                      ></iframe>
-                    </ng-container>
                     <div
-                      *ngIf="!previewSrc && !previewLoading"
+                      *ngIf="!previewData && !previewLoading"
                       class="bv-preview-empty"
                     >
                       <div>
