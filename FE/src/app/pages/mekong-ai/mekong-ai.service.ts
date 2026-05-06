@@ -537,9 +537,9 @@ export class MekongAiService {
 
   /**
    * Lấy cấu hình AI provider (claude/gemini)
-   * @returns Promise<{ provider: string }>
+   * @returns Promise<{ provider: string; model?: string }>
    */
-  async getAiProviderConfig(): Promise<{ provider: string } | null> {
+  async getAiProviderConfig(): Promise<{ provider: string; model?: string } | null> {
     try {
       const response = await firstValueFrom(
         this.http.get<any>(`${this.mekongApiPath}/admin/prompts/config`, {
@@ -560,18 +560,19 @@ export class MekongAiService {
   }
 
   /**
-   * Cập nhật AI provider
+   * Cập nhật AI provider + optional model
    * @param provider - 'claude' hoặc 'gemini'
-   * @returns Promise<any>
+   * @param model - model cụ thể (optional, infer from provider if not set)
    */
-  async updateAiProvider(provider: string): Promise<any> {
+  async updateAiProvider(provider: string, model?: string): Promise<any> {
     try {
-      const modelLegacy =
-        provider === 'gemini' ? 'gemini-3.1-pro-preview' : 'claude-sonnet-4-6';
+      const resolvedModel = model && model.trim()
+        ? model.trim()
+        : provider === 'gemini' ? 'gemini-3.1-pro-preview' : 'claude-sonnet-4-7';
       const response = await firstValueFrom(
         this.http.put<any>(
           `${this.mekongApiPath}/admin/prompts/config`,
-          { provider, model: modelLegacy },
+          { provider, model: resolvedModel },
           {
             headers: new HttpHeaders({
               'Content-Type': 'application/json',

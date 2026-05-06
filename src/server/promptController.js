@@ -41,8 +41,8 @@ const debugUpload = multer({
   limits: { fileSize: 50 * 1024 * 1024 },
 });
 
-/** Mặc định provider */
-const DEFAULT_AI_CONFIG = { provider: "gemini" };
+/** Mặc định provider + model */
+const DEFAULT_AI_CONFIG = { provider: "gemini", model: null };
 
 /** Đọc config từ file, tạo file nếu chưa có */
 function loadAiConfig() {
@@ -66,7 +66,7 @@ function loadAiConfig() {
     if (provider !== "claude" && provider !== "gemini") {
       provider = "gemini";
     }
-    return { provider };
+    return { provider, model: raw?.model || null };
   } catch {
     return { ...DEFAULT_AI_CONFIG };
   }
@@ -85,7 +85,7 @@ router.get("/config", (req, res) => {
   res.json({ data: loadAiConfig() });
 });
 
-// PUT /admin/prompts/config — cập nhật provider
+// PUT /admin/prompts/config — cập nhật provider + optional model
 router.put("/config", (req, res) => {
   const body =
     req.body && typeof req.body === "object" && !Array.isArray(req.body)
@@ -104,7 +104,10 @@ router.put("/config", (req, res) => {
         'Thiếu hoặc sai provider. Gửi JSON dạng {"provider":"claude"} hoặc {"provider":"gemini"}.',
     });
   }
-  const cfg = { provider };
+  const model = typeof body.model === "string" && body.model.trim()
+    ? body.model.trim()
+    : null;
+  const cfg = { provider, model };
   saveAiConfig(cfg);
   res.json({ data: cfg });
 });
@@ -385,18 +388,17 @@ router.post("/debug", async (req, res) => {
 
     if (key === "email-classify") {
       // Try to parse "From: ...\nSubject: ...\nBody: ..." format
-      // Fallback: treat entire content as email body if format not detected
       const lines = content.split("\n");
       let from = "",
         subject = "",
         body = "";
       let section = "body";
       for (const line of lines) {
-        const lineLower = line.toLowerCase();
-        if (lineLower.startsWith("from:")) {
+        const lc = line.toLowerCase();
+        if (lc.startsWith("from:")) {
           from = line.slice(5).trim();
           section = "from";
-        } else if (lineLower.startsWith("subject:")) {
+        } else if (lc.startsWith("subject:")) {
           subject = line.slice(8).trim();
           section = "subject";
         } else if (lc.startsWith("body:")) {
@@ -404,7 +406,6 @@ router.post("/debug", async (req, res) => {
           section = "body";
         } else if (section === "body") body += "\n" + line;
       }
-      // If From/Subject are empty, try to extract from raw email content
       if (!from || !subject) {
         const raw = content;
         const fromMatch =
@@ -414,7 +415,6 @@ router.post("/debug", async (req, res) => {
         if (fromMatch) from = fromMatch[1].trim();
         if (subjectMatch) subject = subjectMatch[1].trim();
         if (!body || body.trim().length < 5) {
-          // Use entire content as body if body not detected
           body = content;
         }
       }
@@ -435,9 +435,15 @@ router.post("/debug", async (req, res) => {
 
     let userMessage = content.trim();
 
+    if (provider === "claude") {
+      const { debugPromptClaude } = await import("../ai/anthropicAnalyzer.js");
+      const result = await debugPromptClaude(rawContent, userMessage, "");
+      return res.json({ data: { key, provider, result } });
+    }
+
     const { debugPromptGemini } = await import("../ai/geminiAnalyzer.js");
     const result = await debugPromptGemini(rawContent, userMessage, "");
-    return res.json({ data: { key, provider: "gemini", result } });
+    return res.json({ data: { key, provider, result } });
   } catch (e) {
     console.error("[debug] Error:", e);
     res.status(500).json({ error: e.message });
@@ -462,7 +468,7 @@ router.post("/debug/file", debugUpload.any(), async (req, res) => {
   const key = req.body.key;
   if (!key) return res.status(400).json({ error: "key is required" });
 
-  if (!["gemini-drawing"].includes(key)) {
+  if (!["gemini-drawing", "gemini-drawing"].includes(key)) {
     files.forEach((f) => { try { fs.unlinkSync(f.path); } catch {} });
     return res
       .status(400)
@@ -470,31 +476,59 @@ router.post("/debug/file", debugUpload.any(), async (req, res) => {
   }
 
   try {
-    const { analyzeDrawingGemini } = await import("../ai/geminiAnalyzer.js");
-    const results = [];
-    for (const file of files) {
-      try {
-        const result = await analyzeDrawingGemini(file.path, null);
-        results.push({
-          filename: file.originalname,
-          success: result.success,
-          data: result.data ?? null,
-          error: result.error ?? null,
-          request_payload: result.request_payload ?? null,
-        });
-      } catch (e) {
-        results.push({
-          filename: file.originalname,
-          success: false,
-          data: null,
-          error: e.message,
-        });
-      } finally {
-        try { fs.unlinkSync(file.path); } catch {}
+    const { provider } = loadAiConfig();
+    let results = [];
+
+    if (provider === "claude") {
+      const { analyzeDrawingClaude } = await import("../ai/anthropicAnalyzer.js");
+      for (const file of files) {
+        try {
+          const result = await analyzeDrawingClaude(file.path);
+          results.push({
+            filename: file.originalname,
+            success: result.success,
+            data: result.data ?? null,
+            error: result.error ?? null,
+            request_payload: result.request_payload ?? null,
+          });
+        } catch (e) {
+          results.push({
+            filename: file.originalname,
+            success: false,
+            data: null,
+            error: e.message,
+          });
+        } finally {
+          try { fs.unlinkSync(file.path); } catch {}
+        }
+      }
+    } else {
+      const { analyzeDrawingGemini } = await import("../ai/geminiAnalyzer.js");
+      for (const file of files) {
+        try {
+          const result = await analyzeDrawingGemini(file.path, null);
+          results.push({
+            filename: file.originalname,
+            success: result.success,
+            data: result.data ?? null,
+            error: result.error ?? null,
+            request_payload: result.request_payload ?? null,
+          });
+        } catch (e) {
+          results.push({
+            filename: file.originalname,
+            success: false,
+            data: null,
+            error: e.message,
+          });
+        } finally {
+          try { fs.unlinkSync(file.path); } catch {}
+        }
       }
     }
+
     return res.json({
-      data: { key, provider: "gemini", count: files.length, results },
+      data: { key, provider, count: files.length, results },
     });
   } catch (e) {
     console.error("[debug/file] Error:", e);

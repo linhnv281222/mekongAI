@@ -15,7 +15,66 @@ import { GoogleGenAI } from "@google/genai";
 import { generateContentWithRetry } from "../libs/geminiGenerateRetry.js";
 import { getPrompt, getKnowledgeBlock } from "../prompts/promptStore.js";
 import { saveJob } from "../data/jobStore.js";
-import { chatAssistantReply } from "../ai/chatAssistant.js";
+import { chatAssistantReply } from "../ai/chatExtract.js";
+import { loadAiConfig } from "../ai/aiConfig.js";
+import { callClaudeWithRetry } from "../ai/claudeRetry.js";
+import { addSseClient, removeSseClient, emitSseEvent, ensureCleanup } from "./sseManager.mjs";
+
+/** Extract JSON — thử parse trực tiếp, thất bại thì tìm balanced { ... } trong text */
+function extractJson(text) {
+  const cleaned = String(text || "").replace(/```json|```/g, "").trim();
+  try { return JSON.parse(cleaned); } catch {}
+
+  const objMatch = findBalancedBraces(cleaned, '{', '}');
+  if (objMatch) {
+    try { return JSON.parse(objMatch); } catch {}
+  }
+  const arrMatch = findBalancedBraces(cleaned, '[', ']');
+  if (arrMatch) {
+    try { return JSON.parse(arrMatch); } catch {}
+  }
+  throw new Error("Khong the extract JSON from response");
+}
+
+/** Tim text con bat dau boi openChar va ket thuc boi closeChar (da can bang) */
+function findBalancedBraces(text, openChar, closeChar) {
+  let start = -1;
+  for (let i = 0; i < text.length; i++) {
+    if (text[i] === openChar) {
+      start = i;
+      break;
+    }
+  }
+  if (start === -1) return null;
+
+  let depth = 0;
+  let inString = false;
+  let escaped = false;
+  for (let i = start; i < text.length; i++) {
+    const ch = text[i];
+    if (escaped) {
+      escaped = false;
+      continue;
+    }
+    if (ch === '\\') {
+      escaped = true;
+      continue;
+    }
+    if (ch === '"' || ch === "'") {
+      inString = !inString;
+      continue;
+    }
+    if (inString) continue;
+
+    if (ch === openChar) depth++;
+    else if (ch === closeChar) depth--;
+
+    if (depth === 0) {
+      return text.slice(start, i + 1);
+    }
+  }
+  return null;
+}
 
 const chatAi = new GoogleGenAI({ apiKey: aiCfg.geminiKey });
 
@@ -58,11 +117,12 @@ const chatUpload = multer({
 
 // ─── GOI API DOC BAN VE ─────────────────────────────────────────────────────
 async function analyzeDrawingApi(pdfPath, filename, emailContext = null) {
+  const { provider } = loadAiConfig();
   return postPdfToDrawingsApi({
     pdfPath,
     filename,
     baseUrl: agentCfg.banveApiUrl,
-    provider: "gemini",
+    provider,
     emailContext,
   });
 }
@@ -194,6 +254,19 @@ function normalizeChatInfo(chatInfo) {
 }
 
 /**
+ * Phan tich ghi chu noi bo tu form chatbot — chi can so_luong.
+ * Reuse classifyChatMessage, chi lay thong tin can thiet.
+ */
+async function classifyGhiChuNoiBo(ghiChuNoiBo) {
+  if (!ghiChuNoiBo?.trim()) return null;
+
+  const raw = await classifyChatMessage(ghiChuNoiBo);
+  if (!raw) return null;
+
+  return normalizeChatInfo(raw);
+}
+
+/**
  * Build context cho Gemini drawing analyzer.
  * Chi chèn nội dung chat + chat_luu_y (AI đã suy luận rule trong prompt).
  * Gemini drawing prompt tự xử lý theo rule trong chat_luu_y.
@@ -232,6 +305,9 @@ function buildChatContextForAnalyzer(chatMessage, chatInfo = null) {
     if (info.ngon_ngu && info.ngon_ngu !== "unknown") {
       parts.push(`Ngôn ngữ: ${info.ngon_ngu}`);
     }
+    if (info.so_luong && info.so_luong !== "unknown") {
+      parts.push(`Số lượng chung: ${info.so_luong}`);
+    }
     if (parts.length > 0) {
       lines.push("");
       lines.push("[THÔNG TIN KHÁCH HÀNG TỪ CHAT]");
@@ -247,83 +323,137 @@ function buildChatContextForAnalyzer(chatMessage, chatInfo = null) {
  * @param {Array<{path: string, originalname: string}>} files
  * @param {string} jobId
  * @param {string|null} emailContext — chuỗi context đã build sẵn (từ buildChatContextForAnalyzer)
+ * @param {object|null} chatInfoOverride — thong tin so_luong tu chat de override vao drawing
  */
-async function analyzeFilesForJob(files, jobId, emailContext = null) {
+/**
+ * Process a single page: call AI, normalize, override quantity, check minimal data.
+ * Returns null on failure.
+ */
+async function processPage(pg, safeFileName, emailContext, chatInfoOverride, jobId, pageIndex, totalPages) {
+  console.log('[analyzeFilesForJob] Analyzing page: ' + pg.name + ' page=' + pg.page);
+  if (jobId) {
+    emitSseEvent(jobId, "progress", {
+      phase: "analyzing",
+      current: pageIndex + 1,
+      total: totalPages,
+      message: 'Đang phân tích trang ' + pg.page + '...',
+    });
+  }
+  try {
+    const result = await analyzeDrawingApi(pg.path, pg.name, emailContext);
+    console.log('[analyzeFilesForJob] API result success=' + !!result.data);
+    const flat = normalizeDrawingToFlat(result.data);
+
+    if (chatInfoOverride) {
+      const soLuong = chatInfoOverride.so_luong;
+      if (soLuong && soLuong !== "unknown") {
+        if (soLuong.includes(":")) {
+          for (const [ma, sl] of Object.entries(chatInfoOverride.so_luong_theo_ma || {})) {
+            if (flat.ma_ban_ve?.toLowerCase().includes(ma.toLowerCase())) {
+              flat.so_luong = Number(sl);
+              break;
+            }
+          }
+        } else {
+          flat.so_luong = Number(String(soLuong).replace(/\s*\(áp dụng cho tất cả\)/, "").trim());
+        }
+      }
+    }
+
+    if (!drawingHasMinimalData(flat)) {
+      console.log("[ChatBaoGia] Trang " + pg.page + " khong co du lieu -> bo qua");
+      return { _done: true, _error: null };
+    }
+
+    console.log("[ChatBaoGia] OK: " + flat.ma_ban_ve + " | " + flat.vat_lieu + " | SL:" + flat.so_luong);
+    return { _done: true, result: { ...result, data: flat, filename: safeFileName, page: pg.page, fileIndex: 0 } };
+  } catch (e) {
+    console.error('[analyzeFilesForJob] API error page=' + pg.page + ':', e.message);
+    return { _done: true, _error: 'Trang ' + pg.page + ' (' + pg.name + '): ' + e.message };
+  } finally {
+    console.log('[analyzeFilesForJob] Unlinking: ' + pg.path);
+    await new Promise(r => fs.unlink(pg.path, err => {
+      if (err && err.code !== 'ENOENT') console.error('[analyzeFilesForJob] unlink err:', err.message);
+      r();
+    }));
+  }
+}
+
+/**
+ * Run tasks with limited concurrency (semaphore pattern).
+ * @param {Function[]} tasks - Array of task functions
+ * @param {number} limit - Max concurrent tasks
+ * @param {string|null} jobId - Job ID for SSE progress events
+ * @param {number} totalTasks - Total number of tasks for progress calculation
+ */
+async function runWithLimit(tasks, limit, jobId = null, totalTasks = 0) {
+  const results = [];
+  let completed = 0;
+  for (let i = 0; i < tasks.length; i += limit) {
+    const batch = tasks.slice(i, i + limit);
+    const batchResults = await Promise.all(batch.map(fn => fn()));
+    completed += batchResults.length;
+    results.push(...batchResults);
+    if (jobId) {
+      emitSseEvent(jobId, "progress", {
+        phase: "analyzing",
+        current: completed,
+        total: totalTasks,
+        message: 'Đã phân tích ' + completed + '/' + totalTasks + ' trang...',
+      });
+    }
+    if (i + limit < tasks.length) {
+      await new Promise(r => setTimeout(r, 1500));
+    }
+  }
+  return results;
+}
+
+async function analyzeFilesForJob(files, jobId, emailContext = null, chatInfoOverride = null) {
+  console.log('[analyzeFilesForJob] START files=' + files.length + ' jobId=' + jobId);
   const allResults = [];
   const fileErrors = [];
 
   for (const file of files) {
-    if (!file.path) continue;
+    if (!file.path) { console.log('[analyzeFilesForJob] skip file: no path'); continue; }
 
-    // NOTE: The file is already at UPLOADS_DIR with the safe name from the rename step above.
-    // No separate archive copy is needed — file.path IS the permanent location used by
-    // the preview endpoint and the job's attachments list.
-
+    console.log('[analyzeFilesForJob] Processing: ' + file.originalname);
     const extLower = file.originalname.toLowerCase();
 
     if (extLower.endsWith(".pdf")) {
-      // file.path is already at UPLOADS_DIR with the safe name from the rename step above
       const safeFileName = path.basename(file.path);
       let pages;
       try {
         pages = await splitPdf(fs.readFileSync(file.path), safeFileName);
       } catch (e) {
-        const tmpPath = path.join(
-          UPLOADS_DIR,
-          "chat_full_" + Date.now() + "_" + safeFileName
-        );
+        console.log('[analyzeFilesForJob] splitPdf failed: ' + e.message);
+        const tmpPath = path.join(UPLOADS_DIR, "chat_full_" + Date.now() + "_" + safeFileName);
         fs.writeFileSync(tmpPath, fs.readFileSync(file.path));
         pages = [{ path: tmpPath, page: 1, name: safeFileName, total: 1 }];
       }
+      console.log('[analyzeFilesForJob] PDF split into ' + pages.length + ' pages');
 
-      for (const pg of pages) {
-        try {
-          const result = await analyzeDrawingApi(pg.path, pg.name, emailContext);
-          const flat = normalizeDrawingToFlat(result.data);
+      const totalTasks = pages.length;
+      const pageResults = await runWithLimit(
+        pages.map((pg, idx) => () => processPage(pg, safeFileName, emailContext, chatInfoOverride, jobId, idx, totalTasks)),
+        3,
+        jobId,
+        totalTasks
+      );
 
-          if (!drawingHasMinimalData(flat)) {
-            console.log(
-              "[ChatBaoGia] Trang " + pg.page + " khong co du lieu -> bo qua"
-            );
-            continue;
-          }
-
-          allResults.push({
-            ...result,
-            data: flat,
-            filename: safeFileName,
-            page: pg.page,
-            fileIndex: 0,
-          });
-
-          console.log(
-            "[ChatBaoGia] OK: " +
-              flat.ma_ban_ve +
-              " | " +
-              flat.vat_lieu +
-              " | SL:" +
-              flat.so_luong
-          );
-        } catch (e) {
-          const msg = e.message || String(e);
-          console.error(
-            "[ChatBaoGia] Loi trang " + pg.page + " (" + pg.name + "): " + msg
-          );
-          fileErrors.push(safeFileName + " trang " + pg.page + ": " + msg);
-        } finally {
-          fs.unlink(pg.path, () => {});
+      for (const r of pageResults) {
+        if (!r || r._error) {
+          if (r?._error) fileErrors.push(r._error);
+          continue;
         }
+        allResults.push(r.result);
       }
     } else {
-      fileErrors.push(
-        file.originalname +
-          ": định dạng ảnh chưa được hỗ trợ phân tích. Vui lòng gửi file PDF."
-      );
+      fileErrors.push(file.originalname + ": định dạng ảnh chưa được hỗ trợ phân tích. Vui lòng gửi file PDF.");
     }
-
-    // NOTE: Do NOT delete file.path — the preview endpoint looks for it at this exact path.
   }
 
+  console.log('[analyzeFilesForJob] DONE results=' + allResults.length + ' errors=' + fileErrors.length);
   return { allResults, fileErrors };
 }
 
@@ -334,7 +464,18 @@ async function analyzeFilesForJob(files, jobId, emailContext = null) {
  * Ket qua tra ve: { so_luong, ten_cong_ty, email, ... } hoac null neu that bai.
  */
 async function classifyChatMessage(chatMessage) {
-  if (!chatMessage?.trim() || !aiCfg.geminiKey) return null;
+  if (!chatMessage?.trim()) return null;
+
+  const { provider } = loadAiConfig();
+
+  if (provider === "claude") {
+    return classifyChatMessageClaude(chatMessage);
+  }
+  return classifyChatMessageGemini(chatMessage);
+}
+
+async function classifyChatMessageGemini(chatMessage) {
+  if (!aiCfg.geminiKey) return null;
 
   try {
     const [materials, heatTreat, surface] = await Promise.all([
@@ -364,8 +505,7 @@ async function classifyChatMessage(chatMessage) {
     );
 
     const raw = response.candidates?.[0]?.content?.parts?.[0]?.text ?? "";
-    const jsonStr = raw.replace(/^```json\s*/i, "").replace(/\s*```$/i, "").trim();
-    const parsed = JSON.parse(jsonStr);
+    const parsed = extractJson(raw);
     console.log("[chat-classify] Ket qua:", JSON.stringify(parsed));
     return parsed;
   } catch (e) {
@@ -374,23 +514,138 @@ async function classifyChatMessage(chatMessage) {
   }
 }
 
-// ─── STEP 1: Phan tich ban ve + tra form ───────────────────────────────────
+async function classifyChatMessageClaude(chatMessage) {
+  if (!aiCfg.anthropicKey) return null;
 
+  try {
+    const [materials, heatTreat, surface] = await Promise.all([
+      getKnowledgeBlock("vnt-materials"),
+      getKnowledgeBlock("vnt-heat-treat"),
+      getKnowledgeBlock("vnt-surface"),
+    ]);
+
+    const promptText = await getPrompt("chat-classify", {
+      chatMessage: chatMessage.trim(),
+      MATERIAL: materials ?? "",
+      HEAT_TREAT: heatTreat ?? "",
+      SURFACE: surface ?? "",
+    });
+
+    const { model } = loadAiConfig();
+    const resolvedModel = (model && model.trim())
+      ? model.trim()
+      : process.env.ANTHROPIC_MODEL || aiCfg.anthropicModel || "claude-sonnet-4-6";
+
+    const res = await callClaudeWithRetry({
+      headers: {
+        "Content-Type": "application/json",
+        "x-api-key": aiCfg.anthropicKey,
+        "anthropic-version": "2023-06-01",
+      },
+      body: {
+        model: resolvedModel,
+        max_tokens: 5024,
+        messages: [{ role: "user", content: promptText }],
+      },
+      logTag: "chat-classify",
+    });
+
+    if (!res.ok) {
+      console.error("[chat-classify] Claude error:", res.error);
+      return null;
+    }
+
+    const raw = res.data.content?.[0]?.text || "";
+    const parsed = extractJson(raw);
+    console.log("[chat-classify] Ket qua (Claude, attempt " + res.attempt + "):", JSON.stringify(parsed));
+    return parsed;
+  } catch (e) {
+    console.error("[chat-classify] Loi phan tich Claude:", e.message);
+    return null;
+  }
+}
+
+// ─── STEP 1: Phan tich ban ve + tra form (async) ───────────────────────────
+
+/**
+ * Fully async version — returns immediately, processes in background, emits SSE events.
+ */
+async function handleBaoGiaChatAsync(message, files, jobId) {
+  let chatInfo = null;
+  try {
+    // Buoc 0: Phan tich chat de trich xuat thong tin
+    emitSseEvent(jobId, "progress", { phase: "classifying", current: 0, total: 0, message: "Đang phân tích yêu cầu..." });
+    chatInfo = await classifyChatMessage(message);
+    console.log("[handleBaoGiaChat] classify result:", JSON.stringify(chatInfo));
+
+    const emailContext = buildChatContextForAnalyzer(message, chatInfo);
+    const chatInfoNormalized = normalizeChatInfo(chatInfo);
+
+    // Buoc 2: Phan tich cac file PDF (SSE progress emitted inside)
+    const { allResults, fileErrors } = await analyzeFilesForJob(files, jobId, emailContext, chatInfoNormalized);
+
+    // Build reply
+    let reply = "";
+    if (allResults.length > 0) {
+      reply += "Đã phân tích " + allResults.length + " bản vẽ:\n\n";
+      const seen = new Set();
+      for (const r of allResults) {
+        const key = r.data?.ma_ban_ve;
+        if (!key || seen.has(key)) continue;
+        seen.add(key);
+        reply += "- " + (r.data.ma_ban_ve || "?") + " | " + (r.data.vat_lieu || "?") + " | SL:" + (r.data.so_luong || "?") + "\n";
+      }
+      reply += "\n";
+    }
+    if (fileErrors.length > 0) {
+      reply += "Một số file không phân tích được:\n" + fileErrors.join("\n") + "\n\n";
+    }
+    reply += "Bạn hãy điền đầy đủ thông tin để hoàn tất yêu cầu báo giá nhé:";
+
+    // Luu tam de buoc 2 su dung
+    setPendingRfq(jobId, {
+      drawings: allResults,
+      fileErrors,
+      message: message || "",
+      chatInfo: chatInfo || null,
+    });
+
+    const result = {
+      isBotReply: true,
+      reply,
+      step: 2,
+      job_id: jobId,
+      drawings_count: allResults.length,
+      rfq_form: RFQ_FORM_FIELDS,
+      drawings_summary: allResults.map((r) => ({
+        filename: r.filename,
+        page: r.page,
+        data: r.data,
+      })),
+    };
+
+    emitSseEvent(jobId, "done", { result, drawings_count: allResults.length, fileErrors });
+
+  } catch (e) {
+    console.error("[handleBaoGiaChat] EXCEPTION:", e.message);
+    emitSseEvent(jobId, "error", { error: e.message });
+  }
+}
+
+/**
+ * Sync version — for demos that expect immediate response.
+ * WARNING: may still cause 504 on slow connections.
+ */
 async function handleBaoGiaChat(message, files, jobId) {
-  // Buoc 0: Phan tich chat de trich xuat thong tin (so_luong, ten_kh, email, chat_luu_y...)
   const chatInfo = await classifyChatMessage(message);
   console.log("[handleBaoGiaChat] classify result:", JSON.stringify(chatInfo));
 
-  // Buoc 1: Build emailContext — chat_luu_y da co rule, chi can truyen vao
   const emailContext = buildChatContextForAnalyzer(message, chatInfo);
-  console.log("[handleBaoGiaChat] emailContext:", emailContext?.slice(0, 200) ?? "empty");
+  const chatInfoNormalized = normalizeChatInfo(chatInfo);
 
-  // Buoc 2: Phan tich cac file PDF
-  const { allResults, fileErrors } = await analyzeFilesForJob(files, jobId, emailContext);
+  const { allResults, fileErrors } = await analyzeFilesForJob(files, jobId, emailContext, chatInfoNormalized);
 
-  // Tao reply tra ve cho user
   let reply = "";
-
   if (allResults.length > 0) {
     reply += "Đã phân tích " + allResults.length + " bản vẽ:\n\n";
     const seen = new Set();
@@ -398,25 +653,15 @@ async function handleBaoGiaChat(message, files, jobId) {
       const key = r.data?.ma_ban_ve;
       if (!key || seen.has(key)) continue;
       seen.add(key);
-      reply +=
-        "- " +
-        (r.data.ma_ban_ve || "?") +
-        " | " +
-        (r.data.vat_lieu || "?") +
-        " | SL:" +
-        (r.data.so_luong || "?") +
-        "\n";
+      reply += "- " + (r.data.ma_ban_ve || "?") + " | " + (r.data.vat_lieu || "?") + " | SL:" + (r.data.so_luong || "?") + "\n";
     }
     reply += "\n";
   }
-
   if (fileErrors.length > 0) {
     reply += "Một số file không phân tích được:\n" + fileErrors.join("\n") + "\n\n";
   }
-
   reply += "Bạn hãy điền đầy đủ thông tin để hoàn tất yêu cầu báo giá nhé:";
 
-  // Luu tam de buoc 2 su dung
   setPendingRfq(jobId, {
     drawings: allResults,
     fileErrors,
@@ -424,7 +669,6 @@ async function handleBaoGiaChat(message, files, jobId) {
     chatInfo: chatInfo || null,
   });
 
-  // Tra ve response co form
   return {
     isBotReply: true,
     reply,
@@ -440,9 +684,153 @@ async function handleBaoGiaChat(message, files, jobId) {
   };
 }
 
+// ─── STEP 2: Nhan form da dien + tao job (async version) ───────────────────
+
+/**
+ * Async version: returns immediately, emits SSE progress, then 'done'.
+ * Used when files need analysis (no pending data).
+ */
+async function handleRfqFormSubmissionAsync(jobId, formData, files) {
+  let allResults = [];
+  let fileErrors = [];
+  let ghiChuInfo = null;
+
+  try {
+    const parsed = typeof formData === "string" ? JSON.parse(formData) : formData;
+    const ghiChuNoiBo = parsed.ghi_chu_noi_bo || "";
+
+    // Step 1: Analyze files
+    if (files && files.length > 0) {
+      console.log("[ChatRfqAsync] Phan tich " + files.length + " file...");
+      emitSseEvent(jobId, "progress", { phase: "analyzing", current: 0, total: files.length, message: "Đang phân tích file đính kèm..." });
+
+      const analyzed = await analyzeFilesForJob(files, jobId, null, null);
+      allResults = analyzed.allResults;
+      fileErrors = analyzed.fileErrors;
+    }
+
+    // Step 2: Classify ghi chu noi bo
+    if (ghiChuNoiBo.trim()) {
+      emitSseEvent(jobId, "progress", { phase: "classifying", current: 0, total: 0, message: "Đang phân tích ghi chú..." });
+      ghiChuInfo = await classifyGhiChuNoiBo(ghiChuNoiBo);
+      console.log("[ChatRfqAsync] Ghi chu classify:", JSON.stringify(ghiChuInfo));
+
+      if (ghiChuInfo?.so_luong && ghiChuInfo.so_luong !== "unknown") {
+        for (const r of allResults) {
+          if (!r.data) continue;
+          const soLuong = ghiChuInfo.so_luong;
+          if (String(soLuong).includes(":")) {
+            for (const [ma, sl] of Object.entries(ghiChuInfo.so_luong_theo_ma || {})) {
+              if (r.data.ma_ban_ve?.toLowerCase().includes(ma.toLowerCase())) {
+                r.data.so_luong = Number(sl);
+                break;
+              }
+            }
+          } else {
+            r.data.so_luong = Number(String(soLuong).replace(/\s*\(áp dụng cho tất cả\)/, "").trim());
+          }
+        }
+      }
+    }
+
+    const tenCongTy = parsed.ten_cong_ty || "";
+    const nguoiLienHe = parsed.nguoi_lien_he || "";
+    const email = parsed.email || "";
+    const maKhachHang = parsed.ma_khach_hang || "";
+    const coVat = parsed.co_vat || "Không";
+    const xuLyBeMat = parsed.xu_ly_be_mat || "Không";
+    const coVanChuyen = parsed.co_van_chuyen || "Không";
+
+    if (!tenCongTy) {
+      emitSseEvent(jobId, "done", {
+        result: {
+          isBotReply: true,
+          askClarify: true,
+          step: 2,
+          job_id: jobId,
+          rfq_form: RFQ_FORM_FIELDS,
+          reply: "Vui lòng điền **Tên công ty khách hàng** để hoàn tất yêu cầu.",
+        },
+      });
+      return;
+    }
+
+    // Save job
+    const jobData = {
+      id: jobId,
+      gmail_id: jobId,
+      subject: "Chat báo giá",
+      sender: tenCongTy,
+      sender_email: email,
+      sender_name: nguoiLienHe,
+      sender_company: tenCongTy,
+      classify: "rfq",
+      ngon_ngu: "vi",
+      classify_output: {
+        loai: "rfq",
+        ngon_ngu: "vi",
+        ten_cong_ty: tenCongTy,
+        ly_do: "Chat bot báo giá (form)",
+        ghi_chu_noi_bo: ghiChuInfo || null,
+      },
+      xu_ly_be_mat: xuLyBeMat === "Có",
+      vat_lieu_chung_nhan: coVat === "Có",
+      ten_cong_ty: tenCongTy,
+      ma_khach_hang: maKhachHang,
+      ghi_chu: ghiChuNoiBo || "",
+      co_van_chuyen: coVanChuyen === "Có",
+      attachments: (files || []).map((f) => ({ name: path.basename(f.path), source: "chat" })),
+      drawings: allResults,
+      status: "pending_review",
+      created_at: Date.now(),
+      source: "chat",
+      drawing_ai_payload: allResults.length > 0 ? allResults.map((r) => r.request_payload).filter(Boolean) : null,
+    };
+
+    emitSseEvent(jobId, "progress", { phase: "saving", current: 0, total: 0, message: "Đang lưu yêu cầu..." });
+    await saveJob(jobData);
+    console.log('[ChatRfqAsync] Job saved OK, jobId:', jobId);
+
+    // Build reply
+    let reply = "Đã tạo yêu cầu báo giá thành công!\n\n";
+    reply += "**Thông tin yêu cầu:**\n";
+    if (maKhachHang) reply += "- Mã KH: " + maKhachHang + "\n";
+    reply += "- Công ty: " + tenCongTy + "\n";
+    if (nguoiLienHe) reply += "- Người LH: " + nguoiLienHe + "\n";
+    if (email) reply += "- Email: " + email + "\n";
+    reply += "- VAT: " + coVat + "\n";
+    reply += "- XLBM: " + xuLyBeMat + "\n";
+    reply += "- Vận chuyển: " + coVanChuyen + "\n";
+
+    if (allResults.length > 0) {
+      reply += "\n**Bản vẽ đã phân tích (" + allResults.length + "):**\n";
+      const seen = new Set();
+      for (const r of allResults) {
+        const key = r.data?.ma_ban_ve;
+        if (!key || seen.has(key)) continue;
+        seen.add(key);
+        reply += "- " + (r.data.ma_ban_ve || "?") + " | " + (r.data.vat_lieu || "?") + " | SL:" + (r.data.so_luong || "?") + "\n";
+      }
+    }
+    reply += "\nJob **" + jobId + "** đã được tạo. Xem tại **Demo V3**.";
+    if (fileErrors.length > 0) {
+      reply += "\n\nMột số file không phân tích được:\n" + fileErrors.join("\n");
+    }
+
+    emitSseEvent(jobId, "done", {
+      result: { isBotReply: true, reply, job_id: jobId, drawings_count: allResults.length, step: "done" },
+    });
+
+  } catch (e) {
+    console.error("[ChatRfqAsync] EXCEPTION:", e.message);
+    emitSseEvent(jobId, "error", { error: e.message });
+  }
+}
+
 // ─── STEP 2: Nhan form da dien + tao job ──────────────────────────────────
 
 async function handleRfqFormSubmission(jobId, formData, files) {
+  console.log('[ChatRfq] handleRfqFormSubmission START jobId=' + jobId);
   const pending = getPendingRfq(jobId);
 
   // Lay drawings tu pending (buoc 1 da phan tich), hoac phan tich truc tiep neu co file
@@ -474,6 +862,34 @@ async function handleRfqFormSubmission(jobId, formData, files) {
   const coVanChuyen = parsed.co_van_chuyen || "Không";
   const ghiChuNoiBo = parsed.ghi_chu_noi_bo || "";
 
+  // Phan tich ghi chu noi bo de trich xuat so_luong
+  let ghiChuInfo = null;
+  if (ghiChuNoiBo.trim()) {
+    console.log("[ChatRfq] Phan tich ghi chu noi bo:", ghiChuNoiBo.slice(0, 200));
+    ghiChuInfo = await classifyGhiChuNoiBo(ghiChuNoiBo);
+    console.log("[ChatRfq] Ghi chu classify:", JSON.stringify(ghiChuInfo));
+
+    // Override so_luong len drawings
+    if (ghiChuInfo?.so_luong && ghiChuInfo.so_luong !== "unknown") {
+      for (const r of allResults) {
+        if (!r.data) continue;
+        const soLuong = ghiChuInfo.so_luong;
+        if (String(soLuong).includes(":")) {
+          // dạng "MA1: 100, MA2: 50"
+          for (const [ma, sl] of Object.entries(ghiChuInfo.so_luong_theo_ma || {})) {
+            if (r.data.ma_ban_ve?.toLowerCase().includes(ma.toLowerCase())) {
+              r.data.so_luong = Number(sl);
+              break;
+            }
+          }
+        } else {
+          r.data.so_luong = Number(String(soLuong).replace(/\s*\(áp dụng cho tất cả\)/, "").trim());
+        }
+      }
+      console.log("[ChatRfq] Override so_luong tu ghi chu:", ghiChuInfo.so_luong);
+    }
+  }
+
   // Validate
   if (!tenCongTy) {
     return {
@@ -504,6 +920,7 @@ async function handleRfqFormSubmission(jobId, formData, files) {
       ngon_ngu: "vi",
       ten_cong_ty: tenCongTy,
       ly_do: "Chat bot báo giá (form)",
+      ghi_chu_noi_bo: ghiChuInfo || null,
     },
     xu_ly_be_mat: xuLyBeMat === "Có",
     vat_lieu_chung_nhan: coVat === "Có",
@@ -527,7 +944,14 @@ async function handleRfqFormSubmission(jobId, formData, files) {
         : null,
   };
 
-  await saveJob(jobData);
+  console.log('[ChatRfq] Saving job data, drawings count:', allResults.length);
+  try {
+    await saveJob(jobData);
+    console.log('[ChatRfq] Job saved OK, jobId:', jobId);
+  } catch(e) {
+    console.error('[ChatRfq] saveJob FAILED:', e.message, e.stack?.split('\n').slice(0,3).join(' | '));
+    throw e;
+  }
 
   // Xoa tam sau khi luu thanh cong
   pendingRfqs.delete(jobId);
@@ -585,13 +1009,13 @@ async function handleNormalChat(message) {
   } catch (e) {
     const errMsg = e?.message || String(e);
     let reply;
-    if (!aiCfg.geminiKey || /GEMINI_API_KEY chua duoc cau hinh/i.test(errMsg)) {
+    if (/GEMINI_API_KEY|ANTHROPIC_API_KEY|not set/i.test(errMsg)) {
       reply =
-        "Hiện gọi AI không thành công. Kiểm tra GEMINI_API_KEY trong file .env và khởi động lại server.\n" +
+        "Hiện gọi AI không thành công. Kiểm tra API key trong file .env và khởi động lại server.\n" +
         "Bạn vẫn có thể dán nội dung email báo giá hoặc đính kèm file PDF để tạo job.";
     } else if (/got status:\s*503|high demand|UNAVAILABLE/i.test(errMsg)) {
       reply =
-        "Máy chủ Gemini đang quá tải (503). Vui lòng thử lại sau vài phút.\n" +
+        "Máy chủ AI đang quá tải (503). Vui lòng thử lại sau vài phút.\n" +
         "Bạn vẫn có thể dùng báo giá qua email hoặc đính kèm PDF.";
     } else {
       reply =
@@ -649,8 +1073,35 @@ router.post("/message", chatUpload.array("files", 20), async (req, res) => {
   try {
     // Step 2: Form submission
     if (rfqFormData) {
-      const result = await handleRfqFormSubmission(jobId, rfqFormData, files);
-      return res.json(result);
+      const pending = getPendingRfq(jobId);
+      const hasFilesToAnalyze = files && files.length > 0;
+      const noPendingData = !pending || !pending.drawings || pending.drawings.length === 0;
+
+      // File analysis needed but no pending data -> must do async
+      if (hasFilesToAnalyze && noPendingData) {
+        ensureCleanup();
+        emitSseEvent(jobId, "progress", { phase: "queued", current: 0, total: 0, message: "Đang phân tích file đính kèm..." });
+
+        // Return immediately; frontend will wait via SSE
+        res.json({
+          isBotReply: true,
+          reply: "Đang phân tích " + files.length + " file đính kèm. Bạn đợi một chút nhé...",
+          step: "processing",
+          job_id: jobId,
+          drawings_count: 0,
+        });
+
+        handleRfqFormSubmissionAsync(jobId, rfqFormData, files).catch((e) => {
+          console.error("[ChatController] handleRfqFormSubmissionAsync error:", e.message);
+        });
+        return;
+
+      } else {
+        // Normal: use pending data or no files needed -> synchronous
+        const result = await handleRfqFormSubmission(jobId, rfqFormData, files);
+        console.log('[ChatController] Response (RFQ):', JSON.stringify(result).slice(0, 200));
+        return res.json(result);
+      }
     }
 
     // Step 1: Normal chat hoac bao gia (phan tich ban ve + tra form)
@@ -661,17 +1112,67 @@ router.post("/message", chatUpload.array("files", 20), async (req, res) => {
       return res.json(result);
     }
 
-    // Bao gia: phan tich + tra form
-    const result = await handleBaoGiaChat(message, files, jobId);
-    return res.json(result);
+    // Bao gia: RETURN IMMEDIATELY with job_id, process in background
+    ensureCleanup();
+    emitSseEvent(jobId, "progress", { phase: "queued", current: 0, total: 0, message: "Đang xếp hàng chờ xử lý..." });
+
+    // Return job_id immediately so client can start listening to SSE
+    res.json({
+      isBotReply: true,
+      reply: "Đang phân tích " + files.length + " file PDF. Bạn đợi một chút nhé...",
+      step: "processing",
+      job_id: jobId,
+      drawings_count: 0,
+    });
+
+    // Fire-and-forget background processing
+    handleBaoGiaChatAsync(message, files, jobId).catch((e) => {
+      console.error("[ChatController] handleBaoGiaChatAsync error:", e.message);
+    });
+
   } catch (e) {
-    console.error("[ChatController] EXCEPTION:", e.message);
+    console.error("[ChatController] EXCEPTION:", e.message, e.stack?.split('\n').slice(0,4).join(' | '));
     res.status(500).json({
       error: e.message,
       isBotReply: true,
       reply: "Đã xảy ra lỗi khi xử lý. Vui lòng thử lại.",
     });
   }
+});
+
+// ─── GET /chat/stream/:jobId — SSE endpoint ─────────────────────────────────
+
+router.get("/stream/:jobId", (req, res) => {
+  const { jobId } = req.params;
+  console.log("[SSE] Client connected jobId=" + jobId);
+
+  // SSE headers
+  res.setHeader("Content-Type", "text/event-stream");
+  res.setHeader("Cache-Control", "no-cache");
+  res.setHeader("Connection", "keep-alive");
+  res.setHeader("X-Accel-Buffering", "no"); // Disable nginx buffering for SSE
+  res.flushHeaders();
+
+  ensureCleanup();
+  addSseClient(jobId, res);
+
+  // Send initial heartbeat
+  res.write(`event: connected\ndata: ${JSON.stringify({ jobId })}\n\n`);
+
+  // Heartbeat every 25s to keep connection alive through proxies
+  const heartbeat = setInterval(() => {
+    try {
+      res.write(`: heartbeat\n\n`);
+    } catch {
+      clearInterval(heartbeat);
+    }
+  }, 25000);
+
+  req.on("close", () => {
+    clearInterval(heartbeat);
+    removeSseClient(jobId, res);
+    console.log("[SSE] Client disconnected jobId=" + jobId);
+  });
 });
 
 // ─── GET /chat/history ──────────────────────────────────────────────────────

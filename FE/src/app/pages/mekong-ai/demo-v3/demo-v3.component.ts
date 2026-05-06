@@ -7,7 +7,7 @@ import {
   ChangeDetectorRef,
 } from '@angular/core';
 import { ActivatedRoute } from '@angular/router';
-import { DomSanitizer, SafeResourceUrl } from '@angular/platform-browser';
+import { DomSanitizer } from '@angular/platform-browser';
 import { MessageService } from 'primeng/api';
 
 import { DemoV3Service } from './demo-v3.service';
@@ -62,7 +62,7 @@ export class DemoV3Component implements OnInit, OnDestroy {
   drawingLines: DrawingLine[] = [];
   processing = false;
   progress = 0;
-  previewSrc: SafeResourceUrl | null = null;
+  previewData: Uint8Array | null = null;
   previewName: string | null = null;
   previewLoading = false;
   previewPage = 1;
@@ -105,7 +105,6 @@ export class DemoV3Component implements OnInit, OnDestroy {
   constructor(
     private svc: DemoV3Service,
     private messageService: MessageService,
-    private sanitizer: DomSanitizer,
     private cdr: ChangeDetectorRef,
     private route: ActivatedRoute
   ) {}
@@ -353,10 +352,10 @@ export class DemoV3Component implements OnInit, OnDestroy {
   private async handleUpload(file: File): Promise<void> {
     this.processing = true;
     this.progress = 0;
-    this.previewSrc = null;
+    this.previewData = null;
 
-    const localUrl = URL.createObjectURL(file);
-    this.previewSrc = this.sanitizer.bypassSecurityTrustResourceUrl(localUrl);
+    const arrayBuffer = await file.arrayBuffer();
+    this.previewData = new Uint8Array(arrayBuffer);
     this.previewName = file.name;
     this.previewPage = 1;
     this.cdr.markForCheck();
@@ -402,7 +401,7 @@ export class DemoV3Component implements OnInit, OnDestroy {
     this.previewName = attachmentName;
     this.previewPage = 1;
     this.previewLoading = true;
-    this.previewSrc = null;
+    this.previewData = null;
     this.cdr.markForCheck();
 
     const result = await this.svc.loadGmailAttachmentPreview(
@@ -418,9 +417,7 @@ export class DemoV3Component implements OnInit, OnDestroy {
       this.cdr.markForCheck();
       return;
     }
-    const blob = new Blob([result.bytes], { type: result.mime });
-    const url = URL.createObjectURL(blob);
-    this.previewSrc = this.sanitizer.bypassSecurityTrustResourceUrl(url);
+    this.previewData = result.bytes;
     this.cdr.markForCheck();
   }
 
@@ -433,15 +430,13 @@ export class DemoV3Component implements OnInit, OnDestroy {
     this.previewPage = page || 1;
 
     if (currentFile === fileName && cached) {
-      const blob = new Blob([cached], { type: 'application/pdf' });
-      const url = URL.createObjectURL(blob);
-      this.previewSrc = this.sanitizer.bypassSecurityTrustResourceUrl(url);
+      this.previewData = cached;
       this.cdr.markForCheck();
       return;
     }
 
     this.previewLoading = true;
-    this.previewSrc = null;
+    this.previewData = null;
     this.cdr.markForCheck();
 
     const result = await this.svc.loadGmailAttachmentPreview(
@@ -457,18 +452,12 @@ export class DemoV3Component implements OnInit, OnDestroy {
       this.cdr.markForCheck();
       return;
     }
-    const blob = new Blob([result.bytes], { type: result.mime });
-    const url = URL.createObjectURL(blob);
-    this.previewSrc = this.sanitizer.bypassSecurityTrustResourceUrl(url);
+    this.previewData = result.bytes;
     this.cdr.markForCheck();
   }
 
   private resetPreview(): void {
-    if (this.previewSrc) {
-      const urlStr = String(this.previewSrc);
-      if (urlStr.startsWith('blob:')) URL.revokeObjectURL(urlStr);
-    }
-    this.previewSrc = null;
+    this.previewData = null;
     this.previewName = null;
     this.previewLoading = false;
     this.previewPage = 1;
@@ -653,6 +642,10 @@ export class DemoV3Component implements OnInit, OnDestroy {
   loadPdfPageByLine(drawingLine: DrawingLine): void {
     const fileName = drawingLine.filename || this.previewName || '';
     this.loadPdfPage(fileName, drawingLine.page);
+  }
+
+  onPageChange(page: number): void {
+    this.previewPage = page;
   }
 
   trackByEmailId(index: number, emailItem: EmailRow): number | string {

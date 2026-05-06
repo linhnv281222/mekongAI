@@ -35,9 +35,10 @@ import { DemoV3Component } from './demo-v3/demo-v3.component';
 import { DemoV3Service } from './demo-v3/demo-v3.service';
 import { ChatbotComponent } from './chatbot/chatbot.component';
 import { SharedComponentsModule } from '../../shared/shared-components.module';
+import { AppPdfViewerComponent } from './pdf-viewer/pdf-viewer.component';
 
 @NgModule({
-  declarations: [DemoV3Component, AdminPromptsComponent, SafeUrlPipe, ChatbotComponent],
+  declarations: [DemoV3Component, AdminPromptsComponent, SafeUrlPipe, ChatbotComponent, AppPdfViewerComponent],
   imports: [
     CommonModule,
     FormsModule,

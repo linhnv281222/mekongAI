@@ -5,6 +5,7 @@ import path from "path";
 import { PDFDocument } from "pdf-lib";
 import { fileURLToPath } from "url";
 import { analyzeDrawingGemini, correctDrawingGemini } from "../ai/geminiAnalyzer.js";
+import { analyzeDrawingClaude, correctDrawingClaude } from "../ai/anthropicAnalyzer.js";
 import {
   getDrawing,
   listDrawings,
@@ -19,12 +20,31 @@ import {
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const PROJECT_ROOT = path.resolve(__dirname, "../..");
 const UPLOADS_DIR = path.join(PROJECT_ROOT, "uploads");
+const AI_CONFIG_FILE = path.join(PROJECT_ROOT, "data", "ai-model-config.json");
 
 /** Ghi phản hồi nguyên bản từ AI vào file log (data/ai-drawing-log/YYYY-MM-DD.jsonl) */
 function logAiRaw({ filename, provider, raw, page }) {}
 
-/** Chọn analyzer — luôn dùng Gemini */
-function selectAnalyzer(providerHint) {
+/** Load AI config from file */
+function loadAiConfig() {
+  try {
+    if (fs.existsSync(AI_CONFIG_FILE)) {
+      const raw = JSON.parse(fs.readFileSync(AI_CONFIG_FILE, "utf8"));
+      return {
+        provider: raw?.provider || "gemini",
+        model: raw?.model || null,
+      };
+    }
+  } catch {}
+  return { provider: "gemini", model: null };
+}
+
+/** Chọn analyzer — gemini hoặc claude theo config */
+function selectAnalyzer() {
+  const { provider } = loadAiConfig();
+  if (provider === "claude") {
+    return { fn: analyzeDrawingClaude, label: "claude" };
+  }
   return { fn: analyzeDrawingGemini, label: "gemini" };
 }
 
@@ -64,19 +84,22 @@ async function splitPdfLocal(buffer) {
 // ─── POST /drawings — Doc 1 file ───────────────────────────────────────────
 
 router.post("/", upload.single("file"), async (req, res) => {
+  console.log('[DrawController] POST /drawings START filename=' + req.file?.originalname + ' size=' + req.file?.size);
   if (!req.file) return res.status(400).json({ error: "Thieu file PDF" });
 
   try {
     const providerHint = req.query.provider || null;
     const { fn: analyzer, label: provider } = selectAnalyzer(providerHint);
     const emailContext = req.body.emailContext || req.query.email_context || null;
+    console.log('[DrawController] Calling analyzer provider=' + provider);
     const result = await analyzer(req.file.path, null, emailContext);
-
+    console.log('[DrawController] Analyzer done success=' + !!result.success);
     if (!result.success) return res.status(422).json({ error: result.error });
 
     logAiRaw({ filename: req.file.originalname, provider, raw: result.raw });
     const flat = normalizeDrawingToFlat(result.data);
     const id = await saveDrawing(req.file.originalname, flat);
+    console.log('[DrawController] POST /drawings DONE id=' + id);
     res.json({
       id,
       data: flat,
@@ -86,11 +109,7 @@ router.post("/", upload.single("file"), async (req, res) => {
       request_payload: result.request_payload,
     });
   } catch (e) {
-    console.error(
-      "[DrawController] EXCEPTION:",
-      e.message,
-      e.stack?.split("\n")[1] ?? ""
-    );
+    console.error("[DrawController] EXCEPTION:", e.message, e.stack?.split('\n')[1] ?? "");
     res.status(500).json({ error: e.message });
   } finally {
     fs.unlink(req.file.path, () => {});

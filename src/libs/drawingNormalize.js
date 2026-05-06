@@ -30,6 +30,44 @@ function materialToStr(vl) {
   return toStr(vl);
 }
 
+/** Fallback: trích xuất vat_lieu từ ly_giai_qt khi AI khong fill vat_lieu */
+function extractVatLieuFromLyGiai(lyGiai, currentVl) {
+  if (currentVl && currentVl.trim()) return currentVl;
+  if (!lyGiai) return "";
+
+  const matMap = {
+    "SS400": "SS400", "SS41": "SS41", "S45C": "S45C", "S50C": "S50C",
+    "SKD11": "SKD11", "SKD61": "SKD61", "SCM415": "SCM415", "SCM420": "SCM420",
+    "A5052": "A5052", "A6061": "A6061", "A2017": "A2017", "AL6061": "AL6061",
+    "AL5052": "AL5052", "AL": "Nhôm", "A-": "Nhôm",
+    "SUS304": "SUS304", "SUS316": "SUS316", "SUS": "Inox",
+    "C3604": "C3604", "C3771": "C3771", "C2801": "C2801",
+    "POM": "POM", "PA6": "PA6", "PA66": "PA66", "PEEK": "PEEK", "MC尼龙": "MC Nylon",
+    "IC-36": "IC-36", "QT400": "QT400", "QT500": "QT500",
+    "FC-": "FC", "FCD": "FCD",
+    "TB-": "Thép", "SCM-": "Thép",
+    "タフトライド": "TUFTRIDING",
+  };
+
+  const upper = lyGiai.toUpperCase();
+  for (const [key, val] of Object.entries(matMap)) {
+    if (upper.includes(key.toUpperCase())) return val;
+  }
+
+  // Nhom/Japanese aluminum patterns
+  if (/\bA\s*\d{4}\b/.test(lyGiai)) {
+    const m = lyGiai.match(/\bA\s*(\d{4})\b/);
+    return "A" + m[1];
+  }
+  // Steel patterns
+  if (/\bS(S|45C|50C|KD|CM)\b/i.test(lyGiai)) {
+    const m = lyGiai.match(/\b(S[SKMC]\d+)\b/i);
+    return m ? m[1] : "";
+  }
+
+  return "";
+}
+
 function shapeToStr(hd) {
   if (hd == null) return "";
   if (typeof hd === "string") return hd;
@@ -110,6 +148,9 @@ export function normalizeDrawingToFlat(raw) {
   const maBv = raw.ma_ban_ve ?? raw.ma_so_ban_ve ?? "";
   const vlRaw = raw.vat_lieu ?? raw.ma_nguyen_vat_lieu ?? "";
 
+  const lyGiai = raw.ly_giai_qt || raw.ly_giai || "";
+  const vlNormalized = extractVatLieuFromLyGiai(lyGiai, vlRaw);
+
   const legacy =
     raw.ban_ve != null ||
     (typeof vlRaw === "object" && vlRaw !== null) ||
@@ -119,7 +160,7 @@ export function normalizeDrawingToFlat(raw) {
     const sl = Number(raw.so_luong);
     return {
       ma_ban_ve: toStr(maBv),
-      vat_lieu: materialToStr(vlRaw),
+      vat_lieu: vlNormalized,
       so_luong: Number.isFinite(sl) && sl > 0 ? sl : 1,
       xu_ly_be_mat: toStr(raw.xu_ly_be_mat),
       xu_ly_nhiet: toStr(raw.xu_ly_nhiet),
@@ -145,7 +186,7 @@ export function normalizeDrawingToFlat(raw) {
 
   return {
     ma_ban_ve: toStr(bv.ma_ban_ve),
-    vat_lieu: materialToStr(raw.vat_lieu),
+    vat_lieu: extractVatLieuFromLyGiai(lyGiai, materialToStr(raw.vat_lieu)),
     so_luong: Number.isFinite(sl) && sl > 0 ? sl : 1,
     xu_ly_be_mat: xuLyBeMatFromLegacy(raw),
     xu_ly_nhiet: toStr(xu.nhiet ?? raw.xu_ly_nhiet),
