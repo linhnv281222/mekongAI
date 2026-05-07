@@ -38,6 +38,17 @@ interface KnowledgeRow {
   to?: string;
   note?: string;
   _selected?: boolean;
+  // vnt-markets fields
+  market?: string;
+  ten?: string;
+  gioi_tien?: string;
+  email?: string;
+  ngon_ngu?: string;
+  tien_te?: string;
+  // vnt-materials / generic
+  vat_lieu?: string;
+  khoi_luong?: string;
+  don_vi?: string;
 }
 
 @Component({
@@ -689,7 +700,14 @@ export class AdminPromptsComponent implements OnInit {
 
   // Knowledge table methods
   addKnowledgeRow(): void {
-    this.knowledgeRows.push({ group: '', from: '', to: '', note: '' });
+    // Create empty row with all possible fields set to ''
+    const row: KnowledgeRow = {
+      group: '', from: '', to: '', note: '',
+      market: '', ten: '', gioi_tien: '', email: '',
+      ngon_ngu: '', tien_te: '',
+      vat_lieu: '', khoi_luong: '', don_vi: '',
+    };
+    this.knowledgeRows.push(row);
   }
 
   deleteKnowledgeRow(index: number): void {
@@ -758,6 +776,7 @@ export class AdminPromptsComponent implements OnInit {
   // Mỗi header name → field name trong KnowledgeRow
   private readonly HEADER_FIELD_MAP: { [header: string]: keyof KnowledgeRow } =
     {
+      // generic / material / surface
       Nhóm: 'group',
       'Nhóm vật liệu': 'group',
       'Nhóm xử lý': 'group',
@@ -774,6 +793,18 @@ export class AdminPromptsComponent implements OnInit {
       'Tên tiếng Việt': 'to',
       'Giá trị': 'to',
       'Ghi chú': 'note',
+      // vnt-markets
+      'Thị trường': 'market',
+      'Tên': 'ten',
+      'Giới tiền': 'gioi_tien',
+      'Khu vực': 'gioi_tien',
+      'Email': 'email',
+      'Ngôn ngữ': 'ngon_ngu',
+      'Đơn vị tiền tệ': 'tien_te',
+      'Tiền tệ': 'tien_te',
+      // vnt-materials
+      'Khối lượng': 'khoi_luong',
+      'Đơn vị': 'don_vi',
     };
 
   getKbCellVal(header: string, row: KnowledgeRow): string {
@@ -808,12 +839,12 @@ export class AdminPromptsComponent implements OnInit {
     lines.push(headers.join(' | '));
     lines.push(headers.map(() => '---').join(' | '));
     for (const knowledgeRow of rows) {
-      const vals = [
-        knowledgeRow.group || '',
-        knowledgeRow.from || '',
-        knowledgeRow.to || '',
-        knowledgeRow.note || '',
-      ];
+      const vals = headers.map((h) => {
+        const field = this.HEADER_FIELD_MAP[h];
+        if (!field) return '';
+        const val = (knowledgeRow as any)[field];
+        return typeof val === 'string' ? val : '';
+      });
       lines.push(vals.join(' | '));
     }
     return lines.join('\n');
@@ -826,14 +857,14 @@ export class AdminPromptsComponent implements OnInit {
     }
 
     const lines: string[] = [];
-    lines.push(this.knowledgeHeaders.join(','));
+    lines.push(this.knowledgeHeaders.map(h => `"${h}"`).join(','));
     for (const knowledgeRow of this.knowledgeRows) {
-      const vals = [
-        `"${(knowledgeRow.group || '').replace(/"/g, '""')}"`,
-        `"${(knowledgeRow.from || '').replace(/"/g, '""')}"`,
-        `"${(knowledgeRow.to || '').replace(/"/g, '""')}"`,
-        `"${(knowledgeRow.note || '').replace(/"/g, '""')}"`,
-      ];
+      const vals = this.knowledgeHeaders.map((h) => {
+        const field = this.HEADER_FIELD_MAP[h];
+        if (!field) return '""';
+        const val = String((knowledgeRow as any)[field] || '').replace(/"/g, '""');
+        return `"${val}"`;
+      });
       lines.push(vals.join(','));
     }
 
@@ -866,12 +897,14 @@ export class AdminPromptsComponent implements OnInit {
           .split(',')
           .map((c) => c.replace(/^"|"$/g, '').replace(/""/g, '"').trim());
         if (cols.length < 2) continue;
-        this.knowledgeRows.push({
-          group: cols[2] || '',
-          from: cols[0] || '',
-          to: cols[1] || '',
-          note: cols[3] || '',
+
+        // Build row dynamically based on current headers
+        const row: any = {};
+        this.knowledgeHeaders.forEach((h, i) => {
+          const field = this.HEADER_FIELD_MAP[h];
+          if (field) row[field] = cols[i] || '';
         });
+        this.knowledgeRows.push(row as KnowledgeRow);
         addedCount++;
       }
       this.showToast(`Đã thêm ${addedCount} dòng từ CSV`, 'success');

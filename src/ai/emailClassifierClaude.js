@@ -1,5 +1,5 @@
 import { aiCfg } from "../libs/config.js";
-import { getPrompt } from "../prompts/promptStore.js";
+import { getPrompt, getKnowledgeBlock } from "../prompts/promptStore.js";
 import { callClaudeWithRetry } from "./claudeRetry.js";
 import { loadAiConfig } from "./aiConfig.js";
 
@@ -58,18 +58,27 @@ function classifyModel() {
 export async function classifyEmailClaude(emailData) {
   const CLASSIFY_MODEL = classifyModel();
 
-  const promptText = await getPrompt("email-classify", {
-    emailFrom: emailData.from,
-    emailSubject: emailData.subject,
-    emailAttachments:
-      emailData.attachments.map((a) => a.name).join(", ") || "none",
-    emailBody: emailData.body.slice(0, 5000),
-  });
+  const [promptText, marketData] = await Promise.all([
+    getPrompt("email-classify", {
+      emailFrom: emailData.from,
+      emailSubject: emailData.subject,
+      emailAttachments:
+        emailData.attachments.map((a) => a.name).join(", ") || "none",
+      emailBody: emailData.body.slice(0, 5000),
+    }),
+    getKnowledgeBlock("vnt-markets"),
+  ]);
+
+  // Inject MARKET variable — replace {{MARKET}} placeholder in rendered prompt
+  const finalPrompt = (promptText || "").replace(
+    "{{MARKET}}",
+    marketData || "[BANG THI TRUONG KHONG CO]"
+  );
 
   const requestPayload = {
     model: CLASSIFY_MODEL,
     max_tokens: 5000,
-    messages: [{ role: "user", content: promptText }],
+    messages: [{ role: "user", content: finalPrompt }],
   };
 
   const res = await callClaudeWithRetry({

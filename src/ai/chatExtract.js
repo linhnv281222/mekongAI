@@ -1,7 +1,7 @@
 import fetch from "node-fetch";
 import { GoogleGenAI } from "@google/genai";
 import { aiCfg } from "../libs/config.js";
-import { getPrompt } from "../prompts/promptStore.js";
+import { getPrompt, getKnowledgeBlock } from "../prompts/promptStore.js";
 import { generateContentWithRetry } from "../libs/geminiGenerateRetry.js";
 import { loadAiConfig } from "./aiConfig.js";
 import { callClaudeWithRetry } from "./claudeRetry.js";
@@ -68,15 +68,23 @@ export async function extractChatInfo(message) {
 }
 
 async function extractChatInfoGemini(message) {
-  const promptText = await getPrompt("chat-classify", {
-    chatMessage: message || "",
-  });
+  const [promptText, marketData] = await Promise.all([
+    getPrompt("chat-classify", {
+      chatMessage: message || "",
+    }),
+    getKnowledgeBlock("vnt-markets"),
+  ]);
+
+  const finalPrompt = (promptText || "").replace(
+    "{{MARKET}}",
+    marketData || "[BANG THI TRUONG KHONG CO]"
+  );
 
   const response = await generateContentWithRetry(
     geminiAi,
     {
       model: chatModel(),
-      contents: [{ role: "user", parts: [{ text: promptText }] }],
+      contents: [{ role: "user", parts: [{ text: finalPrompt }] }],
     },
     "ChatExtract"
   );
@@ -90,9 +98,17 @@ async function extractChatInfoGemini(message) {
 }
 
 async function extractChatInfoClaude(message) {
-  const promptText = await getPrompt("chat-classify", {
-    chatMessage: message || "",
-  });
+  const [promptText, marketData] = await Promise.all([
+    getPrompt("chat-classify", {
+      chatMessage: message || "",
+    }),
+    getKnowledgeBlock("vnt-markets"),
+  ]);
+
+  const finalPrompt = (promptText || "").replace(
+    "{{MARKET}}",
+    marketData || "[BANG THI TRUONG KHONG CO]"
+  );
 
   const res = await callClaudeWithRetry({
     headers: {
@@ -103,7 +119,7 @@ async function extractChatInfoClaude(message) {
     body: {
       model: claudeModel(),
       max_tokens: 300,
-      messages: [{ role: "user", content: promptText }],
+      messages: [{ role: "user", content: finalPrompt }],
     },
     logTag: "ChatExtract",
   });
@@ -133,13 +149,21 @@ export async function extractChatInfoWithPayload(message) {
 }
 
 async function extractChatInfoWithPayloadGemini(message) {
-  const promptText = await getPrompt("chat-classify", {
-    chatMessage: message || "",
-  });
+  const [promptText, marketData] = await Promise.all([
+    getPrompt("chat-classify", {
+      chatMessage: message || "",
+    }),
+    getKnowledgeBlock("vnt-markets"),
+  ]);
+
+  const finalPrompt = (promptText || "").replace(
+    "{{MARKET}}",
+    marketData || "[BANG THI TRUONG KHONG CO]"
+  );
 
   const requestPayload = {
     model: chatModel(),
-    contents: [{ role: "user", parts: [{ text: promptText }] }],
+    contents: [{ role: "user", parts: [{ text: finalPrompt }] }],
   };
 
   const response = await generateContentWithRetry(
@@ -159,14 +183,22 @@ async function extractChatInfoWithPayloadGemini(message) {
 }
 
 async function extractChatInfoWithPayloadClaude(message) {
-  const promptText = await getPrompt("chat-classify", {
-    chatMessage: message || "",
-  });
+  const [promptText, marketData] = await Promise.all([
+    getPrompt("chat-classify", {
+      chatMessage: message || "",
+    }),
+    getKnowledgeBlock("vnt-markets"),
+  ]);
+
+  const finalPrompt = (promptText || "").replace(
+    "{{MARKET}}",
+    marketData || "[BANG THI TRUONG KHONG CO]"
+  );
 
   const requestPayload = {
     model: claudeModel(),
     max_tokens: 300,
-    messages: [{ role: "user", content: promptText }],
+    messages: [{ role: "user", content: finalPrompt }],
   };
 
   const res = await callClaudeWithRetry({

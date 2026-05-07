@@ -573,7 +573,8 @@
               </th>
               <th
                 *ngFor="let header of knowledgeHeaders; let i = index"
-                style="width: 25%"
+                [style.minWidth.px]="80"
+                style="max-width: 300px"
               >
                 <ng-container *ngIf="editingHeaderIndex !== i; else editHeader">
                   <div class="th-inner">
