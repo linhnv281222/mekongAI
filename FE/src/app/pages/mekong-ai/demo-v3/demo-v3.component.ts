@@ -7,6 +7,7 @@ import {
   ChangeDetectorRef,
 } from '@angular/core';
 import { ActivatedRoute } from '@angular/router';
+import { FormsModule } from '@angular/forms';
 import { MessageService } from 'primeng/api';
 
 import { DemoV3Service } from './demo-v3.service';
@@ -27,17 +28,20 @@ import {
   inferExtraFieldType,
   humanizeClassifyKey,
   toDateInputValue,
+  parseHanGiaoToDate,
 } from '../utils/email.util';
 
 export const DEFAULT_COL_WIDTHS: Record<string, number> = {
   stt: 38,
-  ma_ban_ve: 160,
-  so_luong: 70,
-  hinh_dang: 90,
-  dung_sai: 90,
-  vat_lieu: 90,
-  kich_thuoc: 110,
-  ma_quy_trinh: 90,
+  ma_ban_ve: 140,
+  so_luong: 55,
+  hinh_dang: 80,
+  dung_sai: 80,
+  vat_lieu: 80,
+  kich_thuoc: 100,
+  ma_quy_trinh: 80,
+  ghi_chu: 130,
+  danh_gia: 60,
 };
 
 type ViewTab = 0 | 1;
@@ -63,12 +67,16 @@ export class DemoV3Component implements OnInit, OnDestroy {
   // Right panel
   currentTab: ViewTab = 0;
   drawingLines: DrawingLine[] = [];
+  modifiedDrawingFields: Set<string> = new Set();
   processing = false;
   progress = 0;
   previewData: Uint8Array | null = null;
   previewName: string | null = null;
   previewLoading = false;
   previewPage = 1;
+  saving = false;
+  ghiChu = '';
+  hanBaoGia: Date | null = null;
 
   // Column resize
   colWidths: Record<string, number> = {};
@@ -221,6 +229,9 @@ export class DemoV3Component implements OnInit, OnDestroy {
   async selectEmail(emailItem: EmailRow): Promise<void> {
     this.resetRightPanel();
     this.activeEmail = emailItem;
+    this.ghiChu = emailItem.ghi_chu || '';
+    const hanBaoGiaRaw = (emailItem.classify_output as any)?.han_giao_hang;
+    this.hanBaoGia = parseHanGiaoToDate(hanBaoGiaRaw);
     this.cdr.markForCheck();
 
     if (emailItem.id) {
@@ -246,6 +257,7 @@ export class DemoV3Component implements OnInit, OnDestroy {
     this.resetPreview();
     this.colWidths = {};
     this.drawingLines = [];
+    this.modifiedDrawingFields = new Set();
     this.splitMode = 'normal';
   }
 
@@ -281,6 +293,31 @@ export class DemoV3Component implements OnInit, OnDestroy {
 
   getColWidth(key: string): number {
     return this.colWidths[key] ?? DEFAULT_COL_WIDTHS[key] ?? 100;
+  }
+
+  onDrawingFieldChange(
+    rowIndex: number,
+    field: keyof DrawingLine,
+    event: Event
+  ): void {
+    const input = event.target as HTMLInputElement | HTMLSelectElement;
+    let value: string | number = input.value;
+    if (input.type === 'number') {
+      value = parseInt(input.value, 10) || 0;
+    } else if (field === 'danh_gia') {
+      value = parseInt(input.value, 10) as 0 | 1 | 99;
+    }
+    this.drawingLines = this.drawingLines.map((dl, idx) =>
+      idx === rowIndex ? { ...dl, [field]: value } : dl
+    );
+    this.modifiedDrawingFields = new Set([
+      ...this.modifiedDrawingFields,
+      `${rowIndex}:${String(field)}`,
+    ]);
+  }
+
+  isDrawingFieldModified(rowIndex: number, field: string): boolean {
+    return this.modifiedDrawingFields.has(`${rowIndex}:${field}`);
   }
 
   // Column resize
@@ -327,19 +364,6 @@ export class DemoV3Component implements OnInit, OnDestroy {
       document.removeEventListener('mouseup', this.boundMouseUp);
       this.boundMouseUp = null;
     }
-  }
-
-  onDrawingFieldChange(
-    rowIndex: number,
-    field: keyof DrawingLine,
-    event: Event
-  ): void {
-    const input = event.target as HTMLInputElement;
-    const value =
-      input.type === 'number' ? parseInt(input.value, 10) || 0 : input.value;
-    this.drawingLines = this.drawingLines.map((drawingLine, index) =>
-      index === rowIndex ? { ...drawingLine, [field]: value } : drawingLine
-    );
   }
 
   // ── File upload ────────────────────────────────────────────
@@ -439,7 +463,7 @@ export class DemoV3Component implements OnInit, OnDestroy {
     this.previewPage = page || 1;
 
     if (currentFile === fileName && cached) {
-      this.previewData = cached;
+      this.previewData = new Uint8Array(cached);
       this.cdr.markForCheck();
       return;
     }
@@ -548,12 +572,12 @@ export class DemoV3Component implements OnInit, OnDestroy {
     if (!this.activeEmail?.id) return;
     try {
       await this.svc.pushToErp(this.activeEmail.id);
-      this.messageService.add({ severity: 'success', summary: 'Da push ERP!' });
+      this.messageService.add({ severity: 'success', summary: 'Đã push ERP!' });
     } catch (err: unknown) {
       const error = err as Error;
       this.messageService.add({
         severity: 'error',
-        summary: 'Push ERP that bai',
+        summary: 'Push ERP thất bại',
         detail: error?.message,
       });
     }
@@ -689,6 +713,64 @@ export class DemoV3Component implements OnInit, OnDestroy {
     this.previewPage = page;
   }
 
+  async savePhieu(): Promise<void> {
+    if (!this.activeEmail?.id) return;
+    this.saving = true;
+    this.cdr.markForCheck();
+
+    const drawings = this.drawingLines.map((dl) => ({
+      id: dl.id,
+      page: dl.page,
+      fileIndex: dl.fileIndex,
+      filename: dl.filename,
+      data: {
+        ...dl._raw,
+        ma_ban_ve: dl.ma_ban_ve,
+        vat_lieu: dl.vat_lieu,
+        so_luong: dl.so_luong,
+        xu_ly_be_mat: dl.xu_ly_be_mat,
+        xu_ly_nhiet: dl.xu_ly_nhiet,
+        dung_sai_chung: dl.dung_sai_chung,
+        hinh_dang: dl.hinh_dang,
+        kich_thuoc: dl.kich_thuoc,
+        so_be_mat_cnc: dl.so_be_mat_cnc,
+        dung_sai_chat_nhat: dl.dung_sai_chat_nhat,
+        co_gdt: dl.co_gdt,
+        ma_quy_trinh: dl.ma_quy_trinh,
+        ly_giai_qt: dl.ly_giai_qt,
+        note: dl.note,
+        danh_gia: dl.danh_gia,
+      },
+    }));
+
+    const hanBaoGiaValue = this.hanBaoGia
+      ? this.hanBaoGia.toISOString().split('T')[0]
+      : undefined;
+
+    const ok = await this.svc.savePhieu(
+      this.activeEmail.id,
+      drawings,
+      { ghi_chu: this.ghiChu, han_bao_gia: hanBaoGiaValue }
+    );
+
+    this.saving = false;
+    this.cdr.markForCheck();
+
+    if (ok) {
+      this.messageService.add({
+        severity: 'success',
+        summary: 'Đã lưu phiếu',
+        life: 2000,
+      });
+    } else {
+      this.messageService.add({
+        severity: 'error',
+        summary: 'Lưu thất bại',
+        life: 3000,
+      });
+    }
+  }
+
   trackByEmailId(index: number, emailItem: EmailRow): number | string {
     return emailItem.jobId || emailItem.id;
   }
@@ -719,5 +801,11 @@ export class DemoV3Component implements OnInit, OnDestroy {
 
   isRfq(emailItem: EmailRow | null): boolean {
     return emailItem?.classify === 'rfq';
+  }
+
+  getSourceLabel(source: string | null | undefined): string {
+    if (source === 'email') return 'Email';
+    if (source === 'chat') return 'Chat';
+    return '';
   }
 }

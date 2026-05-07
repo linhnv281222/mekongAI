@@ -122,6 +122,7 @@ export function mapJobRowToEmail(j: Job): EmailRow {
     ngon_ngu: j.ngon_ngu ?? '',
     thi_truong: j.thi_truong ?? null,
     ten_kh: j.ten_cong_ty || j.sender || '',
+    source: (j as any).source ?? undefined,
     han_giao: j.han_giao != null && j.han_giao !== '' ? j.han_giao : null,
     hinh_thuc_giao: j.hinh_thuc_giao || null,
     co_van_chuyen: j.co_van_chuyen ?? null,
@@ -155,6 +156,7 @@ export function mergeAgentIntoInbox(agentEmails: EmailRow[], prev: EmailRow[]): 
       time: a.time,
       date: a.date,
       unread: a.unread,
+      source: a.source ?? kept.source ?? undefined,
       attachments: a.attachments?.length ? a.attachments : kept.attachments,
       classify_output: kept.classify_output ?? a.classify_output ?? null,
     };

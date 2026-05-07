@@ -37,11 +37,7 @@ app.use(
 );
 app.use(express.json());
 
-// Debug: log all incoming requests
-app.use((req, res, next) => {
-  console.log('[Server] ' + req.method + ' ' + req.path + ' | content-type: ' + (req.headers['content-type'] || 'none'));
-  next();
-});
+// No debug logging.
 
 /**
  * URL cũ (iframe / cache JS): GET /jobs/:id/attachment/<tên file>

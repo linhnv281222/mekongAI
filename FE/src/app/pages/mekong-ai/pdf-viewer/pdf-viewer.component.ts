@@ -46,15 +46,24 @@ export class AppPdfViewerComponent implements OnChanges, OnDestroy {
   async ngOnChanges(changes: SimpleChanges): Promise<void> {
     if (this.destroyed) return;
 
+    if (changes['pdfData']) {
+      if (this.pdfDoc) {
+        this.pdfDoc.destroy();
+        this.pdfDoc = null;
+      }
+      this.pageRenderTask = null;
+      this.currentRenderedPage = 0;
+    }
+
     if (changes['pdfData'] && this.pdfData) {
       this.isLoading = true;
       this.loadError = null;
       this.totalPages = 0;
-      this.currentRenderedPage = 0;
       this.cdr.markForCheck();
 
       try {
-        const loadingTask = pdfjsLib.getDocument({ data: this.pdfData });
+        const data = new Uint8Array(this.pdfData);
+        const loadingTask = pdfjsLib.getDocument({ data });
         const doc = await loadingTask.promise;
         if (this.destroyed) {
           doc.destroy();

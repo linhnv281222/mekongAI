@@ -105,6 +105,7 @@ async function processEmail(gmail, msgId) {
         drawings: [],
         created_at: Date.now(),
         raw: rawMeta,
+        source: 'email',
         // AI Debug
         classify_ai_payload: classifyAiPayload,
         drawing_ai_payload: null,
@@ -131,6 +132,7 @@ async function processEmail(gmail, msgId) {
         drawings: [],
         created_at: Date.now(),
         raw: rawMeta,
+        source: 'email',
         // AI Debug
         classify_ai_payload: classifyAiPayload,
         drawing_ai_payload: null,
@@ -253,6 +255,7 @@ async function processEmail(gmail, msgId) {
       drawings: allResults,
       status: "pending_review",
       created_at: Date.now(),
+      source: 'email',
       // AI Debug payloads
       classify_ai_payload: classifyAiPayload,
       drawing_ai_payload: drawingAiPayloads,

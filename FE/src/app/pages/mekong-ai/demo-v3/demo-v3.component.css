@@ -10,7 +10,7 @@
   height: 100vh;
   overflow: hidden;
   font-family: var(--v3-font, "Plus Jakarta Sans", system-ui, sans-serif);
-  background: var(--v3-bg, #f1f5f9);
+  background: linear-gradient(135deg, #f0f4ff 0%, #f8fafc 50%, #fff0f5 100%);
 }
 
 /* ── App Header ──────────────────────────────────────────── */
@@ -165,9 +165,10 @@
 /* ── Guide Card ────────────────────────────────────────────── */
 .guide-card {
   margin: 12px;
-  border: 1px solid var(--v3-line, #e2e8f0);
+  border: 1.5px solid #cbd5e1;
   border-radius: 8px;
-  background: var(--v3-surface);
+  background: rgba(255, 255, 255, 0.6);
+  backdrop-filter: blur(4px);
   overflow: hidden;
   flex-shrink: 0;
 }
@@ -390,7 +391,7 @@
 }
 
 .ei.active {
-  background: var(--v3-brand-soft, #eef2ff);
+  background: linear-gradient(90deg, #eef2ff 0%, #faf5ff 100%);
   border-left: 3px solid var(--v3-brand, #4f46e5);
 }
 
@@ -634,20 +635,22 @@
 /* ── Form ─────────────────────────────────────────────────── */
 .form-wrap {
   padding: 16px;
-  background: #edf0f4;
+  background: rgba(241, 245, 249, 0.5);
 }
 
 .section {
-  background: #fff;
-  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.88);
+  border-radius: 12px;
   padding: 16px 20px;
   margin-bottom: 16px;
-  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.08), 0 0 0 1px rgba(0, 0, 0, 0.04);
-  transition: box-shadow 0.2s ease;
+  border: 1.5px solid #e2e8f0;
+  box-shadow: 0 1px 4px rgba(79, 70, 229, 0.08);
+  transition: box-shadow 0.2s ease, border-color 0.2s ease;
 }
 
 .section:hover {
-  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.12), 0 0 0 1px rgba(0, 0, 0, 0.06);
+  border-color: #a5b4fc;
+  box-shadow: 0 2px 12px rgba(79, 70, 229, 0.12);
 }
 
 .sec-hd {
@@ -730,7 +733,7 @@
 .form-input {
   width: 100%;
   height: 32px;
-  border: 1px solid var(--v3-line2, #cbd5e1);
+  border: 2px solid var(--v3-line2, #cbd5e1);
   border-radius: 6px;
   padding: 0 10px;
   font-size: 13px;
@@ -743,6 +746,7 @@
 
 .form-input:focus {
   border-color: var(--v3-brand, #4f46e5);
+  border-width: 2px;
 }
 
 .form-input.ai {
@@ -762,7 +766,7 @@
 .ta-field {
   width: 100%;
   min-height: 80px;
-  border: 1px solid var(--v3-line2, #cbd5e1);
+  border: 2px solid var(--v3-line2, #cbd5e1);
   border-radius: 6px;
   padding: 8px 10px;
   font-size: 13px;
@@ -778,6 +782,7 @@
 
 .ta-field:focus {
   border-color: var(--v3-brand, #4f46e5);
+  border-width: 2px;
 }
 
 .ta-field.ai {
@@ -1014,6 +1019,11 @@
   gap: 4px;
 }
 
+.cell-ma .bv-input {
+  width: auto;
+  min-width: 80px;
+}
+
 .bv-page-btn {
   background: none;
   border: none;
@@ -1031,15 +1041,23 @@
 }
 
 .bv-input {
-  border: none;
-  background: transparent;
+  border: 1.5px solid #878787;
+  background: #fff;
+  border-radius: 4px;
   font-size: 12.5px;
   color: var(--v3-ink);
   outline: none;
   width: 100%;
-  padding: 2px 0;
+  padding: 7px 8px;
   font-family: inherit;
   box-sizing: border-box;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+
+.bv-input:focus {
+  border-color: var(--v3-brand, #4338ca);
+  border-width: 2px;
+  box-shadow: 0 0 0 2px rgba(67, 56, 202, 0.15);
 }
 
 .bv-input--mono {
@@ -1049,20 +1067,74 @@
 .bv-input--brand {
   font-weight: 700;
   color: var(--v3-brand2, #4338ca);
+  border-color: rgba(67, 56, 202, 0.5);
+  border-width: 1.5px;
+  background: rgba(67, 56, 202, 0.06);
 }
 
 .bv-input--amber {
   color: var(--v3-amber, #d97706);
+  border-color: rgba(217, 119, 6, 0.5);
+  border-width: 1.5px;
+  background: rgba(217, 119, 6, 0.06);
 }
 
 .bv-input--green {
   font-weight: 600;
   color: var(--v3-green, #059669);
+  border-color: rgba(5, 150, 105, 0.5);
+  border-width: 1.5px;
+  background: rgba(5, 150, 105, 0.06);
 }
 
 .bv-input--num {
+  width: 70px;
   text-align: right;
   font-weight: 600;
+  padding: 8px 6px;
+}
+
+.bv-input--modified {
+  background-color: #fff8e1;
+  border-color: #ffa000;
+  box-shadow: 0 0 0 2px rgba(255, 160, 0, 0.15);
+}
+
+textarea.form-input {
+  width: 100%;
+  resize: vertical;
+  min-height: 40px;
+  font-size: 12px;
+}
+
+.bv-select {
+  cursor: pointer;
+  text-align: center;
+}
+
+.danh-gia-radio {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  padding: 4px;
+  border: 1px solid var(--v3-line, #cbd5e1);
+  border-radius: 4px;
+  background: #fff;
+}
+
+.danh-gia-radio .radio-label {
+  cursor: pointer;
+  font-weight: 700;
+  font-size: 14px;
+  margin-left: 1px;
+}
+
+.danh-gia-radio .radio-ok {
+  color: var(--v3-green, #059669);
+}
+
+.danh-gia-radio .radio-fail {
+  color: #dc2626;
 }
 
 .cell-kt {
@@ -1072,6 +1144,11 @@
   text-overflow: ellipsis;
   white-space: nowrap;
   font-family: var(--v3-mono, monospace);
+}
+
+/* Row hover */
+.bv-table-wrap .p-datatable-tbody > tr:hover > td {
+  background-color: rgba(67, 56, 202, 0.04) !important;
 }
 
 /* Preview panel */
@@ -1187,6 +1264,51 @@
 }
 
 /* ── PrimeNG Overrides ────────────────────────────────────── */
+:host ::ng-deep .p-tag {
+  border-radius: 6px !important;
+  font-size: 11px !important;
+  font-weight: 700 !important;
+  padding: 3px 9px !important;
+  border: 1.5px solid !important;
+  letter-spacing: 0.02em !important;
+}
+
+:host ::ng-deep .p-tag.p-tag-success {
+  background: #dcfce7 !important;
+  color: #15803d !important;
+  border-color: #4ade80 !important;
+}
+
+:host ::ng-deep .p-tag.p-tag-secondary {
+  background: #f1f5f9 !important;
+  color: #475569 !important;
+  border-color: #94a3b8 !important;
+}
+
+:host ::ng-deep .p-tag.p-tag-info {
+  background: #dbeafe !important;
+  color: #1d4ed8 !important;
+  border-color: #60a5fa !important;
+}
+
+:host ::ng-deep .p-tag.p-tag-warn {
+  background: #fef9c3 !important;
+  color: #a16207 !important;
+  border-color: #fbbf24 !important;
+}
+
+:host ::ng-deep .p-tag.p-tag-danger {
+  background: #fee2e2 !important;
+  color: #dc2626 !important;
+  border-color: #f87171 !important;
+}
+
+:host ::ng-deep .p-tag.p-tag-warning {
+  background: #fef9c3 !important;
+  color: #92400e !important;
+  border-color: #f59e0b !important;
+}
+
 :host ::ng-deep .p-button {
   height: 32px !important;
   font-size: 13px !important;
@@ -1254,4 +1376,8 @@
   .bv-split-preview {
     display: none;
   }
+}
+
+::ng-deep .p-datatable.p-datatable-sm .p-datatable-tbody > tr > td {
+  padding: 0 !important;
 }

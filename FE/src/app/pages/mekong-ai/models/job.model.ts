@@ -27,6 +27,7 @@ export interface Job {
   attachments?: string[] | Array<{ name: string }>;
   drawings?: Drawing[];
   classify_output?: ClassifyOutput | string;
+  source?: string; // 'email' | 'chat'
   // AI Debug payloads from agent
   classify_ai_payload?: object | null;
   drawing_ai_payload?: Array<object | null> | null;
