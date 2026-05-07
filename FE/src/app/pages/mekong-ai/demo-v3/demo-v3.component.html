@@ -317,7 +317,8 @@
                         ><input
                           type="radio"
                           name="vc_main"
-                          [checked]="!!activeEmail.co_van_chuyen"
+                          [checked]="coVanChuyen === true"
+                          (change)="coVanChuyen = true"
                         />
                         Có</label
                       >
@@ -325,7 +326,8 @@
                         ><input
                           type="radio"
                           name="vc_main"
-                          [checked]="!activeEmail.co_van_chuyen"
+                          [checked]="coVanChuyen === false"
+                          (change)="coVanChuyen = false"
                         />
                         Không</label
                       >
@@ -338,7 +340,8 @@
                         ><input
                           type="radio"
                           name="xlbm_main"
-                          [checked]="activeEmail.xu_ly_be_mat === true"
+                          [checked]="xuLyBeMat === true"
+                          (change)="xuLyBeMat = true"
                         />
                         Có</label
                       >
@@ -346,7 +349,8 @@
                         ><input
                           type="radio"
                           name="xlbm_main"
-                          [checked]="activeEmail.xu_ly_be_mat !== true"
+                          [checked]="xuLyBeMat === false"
+                          (change)="xuLyBeMat = false"
                         />
                         Không</label
                       >
