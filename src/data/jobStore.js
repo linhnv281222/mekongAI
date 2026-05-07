@@ -21,6 +21,7 @@ export async function initJobDB() {
       { col: "co_van_chuyen", type: "BOOLEAN" },
       { col: "ma_khach_hang", type: "TEXT" },
       { col: "pushed_at", type: "TIMESTAMPTZ" },
+      { col: "thi_truong", type: "TEXT" },
     ];
     for (const { col, type } of missing) {
       await pool.query(`
@@ -46,6 +47,7 @@ export function normalizeDbRow(row) {
     sender_company: row.sender_company || null,
     classify: row.classify || null,
     ngon_ngu: row.ngon_ngu || null,
+    thi_truong: row.thi_truong || null,
     classify_output: row.classify_output || null,
     ten_cong_ty: row.ten_cong_ty || null,
     ma_khach_hang: row.ma_khach_hang || null,
@@ -87,11 +89,11 @@ export async function saveJob(jobData) {
       `
       INSERT INTO mekongai.agent_jobs
         (gmail_id, subject, sender_email, sender_name, sender_company,
-         classify, ngon_ngu, status, lines_count, error, raw_email, extracted,
+         classify, ngon_ngu, thi_truong, status, lines_count, error, raw_email, extracted,
          attachments, ten_cong_ty, ma_khach_hang, han_giao, hinh_thuc_giao,
          xu_ly_be_mat, vat_lieu_chung_nhan, co_van_chuyen, drawings,
          classify_output, classify_ai_payload, drawing_ai_payload, ghi_chu)
-      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24,$25)
+      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24,$25,$26,$27)
       ON CONFLICT (gmail_id) DO UPDATE SET
         subject=EXCLUDED.subject,
         sender_email=EXCLUDED.sender_email,
@@ -99,6 +101,7 @@ export async function saveJob(jobData) {
         sender_company=EXCLUDED.sender_company,
         classify=EXCLUDED.classify,
         ngon_ngu=EXCLUDED.ngon_ngu,
+        thi_truong=EXCLUDED.thi_truong,
         status=EXCLUDED.status,
         lines_count=EXCLUDED.lines_count,
         error=EXCLUDED.error,
@@ -128,6 +131,7 @@ export async function saveJob(jobData) {
         job.sender_company || job.senderCompany || null,
         job.classify || null,
         job.ngon_ngu || job.ngonNgu || null,
+        job.thi_truong || null,
         job.status || "new",
         parseInt(Array.isArray(job.drawings) ? job.drawings.length : (job.lines_count || 0), 10),
         job.error || null,

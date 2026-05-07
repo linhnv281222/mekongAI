@@ -93,7 +93,7 @@
             <div class="ei-r1">
               <div class="ei-dot" *ngIf="emailItem.unread"></div>
               <div class="ei-from">{{ emailItem.from }}</div>
-              <div class="ei-time">{{ emailItem.time }}</div>
+              <div class="ei-time">{{ emailItem.date }}</div>
             </div>
             <div class="ei-subj">{{ emailItem.subject }}</div>
             <div class="ei-prev">{{ emailItem.preview }}</div>
@@ -109,18 +109,14 @@
                 severity="secondary"
               ></p-tag>
               <p-tag
-                [value]="getLangTag(emailItem.ngon_ngu).label"
-                [severity]="langTagSeverity(emailItem.ngon_ngu)"
+                *ngIf="emailItem.thi_truong"
+                [value]="getMarketTag(emailItem.thi_truong).label"
+                [severity]="marketSeverity(emailItem.thi_truong)"
               ></p-tag>
               <p-tag
                 *ngIf="emailItem.attachments?.length"
                 [value]="'📎 ' + emailItem.attachments!.length"
                 severity="secondary"
-              ></p-tag>
-              <p-tag
-                *ngIf="emailItem._agent"
-                value="⚡ Agent"
-                severity="info"
               ></p-tag>
             </div>
           </div>
@@ -165,7 +161,8 @@
               severity="secondary"
             ></p-tag>
             <p-tag
-              [value]="getLangTag(activeEmail.ngon_ngu).label"
+              *ngIf="activeEmail.thi_truong"
+              [value]="getMarketTag(activeEmail.thi_truong).label"
               severity="info"
             ></p-tag>
           </div>
@@ -211,7 +208,8 @@
         <div class="e-tags">
           <p-tag value="✓ RFQ" severity="success"></p-tag>
           <p-tag
-            [value]="getLangTag(activeEmail.ngon_ngu).label"
+            *ngIf="activeEmail.thi_truong"
+            [value]="getMarketTag(activeEmail.thi_truong).label"
             severity="info"
           ></p-tag>
           <ng-container *ngFor="let attachment of getAttachmentList()">
@@ -302,9 +300,20 @@
                   <div class="f">
                     <label>Vận chuyển <span class="ai-mark">AI</span></label>
                     <div class="radio-row">
-                      <label><input type="radio" name="vc_main" [checked]="!!activeEmail.co_van_chuyen" /> Có</label>
                       <label
-                        ><input type="radio" name="vc_main" [checked]="!activeEmail.co_van_chuyen" />
+                        ><input
+                          type="radio"
+                          name="vc_main"
+                          [checked]="!!activeEmail.co_van_chuyen"
+                        />
+                        Có</label
+                      >
+                      <label
+                        ><input
+                          type="radio"
+                          name="vc_main"
+                          [checked]="!activeEmail.co_van_chuyen"
+                        />
                         Không</label
                       >
                     </div>
@@ -312,9 +321,20 @@
                   <div class="f">
                     <label>Xử lý bề mặt <span class="ai-mark">AI</span></label>
                     <div class="radio-row">
-                      <label><input type="radio" name="xlbm_main" [checked]="activeEmail.xu_ly_be_mat === true" /> Có</label>
                       <label
-                        ><input type="radio" name="xlbm_main" [checked]="activeEmail.xu_ly_be_mat !== true" />
+                        ><input
+                          type="radio"
+                          name="xlbm_main"
+                          [checked]="activeEmail.xu_ly_be_mat === true"
+                        />
+                        Có</label
+                      >
+                      <label
+                        ><input
+                          type="radio"
+                          name="xlbm_main"
+                          [checked]="activeEmail.xu_ly_be_mat !== true"
+                        />
                         Không</label
                       >
                     </div>
@@ -482,7 +502,9 @@
               <ng-template pTemplate="panel" [style]="{ minWidth: '320px' }">
                 <div class="bv-split-main">
                   <div class="bv-split-toolbar">
-                    <span class="bv-split-label">Bản vẽ ({{ drawingLines.length }})</span>
+                    <span class="bv-split-label"
+                      >Bản vẽ ({{ drawingLines.length }})</span
+                    >
                     <button
                       type="button"
                       class="bv-split-toggle"
@@ -490,7 +512,14 @@
                       (click)="toggleSplitFull('left')"
                       title="Full bản vẽ"
                     >
-                      <i class="pi" [ngClass]="splitMode === 'fullLeft' ? 'pi-minus' : 'pi-window-maximize'"></i>
+                      <i
+                        class="pi"
+                        [ngClass]="
+                          splitMode === 'fullLeft'
+                            ? 'pi-minus'
+                            : 'pi-window-maximize'
+                        "
+                      ></i>
                     </button>
                   </div>
                   <p-table
@@ -640,7 +669,14 @@
                       (click)="toggleSplitFull('right')"
                       title="Full preview"
                     >
-                      <i class="pi" [ngClass]="splitMode === 'fullRight' ? 'pi-minus' : 'pi-window-maximize'"></i>
+                      <i
+                        class="pi"
+                        [ngClass]="
+                          splitMode === 'fullRight'
+                            ? 'pi-minus'
+                            : 'pi-window-maximize'
+                        "
+                      ></i>
                     </button>
                     <span
                       class="bv-preview-filename"

@@ -119,6 +119,7 @@ export class AdminPromptsComponent implements OnInit {
     'vnt-surface': 'Xử lý bề mặt',
     'vnt-shapes': 'Bảng phân loại hình dạng VNT',
     'vnt-knowledge': 'Kiến thức nội bộ VNT (Gemini)',
+    'vnt-markets': 'Phân biệt thị trường VN/JP/US/EU',
   };
 
   promptDescVi: { [key: string]: string } = {
@@ -133,6 +134,7 @@ export class AdminPromptsComponent implements OnInit {
     'vnt-surface': 'Bảng mã xử lý bề mặt Nhật Bản + tiêu chuẩn độ dày anod',
     'vnt-shapes': 'Bảng phân loại hình dạng + phương án gia công VNT',
     'vnt-knowledge': 'Bảng lượng riêng vật liệu + mã qui trình VNT',
+    'vnt-markets': 'Bảng phân biệt thị trường theo email domain, ngôn ngữ, địa chỉ',
   };
 
   varToKb: { [key: string]: string } = {
@@ -141,6 +143,7 @@ export class AdminPromptsComponent implements OnInit {
     SURFACE: 'vnt-surface',
     SHAPE: 'vnt-shapes',
     VNT_KNOWLEDGE: 'vnt-knowledge',
+    MARKET: 'vnt-markets',
   };
 
   knowledgeVars = new Set([
@@ -149,6 +152,7 @@ export class AdminPromptsComponent implements OnInit {
     'SURFACE',
     'SHAPE',
     'VNT_KNOWLEDGE',
+    'MARKET',
   ]);
 
   kbVarLabels: { [key: string]: string } = {
@@ -157,6 +161,7 @@ export class AdminPromptsComponent implements OnInit {
     SURFACE: 'Bảng xử lý bề mặt Nhật Bản + độ dày anod',
     SHAPE: 'Bảng phân loại hình dạng + phương án gia công',
     VNT_KNOWLEDGE: 'Bảng lượng riêng + mã qui trình VNT',
+    MARKET: 'Bảng phân biệt thị trường VN/JP/US/EU',
   };
 
   // Sample values for test panel
@@ -346,21 +351,17 @@ export class AdminPromptsComponent implements OnInit {
     this.currentPromptKey = key;
     this.selectedKnowledgeKey = key;
 
-    const knowledgeBlock = this.knowledgeItems.find((kb) => kb.id === key);
-    if (!knowledgeBlock) return;
+    const kb = this.knowledgeItems.find((item) => item.id === key);
+    if (!kb) return;
 
-    this.selectedKnowledgeName = this.labelVi(key, knowledgeBlock.name);
+    this.selectedKnowledgeName = this.labelVi(key, kb.name);
     this.selectedKnowledgeDesc = this.descVi(key, '');
-    this.knowledgeHeaders = knowledgeBlock.headers
-      ? [...knowledgeBlock.headers]
-      : ['Nhóm', 'Mã gốc', 'Mã VNT', 'Ghi chú'];
-    this.knowledgeRows = knowledgeBlock.rows ? [...knowledgeBlock.rows] : [];
+    this.knowledgeHeaders = kb.headers?.length ? [...kb.headers] : ['Nhóm', 'Mã gốc', 'Mã VNT', 'Ghi chú'];
+    this.knowledgeRows = kb.rows ? [...kb.rows] : [];
 
-    if (knowledgeBlock.updatedAt) {
-      this.knowledgeUpdatedAt = knowledgeBlock.updatedAt;
-      this.knowledgeUpdatedAtFormatted = this.formatDate(
-        knowledgeBlock.updatedAt
-      );
+    if (kb.updatedAt) {
+      this.knowledgeUpdatedAt = kb.updatedAt;
+      this.knowledgeUpdatedAtFormatted = this.formatDate(kb.updatedAt);
     } else {
       this.knowledgeUpdatedAt = null;
       this.knowledgeUpdatedAtFormatted = '';
@@ -796,7 +797,6 @@ export class AdminPromptsComponent implements OnInit {
       // vnt-markets
       'Thị trường': 'market',
       'Tên': 'ten',
-      'Giới tiền': 'gioi_tien',
       'Khu vực': 'gioi_tien',
       'Email': 'email',
       'Ngôn ngữ': 'ngon_ngu',
