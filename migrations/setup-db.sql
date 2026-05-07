@@ -491,7 +491,9 @@ ALTER TABLE mekongai.agent_jobs
   ADD COLUMN IF NOT EXISTS ghi_chu        TEXT,
   ADD COLUMN IF NOT EXISTS pushed_at      TIMESTAMPTZ,
   ADD COLUMN IF NOT EXISTS source         TEXT DEFAULT NULL,
-  ADD COLUMN IF NOT EXISTS thi_truong     TEXT;
+  ADD COLUMN IF NOT EXISTS thi_truong     TEXT,
+  ADD COLUMN IF NOT EXISTS han_bao_gia    TEXT,
+  ADD COLUMN IF NOT EXISTS email_body     TEXT;
 
 -- Chi so cho query thuong
 CREATE INDEX IF NOT EXISTS idx_agent_jobs_status ON mekongai.agent_jobs(status);
