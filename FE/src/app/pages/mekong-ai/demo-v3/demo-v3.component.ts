@@ -7,12 +7,12 @@ import {
   ChangeDetectorRef,
 } from '@angular/core';
 import { ActivatedRoute } from '@angular/router';
-import { DomSanitizer } from '@angular/platform-browser';
 import { MessageService } from 'primeng/api';
 
 import { DemoV3Service } from './demo-v3.service';
+import { MekongAiService } from '../mekong-ai.service';
 import { EmailRow } from '../models/email.model';
-import { UiSchema, UiCell, UiRow } from '../models/prompt.model';
+import { UiSchema, UiCell, UiRow, KnowledgeBlock } from '../models/prompt.model';
 import { DrawingLine } from '../utils/drawing.util';
 import { drawingToLine } from '../utils/drawing.util';
 import {
@@ -56,6 +56,9 @@ export class DemoV3Component implements OnInit, OnDestroy {
   inboxHint = '';
   classifyUiSchema: UiSchema | null = null;
   debugModalOpen = false;
+
+  // Market data from vnt-markets knowledge block (dynamic)
+  marketRows: KnowledgeBlock['rows'] = [];
 
   // Right panel
   currentTab: ViewTab = 0;
@@ -104,6 +107,7 @@ export class DemoV3Component implements OnInit, OnDestroy {
 
   constructor(
     private svc: DemoV3Service,
+    private mekongSvc: MekongAiService,
     private messageService: MessageService,
     private cdr: ChangeDetectorRef,
     private route: ActivatedRoute
@@ -142,12 +146,16 @@ export class DemoV3Component implements OnInit, OnDestroy {
   // ── Init ─────────────────────────────────────────────────
 
   private async loadConfig(): Promise<void> {
-    const [hint, schema] = await Promise.all([
+    const [hint, schema, kbList] = await Promise.all([
       this.svc.loadInboxHint(),
       this.svc.loadClassifyUiSchema(),
+      this.mekongSvc.getKnowledgeBlocks(),
     ]);
     this.inboxHint = hint;
     this.classifyUiSchema = schema;
+    // Extract market rows from vnt-markets knowledge block
+    const marketKb = kbList.find(kb => kb.key === 'vnt-markets');
+    this.marketRows = marketKb?.rows ?? [];
     this.cdr.markForCheck();
   }
 
@@ -167,6 +175,7 @@ export class DemoV3Component implements OnInit, OnDestroy {
       attachments: job.attachments || [],
       classify: job.classify || '',
       ngon_ngu: job.ngon_ngu || '',
+      thi_truong: job.thi_truong || null,
       ten_kh: '',
       han_giao: null,
       hinh_thuc_giao: null,
@@ -602,6 +611,38 @@ export class DemoV3Component implements OnInit, OnDestroy {
 
   humanizeKey(key: string): string {
     return humanizeClassifyKey(key);
+  }
+
+  // ── Market tag ────────────────────────────────────────────
+
+  getMarketTag(market: string | null | undefined): {
+    label: string;
+    cls: string;
+  } {
+    const code = market || '';
+    if (!code || !this.marketRows?.length) {
+      return { label: '?', cls: 't-skip' };
+    }
+    const row = this.marketRows.find(
+      r => (r as any)['market'] === code || String((r as any)['market'] || '').toLowerCase() === code.toLowerCase()
+    );
+    const label = row ? String((row as any)['ten'] || code) : code;
+    const cls = `t-${code.toLowerCase()}`;
+    return { label, cls };
+  }
+
+  marketSeverity(
+    market: string | null | undefined
+  ): 'info' | 'warning' | 'success' | 'secondary' {
+    const sevMap: Record<string, 'info' | 'warning' | 'success' | 'secondary'> = {};
+    for (const row of this.marketRows ?? []) {
+      const code = String((row as any)['market'] || '');
+      if (code === 'VN') sevMap[code] = 'info';
+      else if (code === 'JP') sevMap[code] = 'warning';
+      else if (code === 'US') sevMap[code] = 'success';
+      else if (code === 'EU') sevMap[code] = 'secondary';
+    }
+    return sevMap[market || ''] || 'secondary';
   }
 
   // ── Language tag ──────────────────────────────────────────

@@ -120,6 +120,7 @@ export function mapJobRowToEmail(j: Job): EmailRow {
     attachments: j.attachments || [],
     classify: j.classify ?? '',
     ngon_ngu: j.ngon_ngu ?? '',
+    thi_truong: j.thi_truong ?? null,
     ten_kh: j.ten_cong_ty || j.sender || '',
     han_giao: j.han_giao != null && j.han_giao !== '' ? j.han_giao : null,
     hinh_thuc_giao: j.hinh_thuc_giao || null,

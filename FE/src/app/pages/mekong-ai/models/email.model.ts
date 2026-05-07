@@ -18,6 +18,7 @@ export interface EmailRow {
   attachments: string[] | Array<{ name: string }>;
   classify: string;
   ngon_ngu: string;
+  thi_truong: string | null;
   ten_kh: string;
   han_giao: string | null;
   hinh_thuc_giao: string | null;

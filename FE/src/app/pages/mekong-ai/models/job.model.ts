@@ -15,6 +15,7 @@ export interface Job {
   created_at?: string;
   classify?: string;
   ngon_ngu?: string;
+  thi_truong?: string | null;
   han_giao?: string | null;
   hinh_thuc_giao?: string | null;
   co_van_chuyen?: boolean | null;
@@ -34,6 +35,7 @@ export interface Job {
 export interface ClassifyOutput {
   loai?: string;
   ngon_ngu?: string;
+  thi_truong?: string;
   han_giao_hang?: string;
   hinh_thuc_giao?: string;
   co_van_chuyen?: boolean;
