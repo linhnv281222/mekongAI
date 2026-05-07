@@ -79,8 +79,7 @@ export function inferClassifyOutputFromJob(j: Job): ClassifyOutput | null {
   }
   const ten = j.ten_cong_ty ?? (j as unknown as EmailRow).ten_kh;
   if (ten != null && ten !== '') o.ten_cong_ty = ten;
-  const ghi = j.ghi_chu ?? (j as unknown as EmailRow).body;
-  if (ghi != null && ghi !== '') o.ghi_chu = ghi;
+  if (j.ghi_chu != null && j.ghi_chu !== '') o.ghi_chu = j.ghi_chu;
   return Object.keys(o).length ? o : null;
 }
 
@@ -107,8 +106,8 @@ export function mapJobRowToEmail(j: Job): EmailRow {
     from: j.ten_cong_ty || j.sender || 'Agent',
     email: j.sender_email || '',
     subject: j.subject ?? '',
-    preview: `${(j as unknown as { lines_count?: number }).lines_count || 0} trang da doc`,
-    body: '',
+    preview: `${(j as unknown as { lines_count?: number }).lines_count || 0} trang đã đọc`,
+    body: j.email_body || '',
     time: (() => {
       const d = j.created_at != null ? new Date(j.created_at) : null;
       return d && !Number.isNaN(d.getTime())

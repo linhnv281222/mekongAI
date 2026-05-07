@@ -12,9 +12,9 @@ function erpHeaders() {
 }
 
 /**
- * Tao phieu bao gia (header) tren ERP.
- * @param {object} emailData — thong tin tu email
- * @param {object} classify — ket qua classify
+ * Tạo phiếu báo giá (header) trên ERP.
+ * @param {object} emailData — thông tin từ email
+ * @param {object} classify — kết quả classify
  * @returns {object} { quota_code, id }
  */
 export async function createQuoteHeader(emailData, classify) {
@@ -43,7 +43,7 @@ export async function createQuoteHeader(emailData, classify) {
     vat_value: 8,
     has_transport: !!classify.hinh_thuc_giao,
     surface_treatment: classify.xu_ly_be_mat === true,
-    exchange_rate: 161.77, // TODO: lay tu ERP thuc te
+    exchange_rate: 161.77, // TODO: lấy từ ERP thực tế
     quotation_currency:
       classify.ngon_ngu === "ja"
         ? "JPY"
@@ -105,9 +105,9 @@ export async function createQuoteHeader(emailData, classify) {
 }
 
 /**
- * Day tat ca dong hang vao phieu bao gia.
+ * Đẩy tất cả dòng hàng vào phiếu báo giá.
  * @param {string} quoteCode
- * @param {Array} drawingResults — mang ket qua tu AI
+ * @param {Array} drawingResults — mảng kết quả từ AI
  * @returns {object}
  */
 export async function pushAllLinesToERP(quoteCode, drawingResults) {
@@ -163,7 +163,7 @@ export async function pushAllLinesToERP(quoteCode, drawingResults) {
 }
 
 /**
- * Queue 1 dong (giu lai cho tuong thich).
+ * Queue 1 dòng (giữ lại cho tương thích).
  */
 export async function addQuoteLine(quoteId, stt, drawingResult) {
   const drawingData = drawingResult.data;

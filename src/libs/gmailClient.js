@@ -2,7 +2,41 @@ import { google } from "googleapis";
 import { gmailCfg } from "./config.js";
 
 /**
- * Tao Gmail client da duoc authenticate.
+ * Strip email thread content (quoted replies, forwarded, signatures)
+ * to reduce noise before AI classification.
+ */
+function stripEmailThread(rawBody) {
+  if (!rawBody) return "";
+  let body = rawBody;
+
+  // Remove forwarded headers
+  body = body.replace(
+    /[-_]{10,}\s*(Forwarded message|Chuyển tiếp|Người gửi ban đầu|Original Message)[-_]*\s*/gi,
+    ""
+  );
+  body = body.replace(/^(From:|To:|Cc:|Date:|Subject:)[^\n]*\n/gim, "");
+
+  // Remove quoted lines (starts with >)
+  body = body
+    .split("\n")
+    .filter((line) => !line.trim().startsWith(">"))
+    .join("\n");
+
+  // Remove signature block
+  const sigIdx = body.search(/^--\s*$/m);
+  if (sigIdx !== -1) body = body.slice(0, sigIdx).trim();
+
+  // Remove "On ... wrote:" blocks
+  body = body.replace(/On\s+.+?\bwrote:\s*/gi, "");
+
+  // Collapse excessive whitespace
+  body = body.replace(/\n{4,}/g, "\n\n");
+
+  return body.trim();
+}
+
+/**
+ * Tạo Gmail client đã được authenticate.
  * @returns {object} gmail API client
  */
 export function makeGmail() {
@@ -16,9 +50,9 @@ export function makeGmail() {
 }
 
 /**
- * Lay danh sach email chua doc co dinh kem file trong 24h.
+ * Lấy danh sách email chưa đọc có đính kèm file trong 24h.
  * @param {object} gmail — Gmail client
- * @param {number} hoursBack — so gio de lay (mac dinh 24)
+ * @param {number} hoursBack — số giờ để lấy (mặc định 24)
  * @returns {Array} mang message objects
  */
 export async function fetchUnread(gmail, hoursBack = 24) {
@@ -32,7 +66,7 @@ export async function fetchUnread(gmail, hoursBack = 24) {
 }
 
 /**
- * Parse noi dung 1 email tu Gmail.
+ * Parse nội dung 1 email từ Gmail.
  * @param {object} gmail
  * @param {string} msgId
  * @returns {object} { msgId, subject, from, senderEmail, senderName, body, attachments }
@@ -56,8 +90,9 @@ export async function parseGmailMsg(gmail, msgId) {
   const senderEmail = emailMatch?.[1] || from;
   const senderName = from.replace(/<.+>/, "").trim().replace(/"/g, "");
 
-  // Body
+  // Body — strip email thread (quoted replies, forwarded, signatures) first
   let body = "";
+
   function walkParts(part) {
     if (part.mimeType === "text/plain" && part.body?.data)
       body += Buffer.from(part.body.data, "base64").toString("utf-8");
@@ -68,6 +103,9 @@ export async function parseGmailMsg(gmail, msgId) {
     if (part.parts) part.parts.forEach(walkParts);
   }
   walkParts(msg.data.payload);
+
+  // Strip thread noise
+  body = stripEmailThread(body);
 
   // PDF attachments
   const attachments = [];
@@ -97,7 +135,7 @@ export async function parseGmailMsg(gmail, msgId) {
 }
 
 /**
- * Tai file dinh kem tu Gmail.
+ * Tải file đính kèm từ Gmail.
  * @param {object} gmail
  * @param {string} msgId
  * @param {string} attachmentId
@@ -114,7 +152,7 @@ export async function downloadAttachment(gmail, msgId, attachmentId, filename) {
 }
 
 /**
- * Danh dau email da doc (go bo UNREAD label).
+ * Đánh dấu email đã đọc (gỡ bỏ UNREAD label).
  * @param {object} gmail
  * @param {string} msgId
  */
@@ -126,6 +164,6 @@ export async function markRead(gmail, msgId) {
       requestBody: { removeLabelIds: ["UNREAD"] },
     });
   } catch (e) {
-    console.warn("[Gmail] markRead loi:", e.message);
+    console.warn("[Gmail] markRead lỗi:", e.message);
   }
 }

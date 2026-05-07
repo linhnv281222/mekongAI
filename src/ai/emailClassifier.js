@@ -9,8 +9,8 @@ export function getAiProvider() {
 }
 
 /**
- * Phan loai email = rfq / repeat_order / hoi_tham / khieu_nai / spam.
- * Su dung provider tu config (gemini hoac claude).
+ * Phân loại email = rfq / repeat_order / hoi_tham / khieu_nai / spam.
+ * Sử dụng provider từ config (gemini hoặc claude).
  */
 export async function classifyEmail(emailData) {
   const { provider } = loadAiConfig();

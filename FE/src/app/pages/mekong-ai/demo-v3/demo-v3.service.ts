@@ -81,7 +81,7 @@ export class DemoV3Service implements OnDestroy {
   buildFullEmailRow(job: Job, partial: EmailRow): EmailRow {
     return {
       ...partial,
-      body: job.ghi_chu || (partial.classify_output as any)?.ghi_chu || '',
+      body: job.email_body || partial.body || '',
       attachments: job.attachments || [],
       date: fmtDDMMHHmm(job.created_at ?? partial.date),
       han_giao:

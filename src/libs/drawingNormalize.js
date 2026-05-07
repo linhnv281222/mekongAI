@@ -30,7 +30,7 @@ function materialToStr(vl) {
   return toStr(vl);
 }
 
-/** Fallback: trích xuất vat_lieu từ ly_giai_qt khi AI khong fill vat_lieu */
+/** Fallback: trích xuất vat_lieu từ ly_giai_qt khi AI không fill vat_lieu */
 function extractVatLieuFromLyGiai(lyGiai, currentVl) {
   if (currentVl && currentVl.trim()) return currentVl;
   if (!lyGiai) return "";

@@ -24,6 +24,7 @@ export async function initJobDB() {
       { col: "thi_truong", type: "TEXT" },
       { col: "source", type: "TEXT" },
       { col: "han_bao_gia", type: "TEXT" },
+      { col: "email_body", type: "TEXT" },
     ];
     for (const { col, type } of missing) {
       await pool.query(`
@@ -32,7 +33,7 @@ export async function initJobDB() {
       `);
     }
   } catch (_) {
-    // Neu schema chua co (chua chay migration), bo qua
+    // Nếu schema chưa có (chưa chạy migration), bỏ qua
   }
 }
 
@@ -74,11 +75,13 @@ export function normalizeDbRow(row) {
       : Date.now(),
     updated_at: row.updated_at ? new Date(row.updated_at).getTime() : null,
     source: row.source || null,
+    han_bao_gia: row.han_bao_gia || null,
+    email_body: row.email_body || null,
   };
 }
 
 /**
- * Luu job moi hoac cap nhat job cu (chi ghi vao DB).
+ * Lưu job mới hoặc cập nhật job cũ (chỉ ghi vào DB).
  */
 export async function saveJob(jobData) {
   if (!pool) {
@@ -95,8 +98,9 @@ export async function saveJob(jobData) {
          classify, ngon_ngu, thi_truong, status, lines_count, error, raw_email, extracted,
          attachments, ten_cong_ty, ma_khach_hang, han_giao, hinh_thuc_giao,
          xu_ly_be_mat, vat_lieu_chung_nhan, co_van_chuyen, drawings,
-         classify_output, classify_ai_payload, drawing_ai_payload, ghi_chu, source)
-      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24,$25,$26,$27,$28)
+         classify_output, classify_ai_payload, drawing_ai_payload, ghi_chu,
+         source, han_bao_gia, email_body)
+      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24,$25,$26,$27,$28,$29)
       ON CONFLICT (gmail_id) DO UPDATE SET
         subject=EXCLUDED.subject,
         sender_email=EXCLUDED.sender_email,
@@ -124,6 +128,8 @@ export async function saveJob(jobData) {
         drawing_ai_payload=EXCLUDED.drawing_ai_payload,
         ghi_chu=EXCLUDED.ghi_chu,
         source=EXCLUDED.source,
+        han_bao_gia=EXCLUDED.han_bao_gia,
+        email_body=EXCLUDED.email_body,
         updated_at=NOW()
       WHERE agent_jobs.status NOT IN ('pending_review', 'pushed')
     `,
@@ -155,6 +161,8 @@ export async function saveJob(jobData) {
         job.drawing_ai_payload ? JSON.stringify(job.drawing_ai_payload) : null,
         job.ghi_chu || null,
         job.source || null,
+        job.han_bao_gia || null,
+        job.email_body || null,
       ]
     );
   } catch (e) {
@@ -165,10 +173,10 @@ export async function saveJob(jobData) {
 }
 
 /**
- * Cap nhat job theo DB id hoac gmail_id (chi ghi vao DB).
- * Goi kieu 1: updateJob(jobDbId, { status: "pushed", ... })
- * Goi kieu 2: updateJob({ gmail_id: "xxx", status: "pending_review", ... })
- * Tra ve true neu update thanh cong, false neu bi skip (job da final).
+ * Cập nhật job theo DB id hoặc gmail_id (chỉ ghi vào DB).
+ * Gọi kiểu 1: updateJob(jobDbId, { status: "pushed", ... })
+ * Gọi kiểu 2: updateJob({ gmail_id: "xxx", status: "pending_review", ... })
+ * Trả về true nếu update thành công, false nếu bị skip (job đã final).
  */
 export async function updateJob(idOrFields, fields) {
   let jobDbId;
@@ -240,7 +248,7 @@ export async function updateJob(idOrFields, fields) {
 }
 
 /**
- * Lay tat ca jobs tu PostgreSQL.
+ * Lấy tất cả jobs từ PostgreSQL.
  */
 export async function getJobs() {
   if (!pool) return [];
@@ -256,7 +264,7 @@ export async function getJobs() {
 }
 
 /**
- * Lay 1 job theo id (so nguyen = DB id, chuoi = gmail_id).
+ * Lấy 1 job theo id (số nguyên = DB id, chuỗi = gmail_id).
  */
 export async function getJob(id) {
   if (!pool) return null;
@@ -279,22 +287,22 @@ export async function getJob(id) {
 }
 
 /**
- * Lay 1 job theo id hoac gmail_id (DB truoc, fallback = none).
+ * Lấy 1 job theo id hoặc gmail_id (DB trước, fallback = none).
  */
 export async function getJobAsync(id) {
   return getJob(id);
 }
 
 /**
- * Lay tat ca jobs (chi tu DB).
+ * Lấy tất cả jobs (chỉ từ DB).
  */
 export async function getJobsAsync() {
   return getJobs();
 }
 
 /**
- * Check email da duoc xu ly chua (chi kiem tra DB).
- * Tra ve true chi khi job da xu ly xong (pending_review hoac pushed).
+ * Kiểm tra email đã được xử lý chưa (chỉ kiểm tra DB).
+ * Trả về true chỉ khi job đã xử lý xong (pending_review hoặc pushed).
  */
 export async function isJobProcessed(gmailId) {
   if (!pool || !gmailId) return false;
@@ -310,6 +318,23 @@ export async function isJobProcessed(gmailId) {
   } catch (e) {
     console.error("[JobDB] isJobProcessed error:", e.message);
     return false;
+  }
+}
+
+export async function getJobsForReview(dateStr) {
+  if (!pool) return [];
+  try {
+    const result = await pool.query(
+      `SELECT * FROM mekongai.agent_jobs
+       WHERE DATE(created_at) = $1
+         AND (ghi_chu IS NOT NULL AND ghi_chu != '' AND char_length(ghi_chu) >= 10)
+       ORDER BY created_at DESC`,
+      [dateStr]
+    );
+    return result.rows.map(normalizeDbRow);
+  } catch (e) {
+    console.error("[JobDB] getJobsForReview error:", e.message);
+    return [];
   }
 }
 

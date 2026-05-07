@@ -6,13 +6,13 @@ import { exec } from "child_process";
 
 const CLIENT_ID = process.env.GMAIL_CLIENT_ID;
 const CLIENT_SECRET = process.env.GMAIL_CLIENT_SECRET;
-// Phai TRUNG KHOP 100% voi "Authorized redirect URIs" trong Google Cloud Console
+// Phải TRÙNG KHỚP 100% với "Authorized redirect URIs" trong Google Cloud Console
 const REDIRECT_URI =
   (process.env.GMAIL_OAUTH_REDIRECT_URI || "").trim() ||
   "http://localhost:3001/oauth2callback";
 
 if (!CLIENT_ID || !CLIENT_SECRET) {
-  console.error("Thieu GMAIL_CLIENT_ID hoac GMAIL_CLIENT_SECRET trong .env");
+  console.error("Thiếu GMAIL_CLIENT_ID hoặc GMAIL_CLIENT_SECRET trong .env");
   process.exit(1);
 }
 
@@ -20,12 +20,12 @@ let callbackUrl;
 try {
   callbackUrl = new URL(REDIRECT_URI);
 } catch {
-  console.error("GMAIL_OAUTH_REDIRECT_URI khong hop le:", REDIRECT_URI);
+  console.error("GMAIL_OAUTH_REDIRECT_URI không hợp lệ:", REDIRECT_URI);
   process.exit(1);
 }
 if (callbackUrl.protocol !== "http:") {
   console.error(
-    "Script nay chi ho tro http:// (localhost). URI:",
+    "Script này chỉ hỗ trợ http:// (localhost). URI:",
     REDIRECT_URI
   );
   process.exit(1);
@@ -54,27 +54,27 @@ console.log(
   "  APIs & Services -> Credentials -> OAuth client -> Authorized redirect URIs\n"
 );
 
-// Mo trinh duyet tu dong
+// Mở trình duyệt tự động
 function openBrowser(targetUrl) {
   if (process.platform === "win32") {
     exec(`start "" "${targetUrl}"`, (err) => {
-      if (err) console.error("Khong the mo trinh duyet:", err.message);
+      if (err) console.error("Không thể mở trình duyệt:", err.message);
     });
   } else if (process.platform === "darwin") {
     exec(`open "${targetUrl}"`, (err) => {
-      if (err) console.error("Khong the mo trinh duyet:", err.message);
+      if (err) console.error("Không thể mở trình duyệt:", err.message);
     });
   } else {
     exec(`xdg-open "${targetUrl}"`, (err) => {
-      if (err) console.error("Khong the mo trinh duyet:", err.message);
+      if (err) console.error("Không thể mở trình duyệt:", err.message);
     });
   }
 }
 
 openBrowser(authUrl);
-console.log("\nDa mo trinh duyet. Neu khong, truy cap URL sau:\n");
+console.log("\nĐã mở trình duyệt. Nếu không, truy cập URL sau:\n");
 console.log(authUrl);
-console.log("\nDang cho callback... (xac nhan tu Google)\n");
+console.log("\nĐang chờ callback... (xác nhận từ Google)\n");
 
 const HDR_HTML_UTF8 = { "Content-Type": "text/html; charset=utf-8" };
 const HDR_TEXT_UTF8 = { "Content-Type": "text/plain; charset=utf-8" };
@@ -115,12 +115,12 @@ const server = http.createServer(async (req, res) => {
     console.log("\n\n========== GMAIL_REFRESH_TOKEN ==========");
     console.log(tokens.refresh_token);
     console.log("==========================================\n");
-    console.log("Copy token tren vao GMAIL_REFRESH_TOKEN trong file .env\n");
+    console.log("Copy token trên vào GMAIL_REFRESH_TOKEN trong file .env\n");
 
     const body = `
       <h2 style="color:#0891B2">&#10003; Thành công!</h2>
-      <p>Refresh Token da duoc hien thi trong terminal.</p>
-      <p style="color:#d97706">Quay lai terminal de copy token vao file <code>.env</code>.</p>`;
+      <p>Refresh Token đã được hiển thị trong terminal.</p>
+      <p style="color:#d97706">Quay lại terminal để copy token vào file <code>.env</code>.</p>`;
     res.writeHead(200, HDR_HTML_UTF8);
     res.end(htmlPage("OAuth — Thành công", body));
 
@@ -132,7 +132,7 @@ const server = http.createServer(async (req, res) => {
     )}</p>`;
     res.writeHead(200, HDR_HTML_UTF8);
     res.end(htmlPage("OAuth — Lỗi", errBody));
-    console.error("Loi:", e.message);
+    console.error("Lỗi:", e.message);
     server.close();
     process.exit(1);
   }

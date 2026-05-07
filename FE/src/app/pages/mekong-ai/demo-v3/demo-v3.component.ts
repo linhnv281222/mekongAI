@@ -206,9 +206,8 @@ export class DemoV3Component implements OnInit, OnDestroy {
     this.activeEmail = full;
     this.loadDrawingLines();
     // Load tab thong tin chung fields
-    this.ghiChu = job.ghi_chu || (full.classify_output as any)?.ghi_chu || '';
-    const hanBaoGiaRaw = (full.classify_output as any)?.han_giao_hang || job.han_giao;
-    this.hanBaoGia = parseHanGiaoToDate(hanBaoGiaRaw);
+    this.ghiChu = job.ghi_chu || '';
+    this.hanBaoGia = parseHanGiaoToDate(job.han_bao_gia || null);
     this.coVanChuyen = job.co_van_chuyen ?? (full.classify_output as any)?.co_van_chuyen ?? null;
     this.xuLyBeMat = job.xu_ly_be_mat ?? (full.classify_output as any)?.xu_ly_be_mat ?? null;
     this.cdr.markForCheck();
@@ -249,9 +248,8 @@ export class DemoV3Component implements OnInit, OnDestroy {
       this.activeEmail = full;
       this.loadDrawingLines();
       // Load tab thong tin chung fields
-      this.ghiChu = job.ghi_chu || (full.classify_output as any)?.ghi_chu || '';
-      const hanBaoGiaRaw = (full.classify_output as any)?.han_giao_hang || job.han_giao;
-      this.hanBaoGia = parseHanGiaoToDate(hanBaoGiaRaw);
+      this.ghiChu = job.ghi_chu || '';
+      this.hanBaoGia = parseHanGiaoToDate(job.han_bao_gia || null);
       this.coVanChuyen = job.co_van_chuyen ?? (full.classify_output as any)?.co_van_chuyen ?? null;
       this.xuLyBeMat = job.xu_ly_be_mat ?? (full.classify_output as any)?.xu_ly_be_mat ?? null;
     } else if (this.activeEmail?.drawings?.length) {
@@ -551,17 +549,17 @@ export class DemoV3Component implements OnInit, OnDestroy {
   }
 
   get debugClassifyRaw(): string {
-    if (!this.activeEmail) return '(khong co)';
+    if (!this.activeEmail) return '(không có)';
     const classifyOutput = this.activeEmail.classify_output;
     return classifyOutput != null
       ? JSON.stringify(classifyOutput, null, 2)
-      : '(khong co classify_output)';
+      : '(không có classify_output)';
   }
 
   get debugDrawingsRaw(): string {
-    if (!this.activeEmail) return '(khong co)';
+    if (!this.activeEmail) return '(không có)';
     const drawings = this.activeEmail.drawings;
-    if (!drawings) return '(khong co drawings)';
+    if (!drawings) return '(không có drawings)';
     const filtered = (Array.isArray(drawings) ? drawings : [drawings]).map(({ id, data, filename }) => ({ id, data, filename }));
     return JSON.stringify(filtered, null, 2);
   }
@@ -569,17 +567,17 @@ export class DemoV3Component implements OnInit, OnDestroy {
   // AI Debug getters - request/response payloads
   get debugClassifyRequest(): string {
     const payload = this.aiDebugInfo.classifyRequest;
-    if (!payload) return '(chua co payload)';
+    if (!payload) return '(chưa có payload)';
     return JSON.stringify(payload, null, 2);
   }
 
   get debugDrawingsRequest(): string {
     const payloads = this.aiDebugInfo.drawingRequest;
-    if (!payloads) return '(chua co payload)';
+    if (!payloads) return '(chưa có payload)';
     if (Array.isArray(payloads)) {
       // Show first drawing payload as example
       const first = payloads.find(p => p != null);
-      return first ? JSON.stringify(first, null, 2) : '(khong co payload)';
+      return first ? JSON.stringify(first, null, 2) : '(không có payload)';
     }
     return JSON.stringify(payloads, null, 2);
   }
@@ -771,7 +769,7 @@ export class DemoV3Component implements OnInit, OnDestroy {
       drawings,
       {
         ghi_chu: this.ghiChu,
-        han_giao: hanBaoGiaValue,
+        han_bao_gia: hanBaoGiaValue,
         co_van_chuyen: this.coVanChuyen,
         xu_ly_be_mat: this.xuLyBeMat,
       }

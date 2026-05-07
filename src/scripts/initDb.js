@@ -6,11 +6,11 @@ const { Client } = pg;
 async function init() {
   const dbUrl = process.env.DATABASE_URL;
   if (!dbUrl) {
-    console.error("[InitDB] Thieu DATABASE_URL — kiem tra .env");
+    console.error("[InitDB] Thiếu DATABASE_URL — kiểm tra .env");
     process.exit(1);
   }
 
-  // Tach connection string de ket noi database mac dinh (postgres) truoc
+  // Tách connection string để kết nối database mặc định (postgres) trước
   const match = dbUrl.match(
     /^postgresql:\/\/([^:]+):([^@]+)@([^:]+):(\d+)\/(.+)$/
   );
@@ -20,13 +20,13 @@ async function init() {
   }
   const [, user, pass, host, port, dbname] = match;
 
-  // 1. Thu ket noi truc tiep vao database target (bo qua buoc tao DB)
+  // 1. Thử kết nối trực tiếp vào database target (bỏ qua bước tạo DB)
 
   const admin = new Client({ connectionString: dbUrl });
   try {
     await admin.connect();
   } catch {
-    // Neu ket noi that bai, thu ket noi vao database mac dinh "postgres"
+    // Nếu kết nối thất bại, thử kết nối vào database mặc định "postgres"
 
     const fallbackUrl = `postgresql://${user}:${pass}@${host}:${port}/postgres`;
     const fallback = new Client({ connectionString: fallbackUrl });
@@ -40,11 +40,11 @@ async function init() {
     } else {
     }
     await fallback.end();
-    // Thu ket noi lai vao database target sau khi tao xong
+    // Thử kết nối lại vào database target sau khi tạo xong
     await admin.connect();
   }
 
-  // 2. Chay init cho tung module
+  // 2. Chạy init cho từng module
 
   const { initDB } = await import("../data/drawRepository.js");
   await initDB();
@@ -56,6 +56,6 @@ async function init() {
 }
 
 init().catch((err) => {
-  console.error("[InitDB] Loi:", err.message);
+  console.error("[InitDB] Lỗi:", err.message);
   process.exit(1);
 });

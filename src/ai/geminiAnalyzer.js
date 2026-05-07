@@ -21,10 +21,10 @@ function extractJson(text) {
   if (arrMatch) {
     try { return JSON.parse(arrMatch); } catch {}
   }
-  throw new Error("Khong the extract JSON from response");
+  throw new Error("Không thể extract JSON from response");
 }
 
-/** Tim text con bat dau boi openChar va ket thuc boi closeChar (da can bang) */
+/** Tìm text con bắt đầu bởi openChar và kết thúc bởi closeChar (đã cân bằng) */
 function findBalancedBraces(text, openChar, closeChar) {
   let start = -1;
   for (let i = 0; i < text.length; i++) {
@@ -64,9 +64,9 @@ function geminiModel() {
 }
 
 /**
- * Doc ban ve PDF = Gemini (SDK moi @google/genai).
+ * Đọc bản vẽ PDF = Gemini (SDK mới @google/genai).
  * @param {string} pdfPath
- * @param {string} model — 'gemini-3-flash-preview' hoac 'gemini-3.5-flash-preview'
+ * @param {string} model — 'gemini-3-flash-preview' hoặc 'gemini-3.5-flash-preview'
  * @param {string|null} emailContext — nội dung email/chat để ưu tiên đúng nguồn
  * @returns {object} { success, data, raw, usage, request_payload }
  */
@@ -199,7 +199,7 @@ export async function debugPromptGemini(
   const modelName = geminiModel();
 
   const instruction = schema
-    ? `Phan tich yeu cau ben duoi va tra ve JSON theo schema:\n${schema}\n\nLuu y: Tra ve JSON thuan tuy, khong markdown, khong giai thich.`
+    ? `Phân tích yêu cầu bên dưới và trả về JSON theo schema:\n${schema}\n\nLưu ý: Trả về JSON thuần túy, không markdown, không giải thích.`
     : "";
 
   const fullUserMessage = schema

@@ -68,14 +68,14 @@ export async function initDB() {
 }
 
 /**
- * Luu ket qua phan tich ban ve.
+ * Lưu kết quả phân tích bản vẽ.
  * @param {string} filename
- * @param {object} analysisData — 9-field JSON tu AI
+ * @param {object} analysisData — 9-field JSON từ AI
  * @returns {number} drawing id
  */
 export async function saveDrawing(filename, analysisData) {
   if (!dbCfg.hasDb) {
-    console.warn("[DrawRepo] Khong co DB — skip saveDrawing");
+    console.warn("[DrawRepo] Không có DB — skip saveDrawing");
     return null;
   }
   const d = analysisData;
@@ -99,7 +99,7 @@ export async function saveDrawing(filename, analysisData) {
 }
 
 /**
- * Lay danh sach ban ve.
+ * Lấy danh sách bản vẽ.
  * @param {{limit, offset, status}} opts
  */
 export async function listDrawings({ limit = 20, offset = 0, status } = {}) {
@@ -120,7 +120,7 @@ export async function listDrawings({ limit = 20, offset = 0, status } = {}) {
 }
 
 /**
- * Lay chi tiet 1 ban ve.
+ * Lấy chi tiết 1 bản vẽ.
  * @param {number} id
  */
 export async function getDrawing(id) {
@@ -132,7 +132,7 @@ export async function getDrawing(id) {
 }
 
 /**
- * Cap nhat trang thai + ghi chu khi kysu review.
+ * Cập nhật trạng thái + ghi chú khi kỹ sư review.
  * @param {number} id
  * @param {{status, notes, correctedData}} opts
  */

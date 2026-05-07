@@ -23,11 +23,19 @@ import {
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
-/** Tranh 2 luong xu ly cung 1 Gmail message (trong khi chua ghi job xong) */
+/** Tranh 2 luong xu ly cung 1 Gmail message */
 const inflightMsgIds = new Set();
 
 function makeJobId(msgId) {
   return "job_" + msgId.slice(-8) + "_" + Date.now().toString().slice(-4);
+}
+
+/** Chi cần có file đính kèm là proceed. AI classify sẽ quyết định có phải RFQ không. */
+function cheapRfqFilter(emailData) {
+  if (!emailData.attachments.length) {
+    return { pass: false, reason: "no_pdf_skip" };
+  }
+  return { pass: true };
 }
 
 // ─── PIPELINE CHINH ───────────────────────────────────────────────────────
@@ -47,17 +55,25 @@ async function processEmail(gmail, msgId) {
     try {
       emailData = await parseGmailMsg(gmail, msgId);
     } catch (e) {
-      console.error("[Parse] Loi:", e.message);
+      console.error("[Parse] Lỗi:", e.message);
       return;
     }
 
     console.log(
       `[Agent] PDFs: ${
-        emailData.attachments.map((a) => a.name).join(", ") || "khong co"
+        emailData.attachments.map((a) => a.name).join(", ") || "không có"
       }`
     );
 
-    // 3. Classify
+    // ── 2b. Chỉ check attachment: có file → proceed, không → skip
+    const pre = cheapRfqFilter(emailData);
+    if (!pre.pass) {
+      console.log(`[Agent] No attachment → skip, no AI call`);
+      await markRead(gmail, msgId);
+      return;
+    }
+
+    // 3. Classify (AI call)
     const classify = await classifyEmail(emailData);
     console.log(
       `[Classify] config=${classify._model_used} | api=${classify._model_from_api} | body_len=${classify._body_len}/${classify._body_sent} → ${classify.loai} | ${classify.ngon_ngu} | ${classify.ly_do}`
@@ -83,10 +99,10 @@ async function processEmail(gmail, msgId) {
       })),
     };
 
-    // Khong phai RFQ → ghi job ngan (1 lan save, co id + created_at) roi danh dau da doc
+    // Không phải RFQ → ghi job ngắn (1 lần save, có id + created_at) rồi đánh dấu đã đọc
     if (!["rfq", "repeat_order"].includes(classify.loai)) {
       console.log(
-        `[Agent] Khong phai RFQ (${classify.loai}) → ghi nhan, bo qua`
+        `[Agent] Không phải RFQ (${classify.loai}) → ghi nhận, bỏ qua`
       );
       await saveJob({
         id: makeJobId(msgId),
@@ -106,6 +122,7 @@ async function processEmail(gmail, msgId) {
         created_at: Date.now(),
         raw: rawMeta,
         source: 'email',
+        email_body: emailData.body || null,
         // AI Debug
         classify_ai_payload: classifyAiPayload,
         drawing_ai_payload: null,
@@ -133,6 +150,7 @@ async function processEmail(gmail, msgId) {
         created_at: Date.now(),
         raw: rawMeta,
         source: 'email',
+        email_body: emailData.body || null,
         // AI Debug
         classify_ai_payload: classifyAiPayload,
         drawing_ai_payload: null,
@@ -141,7 +159,7 @@ async function processEmail(gmail, msgId) {
       return;
     }
 
-    // RFQ + co PDF → bat dau xu ly, danh dau UNREAD ngay de chan race
+    // RFQ + có PDF → bắt đầu xử lý, đánh dấu UNREAD ngay để chặn race
     await markRead(gmail, msgId);
 
     // 4. Xu ly tung file PDF — tach trang → AI doc → gom lai
@@ -158,7 +176,7 @@ async function processEmail(gmail, msgId) {
         );
         console.log(`[Download] OK ${att.name} (${pdfBuffer.length} bytes)`);
       } catch (e) {
-        console.error(`[Download] Loi ${att.name}:`, e.message);
+        console.error(`[Download] Lỗi ${att.name}:`, e.message);
         continue;
       }
 
@@ -168,8 +186,8 @@ async function processEmail(gmail, msgId) {
         pages = await splitPdf(pdfBuffer, att.name);
         console.log(`[SplitPDF] ${att.name} → ${pages.length} trang`);
       } catch (e) {
-        console.error(`[SplitPDF] Loi:`, e.message);
-        // Fallback: gui nguyen 1 file
+        console.error(`[SplitPDF] Lỗi:`, e.message);
+        // Fallback: gửi nguyên 1 file
         const tmpPath = path.join(
           os.tmpdir(),
           `vnt_full_${Date.now()}_${att.name}`
@@ -194,7 +212,7 @@ async function processEmail(gmail, msgId) {
           }
 
           if (!drawingHasMinimalData(flat)) {
-            console.warn(`[BV] Skip trang ${pg.page} (${pg.name}) — khong du du lieu AI tra ve`);
+            console.warn(`[BV] Skip trang ${pg.page} (${pg.name}) — không đủ dữ liệu AI trả về`);
             console.warn(`[BV]   ma_ban_ve="${flat.ma_ban_ve}" vat_lieu="${flat.vat_lieu}" kich_thuoc="${flat.kich_thuoc}"`);
             continue;
           }
@@ -215,7 +233,7 @@ async function processEmail(gmail, msgId) {
             fileIndex: 0,
           });
         } catch (e) {
-          console.error(`[BV] Loi trang ${pg.page}:`, e.message);
+          console.error(`[BV] Lỗi trang ${pg.page}:`, e.message);
         } finally {
           fs.unlink(pg.path, () => {});
         }
@@ -224,7 +242,7 @@ async function processEmail(gmail, msgId) {
       }
     }
 
-    // 5. Tao job ID + luu
+    // 5. Tạo job ID + lưu
     const jobId = makeJobId(msgId);
 
     // Extract drawing AI payloads
@@ -247,7 +265,8 @@ async function processEmail(gmail, msgId) {
       xu_ly_be_mat: classify.xu_ly_be_mat,
       vat_lieu_chung_nhan: classify.vat_lieu_chung_nhan,
       ten_cong_ty: classify.ten_cong_ty,
-      ghi_chu: emailData.body.slice(0, 5000),
+      ghi_chu: null,
+      email_body: emailData.body || null,
       attachments: emailData.attachments.map((a) => ({
         name: a.name,
         attachmentId: a.attachmentId,
@@ -270,9 +289,9 @@ async function processEmail(gmail, msgId) {
 // ─── BUILD EMAIL CONTEXT FOR DRAWING ANALYSIS ────────────────────────────────
 
 /**
- * Xay dung chuoi context tu email de truyen vao Gemini drawing analysis.
- * Gemini se uu tien: email > drawing.
- * Format: cac truong quan trong nhat, ngan gon, de AI hieu.
+ * Xây dựng chuỗi context từ email để truyền vào Gemini drawing analysis.
+ * Gemini sẽ ưu tiên: email > drawing.
+ * Format: các trường quan trọng nhất, ngắn gọn, để AI hiểu.
  */
 async function buildEmailContext(emailData, classify) {
   const parts = [];
@@ -305,7 +324,7 @@ async function buildEmailContext(emailData, classify) {
   return parts.join("\n\n");
 }
 
-// ─── GOI API SERVER DE DOC BAN VE ───────────────────────────────────────
+// ─── GỌI API SERVER ĐỂ ĐỌC BẢN VẼ ───────────────────────────────────────
 
 async function analyzeDrawingApi(pdfPath, filename, emailContext = null) {
   const { provider } = loadAiConfig();
@@ -332,24 +351,24 @@ async function scanOnce(gmail) {
   try {
     const messages = await fetchUnread(gmail);
     console.log(
-      `[Scan] Tim thay ${messages.length} email chua doc co dinh kem`
+      `[Scan] Tìm thấy ${messages.length} email chưa đọc có đính kèm`
     );
 
     for (const msg of messages) {
       try {
         await processEmail(gmail, msg.id);
       } catch (e) {
-        console.error(`[Scan] Loi xu ly ${msg.id}:`, e.message);
+        console.error(`[Scan] Lỗi xử lý ${msg.id}:`, e.message);
       }
       await new Promise((r) => setTimeout(r, 2000));
     }
   } catch (e) {
-    console.error("[Scan] Loi:", e.message);
+    console.error("[Scan] Lỗi:", e.message);
   }
 }
 
 async function run() {
-  // Kiem tra config bat buoc
+  // Kiểm tra config bắt buộc
   const required = [
     "ANTHROPIC_API_KEY",
     "GMAIL_CLIENT_ID",
@@ -358,16 +377,16 @@ async function run() {
   ];
   const missing = required.filter((k) => !process.env[k]);
   if (missing.length) {
-    console.error("[Config] Thieu ENV:", missing.join(", "));
+    console.error("[Config] Thiếu ENV:", missing.join(", "));
     process.exit(1);
   }
 
   const gmail = makeGmail();
 
-  // Scan lan dau ngay khi start
+  // Scan lần đầu ngay khi start
   await scanOnce(gmail);
 
-  // Lap theo interval
+  // Lặp theo interval
   setInterval(() => scanOnce(gmail), gmailCfg.scanIntervalSec * 1000);
 }
 

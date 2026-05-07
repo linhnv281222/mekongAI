@@ -51,13 +51,13 @@ function resolveAttachmentFilename(req) {
 /** Lấy buffer PDF từ Gmail HOẶC từ thư mục uploads (chat uploads); set header X-Job-Attachments khi refresh danh sách đính kèm. */
 async function loadAttachmentPdfBuffer(jobId, filename, res) {
   if (!jobId) {
-    return { ok: false, status: 400, body: { error: "Thieu job id" } };
+    return { ok: false, status: 400, body: { error: "Thiếu job id" } };
   }
   if (!filename) {
     return {
       ok: false,
       status: 400,
-      body: { error: "Thieu ten file (?f= hoac body JSON { f })" },
+      body: { error: "Thiếu tên file (?f= hoặc body JSON { f })" },
     };
   }
 
@@ -185,7 +185,7 @@ async function loadAttachmentPdfBuffer(jobId, filename, res) {
         encodeURIComponent(JSON.stringify(refreshed))
       );
     } catch (_) {
-      /* bo qua */
+      /* bỏ qua */
     }
   }
 
@@ -211,7 +211,7 @@ async function loadAttachmentPdfBuffer(jobId, filename, res) {
     return {
       ok: false,
       status: 500,
-      body: { error: "Loi tai attachment: " + e.message },
+      body: { error: "Lỗi tại attachment: " + e.message },
     };
   }
 }
@@ -321,6 +321,8 @@ router.get("/", async (req, res) => {
       vat_lieu_chung_nhan: j.vat_lieu_chung_nhan ?? null,
       drawings: j.drawings || [],
       source: j.source || null,
+      email_body: j.email_body || null,
+      han_bao_gia: j.han_bao_gia || null,
       // AI Debug payloads
       classify_ai_payload: j.classify_ai_payload ?? null,
       drawing_ai_payload: j.drawing_ai_payload ?? null,

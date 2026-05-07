@@ -58,12 +58,12 @@ const upload = multer({
     const ok =
       file.mimetype === "application/pdf" ||
       file.originalname.toLowerCase().endsWith(".pdf");
-    cb(ok ? null : new Error("Chi nhan PDF"), ok);
+    cb(ok ? null : new Error("Chỉ nhận PDF"), ok);
   },
   limits: { fileSize: 50 * 1024 * 1024 },
 });
 
-// ─── TACH TRANG PDF (local — chi tra ve Buffer) ────────────────────────────
+// ─── TÁCH TRANG PDF (local — chỉ trả về Buffer) ────────────────────────────
 
 async function splitPdfLocal(buffer) {
   const doc = await PDFDocument.load(buffer);
@@ -85,7 +85,7 @@ async function splitPdfLocal(buffer) {
 
 router.post("/", upload.single("file"), async (req, res) => {
   console.log('[DrawController] POST /drawings START filename=' + req.file?.originalname + ' size=' + req.file?.size);
-  if (!req.file) return res.status(400).json({ error: "Thieu file PDF" });
+  if (!req.file) return res.status(400).json({ error: "Thiếu file PDF" });
 
   try {
     const providerHint = req.query.provider || null;
@@ -119,7 +119,7 @@ router.post("/", upload.single("file"), async (req, res) => {
 // ─── POST /drawings/batch — Tach + doc nhieu trang ─────────────────────────
 
 router.post("/batch", upload.single("file"), async (req, res) => {
-  if (!req.file) return res.status(400).json({ error: "Thieu file PDF" });
+  if (!req.file) return res.status(400).json({ error: "Thiếu file PDF" });
 
   const pdfBuffer = fs.readFileSync(req.file.path);
   fs.unlink(req.file.path, () => {});
@@ -163,7 +163,7 @@ router.post("/batch", upload.single("file"), async (req, res) => {
           `[Batch] ✓ Trang ${pg.page}: ${flat.ma_ban_ve} — ${flat.vat_lieu}`
         );
       } else {
-        console.warn(`[Batch] Trang ${pg.page} loi:`, result.error);
+        console.error(`[Batch] Trang ${pg.page} lỗi:`, result.error);
       }
     } catch (e) {
       console.error(`[Batch] Trang ${pg.page} exception:`, e.message);
@@ -186,11 +186,11 @@ router.post("/batch", upload.single("file"), async (req, res) => {
 router.post("/:id/correct", async (req, res) => {
   const { message } = req.body;
   if (!message?.trim())
-    return res.status(400).json({ error: "Thieu noi dung" });
+    return res.status(400).json({ error: "Thiếu nội dung" });
 
   try {
     const drawing = await getDrawing(parseInt(req.params.id));
-    if (!drawing) return res.status(404).json({ error: "Khong tim thay" });
+    if (!drawing) return res.status(404).json({ error: "Không tìm thấy" });
 
     const result = await correctDrawingGemini(drawing.full_data, message);
     if (!result.success) return res.status(422).json({ error: result.error });
@@ -227,7 +227,7 @@ router.get("/", async (req, res) => {
 
 router.get("/:id", async (req, res) => {
   const d = await getDrawing(parseInt(req.params.id));
-  if (!d) return res.status(404).json({ error: "Khong tim thay" });
+  if (!d) return res.status(404).json({ error: "Không tìm thấy" });
   res.json(d);
 });
 

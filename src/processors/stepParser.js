@@ -1,9 +1,9 @@
 import fs from "fs";
 
 /**
- * Parse file STEP, tra ve kich thuoc chi tiet.
- * @param {string} stepPath — duong dan file .stp hoac .step
- * @returns {object} kich thuoc da trich xuat
+ * Parse file STEP, trả về kích thước chi tiết.
+ * @param {string} stepPath — đường dẫn file .stp hoặc .step
+ * @returns {object} kích thước đã trích xuất
  */
 export function parseStep(stepPath) {
   const content = fs.readFileSync(stepPath, "utf-8");
@@ -11,7 +11,7 @@ export function parseStep(stepPath) {
 }
 
 /**
- * Parse noi dung STEP string.
+ * Parse nội dung STEP string.
  * @param {string} content
  * @returns {object}
  */
@@ -31,7 +31,7 @@ export function parseStepContent(content) {
     bounding_box: null,
   };
 
-  // ── Ma chi tiet ────────────────────────────────────────────────────────────
+  // ── Mã chi tiết ────────────────────────────────────────────────────────────
   const prodMatch = content.match(/PRODUCT\('([^']+)','([^']+)'/);
   if (prodMatch) result.ma_chi_tiet = prodMatch[1];
 
@@ -88,7 +88,7 @@ export function parseStepContent(content) {
     (a, b) => a - b
   );
 
-  // ── Nhan dien hinh dang ─────────────────────────────────────────────────────
+  // ── Nhận diện hình dạng ─────────────────────────────────────────────────────
   const hasSurfaceOfRevolution = content.includes("SURFACE_OF_REVOLUTION");
   const hasPlane = (content.match(/\bPLANE\b/g) || []).length;
   const hasCylindrical = cylRadii.length > 0;
@@ -122,7 +122,7 @@ export function parseStepContent(content) {
     result.kich_thuoc.chieu_cao_mm = dims[2];
   }
 
-  // ── Lo va be mat dac biet ─────────────────────────────────────────────────
+  // ── Lỗ và bề mặt đặc biệt ─────────────────────────────────────────────────
   const cones = [
     ...content.matchAll(
       /CONICAL_SURFACE\('[^']*',#\d+,([\d.E+\-]+),([\d.E+\-]+)\)/g
