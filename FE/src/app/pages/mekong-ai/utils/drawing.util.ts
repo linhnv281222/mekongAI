@@ -22,6 +22,8 @@ export interface DrawingLine {
   ma_quy_trinh: string;
   ly_giai_qt: string;
   dung_sai: string;
+  note: string;
+  danh_gia: 0 | 1 | 99;
   _raw: Record<string, unknown>;
 }
 
@@ -48,6 +50,7 @@ interface NormalizedDrawingData {
   co_gdt: boolean;
   ma_quy_trinh: string;
   ly_giai_qt: string;
+  note: string;
 }
 
 // ── Helpers ─────────────────────────────────────────────────
@@ -119,7 +122,7 @@ function normalizeDrawingDataForUi(raw: unknown): NormalizedDrawingData {
       xu_ly_be_mat: '', xu_ly_nhiet: '', dung_sai_chung: '',
       hinh_dang: '', kich_thuoc: '', so_be_mat_cnc: null,
       dung_sai_chat_nhat: '', co_gdt: false,
-      ma_quy_trinh: '', ly_giai_qt: '',
+      ma_quy_trinh: '', ly_giai_qt: '', note: '',
     };
   }
 
@@ -152,6 +155,7 @@ function normalizeDrawingDataForUi(raw: unknown): NormalizedDrawingData {
       co_gdt: Boolean(r['co_gdt']),
       ma_quy_trinh: toStrUi(r['ma_quy_trinh']),
       ly_giai_qt: toStrUi(r['ly_giai_qt']),
+      note: toStrUi(r['note']),
     };
   }
 
@@ -188,6 +192,7 @@ function normalizeDrawingDataForUi(raw: unknown): NormalizedDrawingData {
     co_gdt: Boolean(r['co_gdt']),
     ma_quy_trinh: maQtLegacyUi(r),
     ly_giai_qt: toStrUi(r['ly_giai_qt']),
+    note: toStrUi(r['note']),
   };
 }
 
@@ -214,6 +219,8 @@ export function drawingToLine(r: RawDrawing, indexHint: number): DrawingLine {
     ma_quy_trinh: d.ma_quy_trinh,
     ly_giai_qt: d.ly_giai_qt,
     dung_sai: d.dung_sai_chung,
+    note: d.note,
+    danh_gia: ((r.data as Record<string, unknown>)?.['danh_gia'] as number) as 0 | 1 | 99 || 0,
     _raw: r.data || {},
   };
 }

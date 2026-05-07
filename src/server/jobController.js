@@ -83,7 +83,7 @@ async function loadAttachmentPdfBuffer(jobId, filename, res) {
     }
   }
   if (!job)
-    return { ok: false, status: 404, body: { error: "Khong tim thay job" } };
+    return { ok: false, status: 404, body: { error: "Không tìm thấy job" } };
 
   // ── 2. Lấy actual chat job id từ gmail_id để construct file path ──
   // gmail_id dạng: "chat_chat_mo8jum7g_jxpc"  → actual id: "chat_mo8jum7g_jxpc"
@@ -178,7 +178,7 @@ async function loadAttachmentPdfBuffer(jobId, filename, res) {
         name: a.name,
         attachmentId: a.attachmentId,
       }));
-      updateJob(job.id, { attachments: refreshed });
+      updateJob(Number(job.id), { attachments: refreshed });
       att = refreshed.find((a) => a.name === filename || a.name === safeName);
       res.setHeader(
         "X-Job-Attachments",
@@ -193,7 +193,7 @@ async function loadAttachmentPdfBuffer(jobId, filename, res) {
     return {
       ok: false,
       status: 404,
-      body: { error: "Khong tim thay attachment" },
+      body: { error: "Không tìm thấy file đính kèm" },
     };
   }
 
@@ -320,6 +320,7 @@ router.get("/", async (req, res) => {
       xu_ly_be_mat: j.xu_ly_be_mat ?? null,
       vat_lieu_chung_nhan: j.vat_lieu_chung_nhan ?? null,
       drawings: j.drawings || [],
+      source: j.source || null,
       // AI Debug payloads
       classify_ai_payload: j.classify_ai_payload ?? null,
       drawing_ai_payload: j.drawing_ai_payload ?? null,
@@ -340,15 +341,74 @@ router.get("/:id/attachment/*", attachmentPreviewHandler);
 
 router.get("/:id", async (req, res) => {
   const job = await getJobAsync(req.params.id);
-  if (!job) return res.status(404).json({ error: "Khong tim thay" });
+  if (!job) return res.status(404).json({ error: "Không tìm thấy" });
   res.json(job);
+});
+
+// ─── PUT /jobs/:id ──────────────────────────────────────────────────────────
+
+router.put("/:id", async (req, res) => {
+  const { drawings, body } = req.body;
+
+  // TODO: remove debug logging
+  console.log('[PUT /jobs/:id] drawings:', JSON.stringify(drawings)?.slice(0, 200));
+  console.log('[PUT /jobs/:id] body:', JSON.stringify(body)?.slice(0, 200));
+
+  // Always fetch job once to get numeric id
+  const job = await getJobAsync(req.params.id);
+  if (!job) return res.status(404).json({ error: "Không tìm thấy" });
+
+  const jobDbId = Number(job.id);
+  if (!jobDbId || Number.isNaN(jobDbId)) {
+    console.error("[PUT /jobs/:id] invalid job.id:", job.id);
+    return res.status(400).json({ error: "Invalid job id" });
+  }
+
+  if (drawings && Array.isArray(drawings)) {
+    const existing = Array.isArray(job.drawings) ? job.drawings : [];
+    const updated = existing.map((d) => {
+      const updatedD = drawings.find((u) => u.id === d.id);
+      if (updatedD) {
+        const updatedNote = updatedD.data?.note ?? updatedD.note ?? d.data?.note ?? "";
+        const updatedDanhGia = updatedD.data?.danh_gia ?? updatedD.danh_gia ?? d.data?.danh_gia ?? 0;
+        return {
+          ...d,
+          data: {
+            ...(d.data || {}),
+            ...(updatedD.data || {}),
+            note: updatedNote,
+            danh_gia: updatedDanhGia,
+          },
+        };
+      }
+      return d;
+    });
+
+    await updateJob(jobDbId, { drawings: updated });
+  }
+
+  if (body && typeof body === "object") {
+    const allowed = [
+      "ghi_chu", "han_giao", "han_bao_gia", "hinh_thuc_giao",
+      "xu_ly_be_mat", "vat_lieu_chung_nhan",
+      "classify_output",
+    ];
+    const fields = Object.keys(body)
+      .filter((k) => allowed.includes(k))
+      .reduce((acc, k) => ({ ...acc, [k]: body[k] }), {});
+    if (Object.keys(fields).length > 0) {
+      await updateJob(jobDbId, fields);
+    }
+  }
+
+  res.json({ ok: true });
 });
 
 // ─── POST /jobs/:id/push-erp ────────────────────────────────────────────────
 
 router.post("/:id/push-erp", async (req, res) => {
   const job = await getJobAsync(req.params.id);
-  if (!job) return res.status(404).json({ error: "Khong tim thay" });
+  if (!job) return res.status(404).json({ error: "Không tìm thấy" });
 
   updateJob(job.id, { status: "pushed", pushed_at: Date.now() });
 

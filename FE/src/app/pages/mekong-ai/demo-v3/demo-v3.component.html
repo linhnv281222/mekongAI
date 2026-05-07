@@ -99,6 +99,11 @@
             <div class="ei-prev">{{ emailItem.preview }}</div>
             <div class="ei-tags">
               <p-tag
+                *ngIf="emailItem.source !== undefined"
+                [value]="getSourceLabel(emailItem.source)"
+                severity="secondary"
+              ></p-tag>
+              <p-tag
                 *ngIf="emailItem.classify === 'rfq'"
                 value="✓ RFQ"
                 severity="success"
@@ -115,8 +120,8 @@
               ></p-tag>
               <p-tag
                 *ngIf="emailItem.attachments?.length"
-                [value]="'📎 ' + emailItem.attachments!.length"
-                severity="secondary"
+                [value]="emailItem.attachments!.length + ' file'"
+                severity="info"
               ></p-tag>
             </div>
           </div>
@@ -152,13 +157,18 @@
               >Từ: <b>{{ activeEmail.from }}</b></span
             >
             <span
-              >📅 <b>{{ activeEmail.date }}</b></span
+              ><b>{{ activeEmail.date }}</b></span
             >
           </div>
           <div class="e-tags">
             <p-tag
               [value]="activeEmail.classify || ''"
               severity="secondary"
+            ></p-tag>
+            <p-tag
+              *ngIf="activeEmail.source"
+              [value]="getSourceLabel(activeEmail.source)"
+              severity="info"
             ></p-tag>
             <p-tag
               *ngIf="activeEmail.thi_truong"
@@ -208,16 +218,18 @@
         <div class="e-tags">
           <p-tag value="✓ RFQ" severity="success"></p-tag>
           <p-tag
+            *ngIf="activeEmail.source"
+            [value]="getSourceLabel(activeEmail.source)"
+            severity="info"
+          ></p-tag>
+          <p-tag
             *ngIf="activeEmail.thi_truong"
             [value]="getMarketTag(activeEmail.thi_truong).label"
             severity="info"
           ></p-tag>
           <ng-container *ngFor="let attachment of getAttachmentList()">
             <p-tag
-              [value]="
-                (isActiveAttachment(attachment) ? '📖 ' : '📎 ') +
-                getAttachmentName(attachment)
-              "
+              [value]="getAttachmentName(attachment)"
               [severity]="isActiveAttachment(attachment) ? 'info' : 'secondary'"
               [style.cursor]="'pointer'"
               (click)="onSelectAttachment(attachment)"
@@ -225,8 +237,8 @@
           </ng-container>
           <p-tag
             *ngIf="activeEmail._agent"
-            value="⚡ Agent"
-            severity="info"
+            value="Agent"
+            severity="warning"
           ></p-tag>
           <button type="button" class="btn-debug" (click)="toggleDebug()">
             Debug
@@ -288,6 +300,7 @@
                       >Thời hạn báo giá <span class="ai-mark">AI</span></label
                     >
                     <p-calendar
+                      [(ngModel)]="hanBaoGia"
                       [showIcon]="true"
                       [showButtonBar]="true"
                       dateFormat="dd/mm/yy"
@@ -416,6 +429,7 @@
                       rows="10"
                       style="min-height: 200px"
                       class="ta-field"
+                      [(ngModel)]="ghiChu"
                     ></textarea>
                   </div>
                 </div>
@@ -528,30 +542,66 @@
                   >
                     <ng-template pTemplate="header">
                       <tr>
-                        <th [style.width.px]="getColWidth('stt')">STT</th>
-                        <th [style.width.px]="getColWidth('ma_ban_ve')">
+                        <th
+                          [style.width.px]="getColWidth('stt')"
+                          style="font-size: 12.8px"
+                        >
+                          STT
+                        </th>
+                        <th
+                          [style.width.px]="getColWidth('ma_ban_ve')"
+                          style="font-size: 12.8px"
+                        >
                           Mã bản vẽ
                         </th>
                         <th
                           class="th-right"
                           [style.width.px]="getColWidth('so_luong')"
+                          style="font-size: 12.8px"
                         >
                           SL
                         </th>
-                        <th [style.width.px]="getColWidth('hinh_dang')">
+                        <th
+                          [style.width.px]="getColWidth('hinh_dang')"
+                          style="font-size: 12.8px"
+                        >
                           Hình dạng
                         </th>
-                        <th [style.width.px]="getColWidth('dung_sai')">
+                        <th
+                          [style.width.px]="getColWidth('dung_sai')"
+                          style="font-size: 12.8px"
+                        >
                           Dung sai
                         </th>
-                        <th [style.width.px]="getColWidth('vat_lieu')">
+                        <th
+                          [style.width.px]="getColWidth('vat_lieu')"
+                          style="font-size: 12.8px"
+                        >
                           Vật liệu
                         </th>
-                        <th [style.width.px]="getColWidth('kich_thuoc')">
+                        <th
+                          [style.width.px]="getColWidth('kich_thuoc')"
+                          style="font-size: 12.8px"
+                        >
                           Kích thước
                         </th>
-                        <th [style.width.px]="getColWidth('ma_quy_trinh')">
+                        <th
+                          [style.width.px]="getColWidth('ma_quy_trinh')"
+                          style="font-size: 12.8px"
+                        >
                           Mã QT
+                        </th>
+                        <th
+                          [style.width.px]="getColWidth('ghi_chu')"
+                          style="font-size: 12.8px"
+                        >
+                          Ghi chú
+                        </th>
+                        <th
+                          [style.width.px]="getColWidth('danh_gia')"
+                          style="font-size: 12.8px"
+                        >
+                          Đánh giá
                         </th>
                       </tr>
                     </ng-template>
@@ -650,6 +700,38 @@
                             "
                           />
                         </td>
+                        <td>
+                          <input
+                            type="text"
+                            class="bv-input"
+                            [class.bv-input--modified]="
+                              isDrawingFieldModified(rowIndex, 'note')
+                            "
+                            [value]="drawingLine.note"
+                            placeholder="—"
+                            (change)="
+                              onDrawingFieldChange(rowIndex, 'note', $event)
+                            "
+                          />
+                        </td>
+                        <td>
+                          <div class="danh-gia-radio">
+                            <p-radioButton
+                              [inputId]="'danh_gia_ok_' + rowIndex"
+                              [name]="'danh_gia_' + rowIndex"
+                              [value]="1"
+                              [(ngModel)]="drawingLine.danh_gia"
+                            ></p-radioButton>
+                            <label [for]="'danh_gia_ok_' + rowIndex" class="radio-label radio-ok">✓</label>
+                            <p-radioButton
+                              [inputId]="'danh_gia_fail_' + rowIndex"
+                              [name]="'danh_gia_' + rowIndex"
+                              [value]="99"
+                              [(ngModel)]="drawingLine.danh_gia"
+                            ></p-radioButton>
+                            <label [for]="'danh_gia_fail_' + rowIndex" class="radio-label radio-fail">✗</label>
+                          </div>
+                        </td>
                       </tr>
                     </ng-template>
                   </p-table>
@@ -721,18 +803,16 @@
           label="Lưu phiếu"
           icon="pi pi-save"
           styleClass="p-button-primary"
+          [loading]="saving"
+          (onClick)="savePhieu()"
         ></p-button>
-        <p-button
-          label="Xác nhận"
-          icon="pi pi-check"
-          styleClass="p-button-success"
-        ></p-button>
+
         <p-button
           label="In PBG"
           icon="pi pi-print"
           styleClass="p-button-secondary"
         ></p-button>
-        <p-button
+        <!-- <p-button
           *ngIf="activeEmail?.jobId"
           label="Push ERP"
           icon="pi pi-cloud-upload"
@@ -743,7 +823,7 @@
           label="Hủy"
           icon="pi pi-times"
           styleClass="p-button-secondary"
-        ></p-button>
+        ></p-button> -->
       </div>
     </ng-container>
   </div>

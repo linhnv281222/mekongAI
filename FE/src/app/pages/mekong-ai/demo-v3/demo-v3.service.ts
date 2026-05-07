@@ -92,7 +92,9 @@ export class DemoV3Service implements OnDestroy {
       vat_lieu_chung_nhan: job.vat_lieu_chung_nhan ?? null,
       classify_output: normalizeClassifyOutputFromJob(job),
       ten_kh: job.ten_cong_ty || job.sender || partial.ten_kh || '',
+      source: job.source ?? partial.source ?? undefined,
       drawings: job.drawings || [],
+      ghi_chu: job.ghi_chu || '',
       _needLoad: false,
       // AI Debug payloads
       classify_ai_payload: job.classify_ai_payload ?? null,
@@ -182,17 +184,30 @@ export class DemoV3Service implements OnDestroy {
     if (gen !== this.previewLoadGen) return null;
     if (!data?.ok || !data.b64) return null;
     const bytes = this.b64ToBytes(data.b64);
+    const cloned = new Uint8Array(bytes);
     this.currentPreviewFile = fileName;
-    this.previewBytesCache = bytes;
-    return { bytes, mime: data.mime };
+    this.previewBytesCache = cloned;
+    return { bytes: cloned, mime: data.mime };
   }
 
   getPreviewBytesCache(): Uint8Array | null {
-    return this.previewBytesCache;
+    return this.previewBytesCache
+      ? new Uint8Array(this.previewBytesCache)
+      : null;
   }
 
   getCurrentPreviewFile(): string {
     return this.currentPreviewFile;
+  }
+
+  savePhieu(jobId: number | string, drawings: Record<string, unknown>[], body?: Record<string, unknown>): Promise<boolean> {
+    return firstValueFrom(
+      this.http.put<{ ok: boolean }>(
+        `${this.path}/jobs/${jobId}`,
+        { drawings, body },
+        { headers: new HttpHeaders({ 'Content-Type': 'application/json' }) }
+      )
+    ).then(() => true).catch(() => false);
   }
 
   // ── Misc ───────────────────────────────────────────────────

@@ -27,7 +27,9 @@ export interface EmailRow {
   vat_lieu_chung_nhan: string | null;
   classify_output: ClassifyOutput | null;
   drawings: Drawing[];
+  ghi_chu?: string;
   unread: boolean;
+  source?: string; // 'email' | 'chat'
   _agent?: boolean;
   _needLoad?: boolean;
   // AI Debug payloads from agent
