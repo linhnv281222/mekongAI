@@ -8,6 +8,8 @@
     "start": "node src/server/serverMain.js",
     "dev": "node --watch src/server/serverMain.js",
     "agent": "node src/agents/emailAgent.js",
+    "review-agent": "node src/agents/dailyReviewAgent.js",
+    "review-agent:now": "node src/agents/dailyReviewAgent.js now",
     "oauth": "node src/agents/gmailOAuthSetup.js",
     "db:init": "node src/scripts/initDb.js"
   },
@@ -22,6 +24,7 @@
     "form-data": "^4.0.0",
     "googleapis": "^144.0.0",
     "multer": "^1.4.5-lts.1",
+    "node-cron": "^3.0.3",
     "node-fetch": "^3.3.2",
     "pdf-lib": "^1.17.1",
     "pg": "^8.11.3",

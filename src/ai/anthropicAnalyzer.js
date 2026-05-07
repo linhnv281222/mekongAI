@@ -18,10 +18,10 @@ function extractJson(text) {
   if (arrMatch) {
     try { return JSON.parse(arrMatch); } catch {}
   }
-  throw new Error("Khong the extract JSON from response");
+  throw new Error("Không thể extract JSON from response");
 }
 
-/** Tim text con bat dau boi openChar va ket thuc boi closeChar (da can bang) */
+/** Tìm text con bắt đầu bởi openChar và kết thúc bởi closeChar (đã cân bằng) */
 function findBalancedBraces(text, openChar, closeChar) {
   let start = -1;
   for (let i = 0; i < text.length; i++) {
@@ -53,7 +53,7 @@ function anthropicKey() {
 }
 
 /**
- * Doc ban ve PDF = Claude Sonnet/Opus.
+ * Đọc bản vẽ PDF = Claude Sonnet/Opus.
  */
 export async function analyzeDrawingClaude(pdfPath, emailContext = null) {
   if (!anthropicKey()) {
@@ -106,7 +106,7 @@ export async function analyzeDrawingClaude(pdfPath, emailContext = null) {
           },
           {
             type: "text",
-            text: "Phan tich ban ve PDF tren va tra ve ket qua.",
+            text: "Phân tích bản vẽ PDF trên và trả về kết quả.",
           },
         ],
       },
@@ -173,7 +173,7 @@ export async function debugPromptClaude(systemPrompt, userMessage, schema = "") 
   }
 
   const instruction = schema
-    ? `Phan tich yeu cau ben duoi va tra ve JSON theo schema:\n${schema}\n\nLuu y: Tra ve JSON thuan tuy, khong markdown, khong giai thich.`
+    ? `Phân tích yêu cầu bên dưới và trả về JSON theo schema:\n${schema}\n\nLưu ý: Trả về JSON thuần túy, không markdown, không giải thích.`
     : "";
 
   const userContent = schema ? `${userMessage}\n\n${instruction}` : userMessage;

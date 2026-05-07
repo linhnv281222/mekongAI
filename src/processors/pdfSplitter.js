@@ -4,7 +4,7 @@ import path from "path";
 import { PDFDocument } from "pdf-lib";
 
 /**
- * Tach PDF thanh mang cac trang, moi trang luu vao file tam.
+ * Tách PDF thành mảng các trang, mỗi trang lưu vào file tạm.
  * @param {Buffer} pdfBuffer
  * @param {string} originalName — ten file goc de dat ten temp
  * @returns {Array<{path, page, name, total}>}
@@ -36,7 +36,7 @@ export async function splitPdf(pdfBuffer, originalName = "page.pdf") {
 }
 
 /**
- * Tach PDF — chi tra ve Buffer, khong luu file.
+ * Tách PDF — chỉ trả về Buffer, không lưu file.
  * Su dung cho server.js batch endpoint.
  * @param {Buffer} pdfBuffer
  * @returns {Promise<Array<{buffer, page, total}>>}

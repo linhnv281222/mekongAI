@@ -13,7 +13,7 @@ const REQUIRED_AGENT = [
 function checkRequired(keys, label) {
   const missing = keys.filter((k) => !process.env[k]);
   if (missing.length) {
-    console.warn(`[Config] ${label} — thieu: ${missing.join(", ")}`);
+    console.warn(`[Config] ${label} — thiếu: ${missing.join(", ")}`);
   }
   return missing;
 }

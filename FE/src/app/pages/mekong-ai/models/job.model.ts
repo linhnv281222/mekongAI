@@ -24,6 +24,8 @@ export interface Job {
   vat_lieu_chung_nhan?: string | null;
   ten_cong_ty?: string;
   ghi_chu?: string;
+  email_body?: string;
+  han_bao_gia?: string | null;
   attachments?: string[] | Array<{ name: string }>;
   drawings?: Drawing[];
   classify_output?: ClassifyOutput | string;

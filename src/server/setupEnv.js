@@ -1,5 +1,5 @@
 /**
- * Chay truoc tat ca de dam bao .env duoc load dung cach.
+ * Chạy trước tất cả để đảm bảo .env được load đúng cách.
  * Dat trong src/server/ de cung __dirname voi serverMain.
  */
 import path from "path";

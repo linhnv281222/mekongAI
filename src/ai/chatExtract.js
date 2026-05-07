@@ -20,10 +20,10 @@ function extractJson(text) {
   if (arrMatch) {
     try { return JSON.parse(arrMatch); } catch {}
   }
-  throw new Error("Khong the extract JSON from response");
+  throw new Error("Không thể extract JSON from response");
 }
 
-/** Tim text con bat dau boi openChar va ket thuc boi closeChar (da can bang) */
+/** Tìm text con bắt đầu bởi openChar và kết thúc bởi closeChar (đã cân bằng) */
 function findBalancedBraces(text, openChar, closeChar) {
   let start = -1;
   for (let i = 0; i < text.length; i++) {
@@ -77,7 +77,7 @@ async function extractChatInfoGemini(message) {
 
   const finalPrompt = (promptText || "").replace(
     "{{MARKET}}",
-    marketData || "[BANG THI TRUONG KHONG CO]"
+    marketData || "[BẢNG THỊ TRƯỜNG KHÔNG CÓ]"
   );
 
   const response = await generateContentWithRetry(
@@ -107,7 +107,7 @@ async function extractChatInfoClaude(message) {
 
   const finalPrompt = (promptText || "").replace(
     "{{MARKET}}",
-    marketData || "[BANG THI TRUONG KHONG CO]"
+    marketData || "[BẢNG THỊ TRƯỜNG KHÔNG CÓ]"
   );
 
   const res = await callClaudeWithRetry({
@@ -158,7 +158,7 @@ async function extractChatInfoWithPayloadGemini(message) {
 
   const finalPrompt = (promptText || "").replace(
     "{{MARKET}}",
-    marketData || "[BANG THI TRUONG KHONG CO]"
+    marketData || "[BẢNG THỊ TRƯỜNG KHÔNG CÓ]"
   );
 
   const requestPayload = {
@@ -192,7 +192,7 @@ async function extractChatInfoWithPayloadClaude(message) {
 
   const finalPrompt = (promptText || "").replace(
     "{{MARKET}}",
-    marketData || "[BANG THI TRUONG KHONG CO]"
+    marketData || "[BẢNG THỊ TRƯỜNG KHÔNG CÓ]"
   );
 
   const requestPayload = {

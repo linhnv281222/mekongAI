@@ -36,7 +36,7 @@ const debugUpload = multer({
     const ok =
       file.mimetype === "application/pdf" ||
       file.originalname.toLowerCase().endsWith(".pdf");
-    cb(ok ? null : new Error("Chi nhan PDF"), ok);
+    cb(ok ? null : new Error("Chỉ nhận PDF"), ok);
   },
   limits: { fileSize: 50 * 1024 * 1024 },
 });
