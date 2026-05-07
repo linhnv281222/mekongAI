@@ -3,7 +3,7 @@ import fs from "fs";
 import path from "path";
 import { fileURLToPath } from "url";
 import { aiCfg } from "../libs/config.js";
-import { getPrompt } from "../prompts/promptStore.js";
+import { getPrompt, getKnowledgeBlock } from "../prompts/promptStore.js";
 import { generateContentWithRetry } from "../libs/geminiGenerateRetry.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -71,19 +71,28 @@ function geminiModel() {
  * @returns {object} { loai, ngon_ngu, ly_do, han_giao_hang, hinh_thuc_giao, ..., _ai_request_payload }
  */
 export async function classifyEmailGemini(emailData) {
-  const promptText = await getPrompt("email-classify", {
-    emailFrom: emailData.from,
-    emailSubject: emailData.subject,
-    emailAttachments:
-      emailData.attachments.map((a) => a.name).join(", ") || "none",
-    emailBody: emailData.body.slice(0, 500),
-  });
+  const [promptText, marketData] = await Promise.all([
+    getPrompt("email-classify", {
+      emailFrom: emailData.from,
+      emailSubject: emailData.subject,
+      emailAttachments:
+        emailData.attachments.map((a) => a.name).join(", ") || "none",
+      emailBody: emailData.body.slice(0, 500),
+    }),
+    getKnowledgeBlock("vnt-markets"),
+  ]);
+
+  // Inject MARKET variable — replace {{MARKET}} placeholder in rendered prompt
+  const finalPrompt = (promptText || "").replace(
+    "{{MARKET}}",
+    marketData || "[BANG THI TRUONG KHONG CO]"
+  );
 
   const modelName = geminiModel();
 
   const requestPayload = {
     model: modelName,
-    contents: [{ role: "user", parts: [{ text: promptText }] }],
+    contents: [{ role: "user", parts: [{ text: finalPrompt }] }],
   };
 
   const response = await generateContentWithRetry(
