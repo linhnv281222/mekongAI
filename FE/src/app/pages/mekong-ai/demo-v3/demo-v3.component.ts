@@ -77,6 +77,8 @@ export class DemoV3Component implements OnInit, OnDestroy {
   saving = false;
   ghiChu = '';
   hanBaoGia: Date | null = null;
+  coVanChuyen: boolean | null = null;
+  xuLyBeMat: boolean | null = null;
 
   // Column resize
   colWidths: Record<string, number> = {};
@@ -203,6 +205,12 @@ export class DemoV3Component implements OnInit, OnDestroy {
     ];
     this.activeEmail = full;
     this.loadDrawingLines();
+    // Load tab thong tin chung fields
+    this.ghiChu = job.ghi_chu || (full.classify_output as any)?.ghi_chu || '';
+    const hanBaoGiaRaw = (full.classify_output as any)?.han_giao_hang || job.han_giao;
+    this.hanBaoGia = parseHanGiaoToDate(hanBaoGiaRaw);
+    this.coVanChuyen = job.co_van_chuyen ?? (full.classify_output as any)?.co_van_chuyen ?? null;
+    this.xuLyBeMat = job.xu_ly_be_mat ?? (full.classify_output as any)?.xu_ly_be_mat ?? null;
     this.cdr.markForCheck();
   }
 
@@ -229,9 +237,6 @@ export class DemoV3Component implements OnInit, OnDestroy {
   async selectEmail(emailItem: EmailRow): Promise<void> {
     this.resetRightPanel();
     this.activeEmail = emailItem;
-    this.ghiChu = emailItem.ghi_chu || '';
-    const hanBaoGiaRaw = (emailItem.classify_output as any)?.han_giao_hang;
-    this.hanBaoGia = parseHanGiaoToDate(hanBaoGiaRaw);
     this.cdr.markForCheck();
 
     if (emailItem.id) {
@@ -243,8 +248,17 @@ export class DemoV3Component implements OnInit, OnDestroy {
       );
       this.activeEmail = full;
       this.loadDrawingLines();
+      // Load tab thong tin chung fields
+      this.ghiChu = job.ghi_chu || (full.classify_output as any)?.ghi_chu || '';
+      const hanBaoGiaRaw = (full.classify_output as any)?.han_giao_hang || job.han_giao;
+      this.hanBaoGia = parseHanGiaoToDate(hanBaoGiaRaw);
+      this.coVanChuyen = job.co_van_chuyen ?? (full.classify_output as any)?.co_van_chuyen ?? null;
+      this.xuLyBeMat = job.xu_ly_be_mat ?? (full.classify_output as any)?.xu_ly_be_mat ?? null;
     } else if (this.activeEmail?.drawings?.length) {
       this.loadDrawingLines();
+      this.ghiChu = emailItem.ghi_chu || (emailItem.classify_output as any)?.ghi_chu || '';
+      this.coVanChuyen = emailItem.co_van_chuyen ?? (emailItem.classify_output as any)?.co_van_chuyen ?? null;
+      this.xuLyBeMat = emailItem.xu_ly_be_mat ?? (emailItem.classify_output as any)?.xu_ly_be_mat ?? null;
     }
 
     this.cdr.markForCheck();
@@ -258,6 +272,10 @@ export class DemoV3Component implements OnInit, OnDestroy {
     this.colWidths = {};
     this.drawingLines = [];
     this.modifiedDrawingFields = new Set();
+    this.ghiChu = '';
+    this.hanBaoGia = null;
+    this.coVanChuyen = null;
+    this.xuLyBeMat = null;
     this.splitMode = 'normal';
   }
 
@@ -743,14 +761,20 @@ export class DemoV3Component implements OnInit, OnDestroy {
       },
     }));
 
-    const hanBaoGiaValue = this.hanBaoGia
-      ? this.hanBaoGia.toISOString().split('T')[0]
+    const d = this.hanBaoGia;
+    const hanBaoGiaValue = d
+      ? `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
       : undefined;
 
     const ok = await this.svc.savePhieu(
       this.activeEmail.id,
       drawings,
-      { ghi_chu: this.ghiChu, han_bao_gia: hanBaoGiaValue }
+      {
+        ghi_chu: this.ghiChu,
+        han_giao: hanBaoGiaValue,
+        co_van_chuyen: this.coVanChuyen,
+        xu_ly_be_mat: this.xuLyBeMat,
+      }
     );
 
     this.saving = false;
