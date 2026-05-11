@@ -158,6 +158,11 @@ export function mergeAgentIntoInbox(agentEmails: EmailRow[], prev: EmailRow[]): 
       source: a.source ?? kept.source ?? undefined,
       attachments: a.attachments?.length ? a.attachments : kept.attachments,
       classify_output: kept.classify_output ?? a.classify_output ?? null,
+      thi_truong: (a.classify_output as any)?.thi_truong
+        ?? (kept.classify_output as any)?.thi_truong
+        ?? kept.thi_truong
+        ?? a.thi_truong
+        ?? null,
     };
   });
   return [...merged, ...nonAgent];

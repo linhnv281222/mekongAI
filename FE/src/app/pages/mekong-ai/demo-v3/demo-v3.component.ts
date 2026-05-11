@@ -13,7 +13,12 @@ import { MessageService } from 'primeng/api';
 import { DemoV3Service } from './demo-v3.service';
 import { MekongAiService } from '../mekong-ai.service';
 import { EmailRow } from '../models/email.model';
-import { UiSchema, UiCell, UiRow, KnowledgeBlock } from '../models/prompt.model';
+import {
+  UiSchema,
+  UiCell,
+  UiRow,
+  KnowledgeBlock,
+} from '../models/prompt.model';
 import { DrawingLine } from '../utils/drawing.util';
 import { drawingToLine } from '../utils/drawing.util';
 import {
@@ -32,16 +37,18 @@ import {
 } from '../utils/email.util';
 
 export const DEFAULT_COL_WIDTHS: Record<string, number> = {
-  stt: 38,
-  ma_ban_ve: 140,
-  so_luong: 55,
-  hinh_dang: 80,
-  dung_sai: 80,
-  vat_lieu: 80,
+  stt: 36,
+  ma_ban_ve: 70,
+  so_luong: 50,
+  hinh_dang: 70,
+  xlbm: 80,
+  hrc: 70,
+  dung_sai: 55,
+  vat_lieu: 75,
   kich_thuoc: 100,
-  ma_quy_trinh: 80,
-  ghi_chu: 130,
-  danh_gia: 60,
+  ma_quy_trinh: 65,
+  ghi_chu: 105,
+  danh_gia: 30,
 };
 
 type ViewTab = 0 | 1;
@@ -60,6 +67,7 @@ export class DemoV3Component implements OnInit, OnDestroy {
   inboxHint = '';
   classifyUiSchema: UiSchema | null = null;
   debugModalOpen = false;
+  initialLoading = true;
 
   // Market data from vnt-markets knowledge block (dynamic)
   marketRows: KnowledgeBlock['rows'] = [];
@@ -95,9 +103,12 @@ export class DemoV3Component implements OnInit, OnDestroy {
 
   get splitterPanelSizes(): number[] {
     switch (this.splitMode) {
-      case 'fullLeft': return [100, 0];
-      case 'fullRight': return [0, 100];
-      default: return [60, 40];
+      case 'fullLeft':
+        return [100, 0];
+      case 'fullRight':
+        return [0, 100];
+      default:
+        return [70, 30];
     }
   }
 
@@ -111,7 +122,12 @@ export class DemoV3Component implements OnInit, OnDestroy {
     drawingRequest: object | null;
     classifyResponse: object | null;
     drawingResponse: object | null;
-  } = { classifyRequest: null, drawingRequest: null, classifyResponse: null, drawingResponse: null };
+  } = {
+    classifyRequest: null,
+    drawingRequest: null,
+    classifyResponse: null,
+    drawingResponse: null,
+  };
 
   // ── Lifecycle ─────────────────────────────────────────────
 
@@ -131,16 +147,22 @@ export class DemoV3Component implements OnInit, OnDestroy {
         this.emails = mergeAgentIntoInbox(agentEmails, this.emails);
         if (this.activeEmail?.id) {
           const refreshed = this.emails.find(
-            e => e.id === this.activeEmail!.id
+            (e) => e.id === this.activeEmail!.id
           );
           if (refreshed) this.activeEmail = refreshed;
         }
+        this.initialLoading = false;
         this.cdr.markForCheck();
       },
       (updatedEmail: EmailRow) => {
         this.cdr.markForCheck();
       }
     );
+
+    setTimeout(() => {
+      this.initialLoading = false;
+      this.cdr.markForCheck();
+    }, 8000);
 
     const jobId = this.route.snapshot.queryParamMap.get('job');
     if (jobId) {
@@ -164,7 +186,7 @@ export class DemoV3Component implements OnInit, OnDestroy {
     this.inboxHint = hint;
     this.classifyUiSchema = schema;
     // Extract market rows from vnt-markets knowledge block
-    const marketKb = kbList.find(kb => kb.key === 'vnt-markets');
+    const marketKb = kbList.find((kb) => kb.key === 'vnt-markets');
     this.marketRows = marketKb?.rows ?? [];
     this.cdr.markForCheck();
   }
@@ -208,8 +230,10 @@ export class DemoV3Component implements OnInit, OnDestroy {
     // Load tab thong tin chung fields
     this.ghiChu = job.ghi_chu || '';
     this.hanBaoGia = parseHanGiaoToDate(job.han_bao_gia || null);
-    this.coVanChuyen = job.co_van_chuyen ?? (full.classify_output as any)?.co_van_chuyen ?? null;
-    this.xuLyBeMat = job.xu_ly_be_mat ?? (full.classify_output as any)?.xu_ly_be_mat ?? null;
+    this.coVanChuyen =
+      job.co_van_chuyen ?? (full.classify_output as any)?.co_van_chuyen ?? null;
+    this.xuLyBeMat =
+      job.xu_ly_be_mat ?? (full.classify_output as any)?.xu_ly_be_mat ?? null;
     this.cdr.markForCheck();
   }
 
@@ -250,13 +274,24 @@ export class DemoV3Component implements OnInit, OnDestroy {
       // Load tab thong tin chung fields
       this.ghiChu = job.ghi_chu || '';
       this.hanBaoGia = parseHanGiaoToDate(job.han_bao_gia || null);
-      this.coVanChuyen = job.co_van_chuyen ?? (full.classify_output as any)?.co_van_chuyen ?? null;
-      this.xuLyBeMat = job.xu_ly_be_mat ?? (full.classify_output as any)?.xu_ly_be_mat ?? null;
+      this.coVanChuyen =
+        job.co_van_chuyen ??
+        (full.classify_output as any)?.co_van_chuyen ??
+        null;
+      this.xuLyBeMat =
+        job.xu_ly_be_mat ?? (full.classify_output as any)?.xu_ly_be_mat ?? null;
     } else if (this.activeEmail?.drawings?.length) {
       this.loadDrawingLines();
-      this.ghiChu = emailItem.ghi_chu || (emailItem.classify_output as any)?.ghi_chu || '';
-      this.coVanChuyen = emailItem.co_van_chuyen ?? (emailItem.classify_output as any)?.co_van_chuyen ?? null;
-      this.xuLyBeMat = emailItem.xu_ly_be_mat ?? (emailItem.classify_output as any)?.xu_ly_be_mat ?? null;
+      this.ghiChu =
+        emailItem.ghi_chu || (emailItem.classify_output as any)?.ghi_chu || '';
+      this.coVanChuyen =
+        emailItem.co_van_chuyen ??
+        (emailItem.classify_output as any)?.co_van_chuyen ??
+        null;
+      this.xuLyBeMat =
+        emailItem.xu_ly_be_mat ??
+        (emailItem.classify_output as any)?.xu_ly_be_mat ??
+        null;
     }
 
     this.cdr.markForCheck();
@@ -560,7 +595,9 @@ export class DemoV3Component implements OnInit, OnDestroy {
     if (!this.activeEmail) return '(không có)';
     const drawings = this.activeEmail.drawings;
     if (!drawings) return '(không có drawings)';
-    const filtered = (Array.isArray(drawings) ? drawings : [drawings]).map(({ id, data, filename }) => ({ id, data, filename }));
+    const filtered = (Array.isArray(drawings) ? drawings : [drawings]).map(
+      ({ id, data, filename }) => ({ id, data, filename })
+    );
     return JSON.stringify(filtered, null, 2);
   }
 
@@ -576,7 +613,7 @@ export class DemoV3Component implements OnInit, OnDestroy {
     if (!payloads) return '(chưa có payload)';
     if (Array.isArray(payloads)) {
       // Show first drawing payload as example
-      const first = payloads.find(p => p != null);
+      const first = payloads.find((p) => p != null);
       return first ? JSON.stringify(first, null, 2) : '(không có payload)';
     }
     return JSON.stringify(payloads, null, 2);
@@ -651,38 +688,6 @@ export class DemoV3Component implements OnInit, OnDestroy {
 
   humanizeKey(key: string): string {
     return humanizeClassifyKey(key);
-  }
-
-  // ── Market tag ────────────────────────────────────────────
-
-  getMarketTag(market: string | null | undefined): {
-    label: string;
-    cls: string;
-  } {
-    const code = market || '';
-    if (!code || !this.marketRows?.length) {
-      return { label: '?', cls: 't-skip' };
-    }
-    const row = this.marketRows.find(
-      r => (r as any)['market'] === code || String((r as any)['market'] || '').toLowerCase() === code.toLowerCase()
-    );
-    const label = row ? String((row as any)['ten'] || code) : code;
-    const cls = `t-${code.toLowerCase()}`;
-    return { label, cls };
-  }
-
-  marketSeverity(
-    market: string | null | undefined
-  ): 'info' | 'warning' | 'success' | 'secondary' {
-    const sevMap: Record<string, 'info' | 'warning' | 'success' | 'secondary'> = {};
-    for (const row of this.marketRows ?? []) {
-      const code = String((row as any)['market'] || '');
-      if (code === 'VN') sevMap[code] = 'info';
-      else if (code === 'JP') sevMap[code] = 'warning';
-      else if (code === 'US') sevMap[code] = 'success';
-      else if (code === 'EU') sevMap[code] = 'secondary';
-    }
-    return sevMap[market || ''] || 'secondary';
   }
 
   // ── Language tag ──────────────────────────────────────────
@@ -761,19 +766,18 @@ export class DemoV3Component implements OnInit, OnDestroy {
 
     const d = this.hanBaoGia;
     const hanBaoGiaValue = d
-      ? `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+      ? `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(
+          2,
+          '0'
+        )}-${String(d.getDate()).padStart(2, '0')}`
       : undefined;
 
-    const ok = await this.svc.savePhieu(
-      this.activeEmail.id,
-      drawings,
-      {
-        ghi_chu: this.ghiChu,
-        han_bao_gia: hanBaoGiaValue,
-        co_van_chuyen: this.coVanChuyen,
-        xu_ly_be_mat: this.xuLyBeMat,
-      }
-    );
+    const ok = await this.svc.savePhieu(this.activeEmail.id, drawings, {
+      ghi_chu: this.ghiChu,
+      han_bao_gia: hanBaoGiaValue,
+      co_van_chuyen: this.coVanChuyen,
+      xu_ly_be_mat: this.xuLyBeMat,
+    });
 
     this.saving = false;
     this.cdr.markForCheck();

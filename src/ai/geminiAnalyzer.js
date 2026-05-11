@@ -60,7 +60,7 @@ function loadAiConfig() {
 function geminiModel() {
   const { model } = loadAiConfig();
   if (model && model.trim()) return model.trim();
-  return aiCfg.geminiModel || "gemini-3.1-pro-preview";
+  return aiCfg.geminiModel || "gemini-3-flash-preview";
 }
 
 /**
@@ -118,6 +118,7 @@ export async function analyzeDrawingGemini(pdfPath, model = null, emailContext =
           ],
         },
       ],
+      generationConfig: { temperature: 0 },
     };
 
     // Debug payload: thay base64 bằng tên file để hiển thị (không ảnh hưởng request thật)
@@ -210,6 +211,7 @@ export async function debugPromptGemini(
     model: modelName,
     contents: [{ parts: [{ text: fullUserMessage }] }],
     systemInstruction: { parts: [{ text: systemPrompt }] },
+    generationConfig: { temperature: 0 },
   };
 
   try {

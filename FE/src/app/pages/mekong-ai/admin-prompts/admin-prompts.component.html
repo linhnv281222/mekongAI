@@ -72,7 +72,12 @@
         >
         </p-dropdown>
         <div class="model-status">
-          → {{ selectedModel.startsWith('gemini') ? '☁ ' + selectedModel : '💬 ' + selectedModel }}
+          →
+          {{
+            selectedModel.startsWith("gemini")
+              ? "☁ " + selectedModel
+              : "💬 " + selectedModel
+          }}
         </div>
       </div>
     </div>
@@ -314,9 +319,7 @@
                     <code>{{ "{{" }}VNT_KNOWLEDGE{{ '}}' }}</code>
                   </td>
                   <td>Kiến thức nội bộ VNT</td>
-                  <td>
-                    Bảng lượng riêng vật liệu + mã qui trình VNT
-                  </td>
+                  <td>Bảng lượng riêng vật liệu + mã qui trình VNT</td>
                 </tr>
                 <tr>
                   <td>
@@ -428,9 +431,9 @@
           <!-- Drawing prompts: file upload (multi) -->
           <ng-container *ngIf="isDrawingPrompt()">
             <div class="debug-hint">
-              Upload nhiều file PDF bản vẽ cùng lúc, bấm <strong>Gửi AI</strong> để test
-              prompt. AI sẽ đọc từng file và trả kết quả phân tích ngay — không lưu
-              vào phiếu.
+              Upload nhiều file PDF bản vẽ cùng lúc, bấm
+              <strong>Gửi AI</strong> để test prompt. AI sẽ đọc từng file và trả
+              kết quả phân tích ngay — không lưu vào phiếu.
             </div>
             <div class="debug-upload-area">
               <input
@@ -444,13 +447,18 @@
               <ng-container *ngIf="debugFiles.length === 0">
                 <div class="upload-placeholder" (click)="fileInput.click()">
                   <i class="pi pi-upload"></i>
-                  <div>Kéo thả PDF vào đây hoặc bấm để chọn file (chọn nhiều)</div>
+                  <div>
+                    Kéo thả PDF vào đây hoặc bấm để chọn file (chọn nhiều)
+                  </div>
                   <div class="upload-sub">Chỉ chấp nhận file .pdf</div>
                 </div>
               </ng-container>
               <ng-container *ngIf="debugFiles.length > 0">
                 <div class="file-list">
-                  <div class="file-selected" *ngFor="let file of debugFiles; let i = index">
+                  <div
+                    class="file-selected"
+                    *ngFor="let file of debugFiles; let i = index"
+                  >
                     <i class="pi pi-file-pdf"></i>
                     <span class="file-name">{{ file.name }}</span>
                     <span class="file-size">{{
@@ -567,9 +575,30 @@
           styleClass="kb-table p-datatable-sm"
           [scrollable]="true"
           scrollHeight="calc(100vh - 195px)"
+          (onRowReorder)="onRowReorder($event)"
         >
           <ng-template pTemplate="header">
             <tr>
+              <th
+                style="
+                  width: 40px;
+                  text-align: center;
+                  user-select: none;
+                  -webkit-user-select: none;
+                "
+                title="Kéo để sắp xếp"
+              >
+                <span
+                  class="pi pi-bars"
+                  style="
+                    color: var(--v3-muted, #64748b);
+                    font-size: 14px;
+                    cursor: move;
+                    user-select: none;
+                  "
+                  unselectable="on"
+                ></span>
+              </th>
               <th style="width: 50px; text-align: center">
                 <input
                   type="checkbox"
@@ -613,7 +642,23 @@
             </tr>
           </ng-template>
           <ng-template pTemplate="body" let-row let-i="rowIndex">
-            <tr>
+            <tr [pReorderableRow]="i">
+              <td
+                style="
+                  text-align: center;
+                  cursor: move;
+                  user-select: none;
+                  padding: 0 !important;
+                "
+                unselectable="on"
+              >
+                <span
+                  style="width: 100%; height: 100%; line-height: 3"
+                  class="pi pi-bars"
+                  pReorderableRowHandle
+                  unselectable="on"
+                ></span>
+              </td>
               <td style="text-align: center">
                 <input
                   type="checkbox"
@@ -642,7 +687,7 @@
           <ng-template pTemplate="emptymessage">
             <tr>
               <td
-                [attr.colspan]="knowledgeHeaders.length + 2"
+                [attr.colspan]="knowledgeHeaders.length + 3"
                 style="text-align: center; color: var(--muted); padding: 24px"
               >
                 Chưa có dữ liệu. Bấm <strong>+ Thêm dòng</strong> để bắt đầu.

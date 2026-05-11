@@ -442,7 +442,7 @@ async function analyzeFilesForJob(files, jobId, emailContext = null, chatInfoOve
       );
 
       for (const r of pageResults) {
-        if (!r || r._error) {
+        if (!r || r._error || !r.result) {
           if (r?._error) fileErrors.push(r._error);
           continue;
         }

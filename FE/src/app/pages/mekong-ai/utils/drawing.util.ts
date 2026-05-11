@@ -136,19 +136,26 @@ function normalizeDrawingDataForUi(raw: unknown): NormalizedDrawingData {
   // Not legacy: flat keys ma_ban_ve, vat_lieu directly on raw
   const isLegacy = r['ban_ve'] !== undefined ||
     (r['vat_lieu'] !== undefined && typeof r['vat_lieu'] === 'object') ||
-    r['kich_thuoc_bao'] !== undefined;
+    (r['kich_thuoc_bao'] !== undefined && typeof r['kich_thuoc_bao'] === 'object');
+
+  // Aliases: AI có thể trả tên field khác tùy prompt version
+  const maBvRaw = r['ma_ban_ve'] ?? r['ma_so_ban_ve'] ?? r['ma_so_bv'] ?? "";
+  const soTrangBanVe = r['so_trang_ban_ve'] ?? null;
+  const xlbmRaw = r['xu_ly_be_mat'] ?? r['xlbm'] ?? null;
+  const nhietRaw = r['xu_ly_nhiet'] ?? r['hrc'] ?? null;
+  const ktRaw = r['kich_thuoc'] ?? r['kich_thuoc_bao'] ?? "";
 
   if (!isLegacy) {
     const slN = Number(r['so_luong']);
     return {
-      ma_ban_ve: toStrUi(r['ma_ban_ve']),
+      ma_ban_ve: toStrUi(maBvRaw) || (soTrangBanVe != null ? `Trang ${soTrangBanVe}` : ''),
       vat_lieu: materialUi(r['vat_lieu']),
       so_luong: Number.isFinite(slN) && slN > 0 ? slN : 1,
-      xu_ly_be_mat: toStrUi(r['xu_ly_be_mat']),
-      xu_ly_nhiet: toStrUi(r['xu_ly_nhiet']),
+      xu_ly_be_mat: toStrUi(xlbmRaw ?? r['xu_ly_be_mat']),
+      xu_ly_nhiet: toStrUi(nhietRaw ?? r['xu_ly_nhiet']),
       dung_sai_chung: toStrUi(r['dung_sai_chung']),
       hinh_dang: shapeUi(r['hinh_dang']),
-      kich_thuoc: toStrUi(r['kich_thuoc']),
+      kich_thuoc: toStrUi(ktRaw),
       so_be_mat_cnc: r['so_be_mat_cnc'] != null && r['so_be_mat_cnc'] !== ''
         ? Number(r['so_be_mat_cnc']) : null,
       dung_sai_chat_nhat: toStrUi(r['dung_sai_chat_nhat']),
@@ -179,14 +186,14 @@ function normalizeDrawingDataForUi(raw: unknown): NormalizedDrawingData {
       : Array.isArray(nguyenCongCnc) ? nguyenCongCnc.length : null;
 
   return {
-    ma_ban_ve: toStrUi(bv['ma_ban_ve']),
-    vat_lieu: materialUi(r['vat_lieu']),
+    ma_ban_ve: toStrUi(bv['ma_ban_ve'] ?? r['ma_so_ban_ve'] ?? r['ma_so_bv'] ?? soTrangBanVe ?? ''),
+    vat_lieu: materialUi(r['vat_lieu'] ?? r['ma_nguyen_vat_lieu']),
     so_luong: Number.isFinite(sl) && sl > 0 ? sl : 1,
-    xu_ly_be_mat: xbm || toStrUi(r['xu_ly_be_mat']),
-    xu_ly_nhiet: toStrUi(xu['nhiet'] ?? r['xu_ly_nhiet']),
+    xu_ly_be_mat: xbm || toStrUi(xlbmRaw ?? r['xu_ly_be_mat']),
+    xu_ly_nhiet: toStrUi(xu['nhiet'] ?? nhietRaw ?? r['xu_ly_nhiet']),
     dung_sai_chung: toStrUi(sx['tieu_chuan'] ?? r['dung_sai_chung']),
     hinh_dang: shapeUi(r['hinh_dang']),
-    kich_thuoc: toStrUi(r['kich_thuoc']) || kichThuocBaoUi(kt),
+    kich_thuoc: toStrUi(r['kich_thuoc']) || toStrUi(ktRaw) || kichThuocBaoUi(kt),
     so_be_mat_cnc: soBeMatCnc,
     dung_sai_chat_nhat: toStrUi(r['dung_sai_chat_nhat']),
     co_gdt: Boolean(r['co_gdt']),

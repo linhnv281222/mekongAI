@@ -78,6 +78,7 @@ export async function classifyEmailClaude(emailData) {
   const requestPayload = {
     model: CLASSIFY_MODEL,
     max_tokens: 5000,
+    temperature: 0,
     messages: [{ role: "user", content: finalPrompt }],
   };
 

@@ -1090,7 +1090,7 @@ async function onModelChange() {
   // Gửi kèm `model` để tương thích server cũ (từng bắt buộc cả hai trường)
   const modelLegacy =
     provider === "gemini"
-      ? "gemini-3.1-pro-preview"
+      ? "gemini-3-flash-preview"
       : "claude-sonnet-4-6";
   try {
     const r = await fetch("/admin/prompts/config", {

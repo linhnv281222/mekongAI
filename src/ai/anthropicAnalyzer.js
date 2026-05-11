@@ -91,6 +91,7 @@ export async function analyzeDrawingClaude(pdfPath, emailContext = null) {
   const requestPayload = {
     model: modelName,
     max_tokens: 4096,
+    temperature: 0,
     system: [{ type: "text", text: promptText }],
     messages: [
       {
@@ -181,6 +182,7 @@ export async function debugPromptClaude(systemPrompt, userMessage, schema = "") 
   const requestPayload = {
     model: anthropicModel(),
     max_tokens: 4096,
+    temperature: 0,
     system: [{ type: "text", text: systemPrompt }],
     messages: [{ role: "user", content: userContent }],
   };

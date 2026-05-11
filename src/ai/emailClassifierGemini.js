@@ -93,6 +93,7 @@ export async function classifyEmailGemini(emailData) {
   const requestPayload = {
     model: modelName,
     contents: [{ role: "user", parts: [{ text: finalPrompt }] }],
+    generationConfig: { temperature: 0 },
   };
 
   const response = await generateContentWithRetry(

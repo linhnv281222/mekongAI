@@ -126,7 +126,13 @@ router.post("/batch", upload.single("file"), async (req, res) => {
 
   const providerHint = req.query.provider || null;
   const { fn: analyzer, label: provider } = selectAnalyzer(providerHint);
-  const emailContext = req.body.emailContext || null;
+
+  // emailContext: ưu tiên body.emailContext (FE gửi từ uploadAndAnalyzeDrawing),
+  // fallback query param email_context (chat flow dùng), cuối cùng là body.email_context
+  const emailContext =
+    req.body.emailContext ||
+    (req.query.email_context ? decodeURIComponent(String(req.query.email_context)) : null) ||
+    null;
 
   let pages = [];
   try {
