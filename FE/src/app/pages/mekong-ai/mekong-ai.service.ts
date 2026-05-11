@@ -568,7 +568,7 @@ export class MekongAiService {
     try {
       const resolvedModel = model && model.trim()
         ? model.trim()
-        : provider === 'gemini' ? 'gemini-3.1-pro-preview' : 'claude-sonnet-4-7';
+        : provider === 'gemini' ? 'gemini-3-flash-preview' : 'claude-sonnet-4-7';
       const response = await firstValueFrom(
         this.http.put<any>(
           `${this.mekongApiPath}/admin/prompts/config`,

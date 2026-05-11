@@ -367,6 +367,13 @@
   background: var(--v3-surface);
 }
 
+.mb-loading {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
 .mb-list {
   flex: 1;
   overflow-y: auto;
@@ -1020,8 +1027,13 @@
 }
 
 .cell-ma .bv-input {
-  width: auto;
+  width: 100%;
   min-width: 80px;
+  font-size: 11.5px;
+  padding: 5px 6px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .bv-page-btn {
@@ -1088,10 +1100,16 @@
 }
 
 .bv-input--num {
-  width: 70px;
+  width: 100%;
   text-align: right;
   font-weight: 600;
-  padding: 8px 6px;
+  padding: 5px 4px;
+}
+
+.bv-input--xbm {
+  font-size: 11px;
+  padding: 5px 6px;
+  width: 100%;
 }
 
 .bv-input--modified {
@@ -1120,6 +1138,7 @@ textarea.form-input {
   border: 1px solid var(--v3-line, #cbd5e1);
   border-radius: 4px;
   background: #fff;
+  width: 100%;
 }
 
 .danh-gia-radio .radio-label {
@@ -1327,6 +1346,7 @@ textarea.form-input {
   font-size: 13px !important;
   padding: 0 10px !important;
   box-sizing: border-box !important;
+  width: 100%;
 }
 
 :host ::ng-deep .p-progressbar {

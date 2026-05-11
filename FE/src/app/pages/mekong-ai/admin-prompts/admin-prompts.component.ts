@@ -1,4 +1,4 @@
-import { Component, OnInit, ViewChild, ElementRef } from '@angular/core';
+import { Component, OnInit, ViewChild, ElementRef, ChangeDetectorRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { MekongAiService } from 'src/app/pages/mekong-ai/mekong-ai.service';
@@ -98,8 +98,7 @@ export class AdminPromptsComponent implements OnInit {
 
   // PrimeNG options
   aiModelOptions = [
-    { label: 'Gemini 3.1 Pro', value: 'gemini-3.1-pro-preview' },
-    { label: 'Gemini 2.5 Flash', value: 'gemini-2.5-flash-preview' },
+    { label: 'Gemini 3 Flash', value: 'gemini-3-flash-preview' },
     { label: 'Claude Opus 4.7', value: 'claude-opus-4-7' },
     { label: 'Claude Sonnet 4.6', value: 'claude-sonnet-4-6' },
     { label: 'Claude Haiku 4', value: 'claude-haiku-4-5' },
@@ -182,7 +181,8 @@ export class AdminPromptsComponent implements OnInit {
 
   constructor(
     private mekongAiService: MekongAiService,
-    private messageService: MessageService
+    private messageService: MessageService,
+    private cdr: ChangeDetectorRef
   ) {}
 
   @ViewChild('csvInput') csvInput!: ElementRef;
@@ -243,7 +243,7 @@ export class AdminPromptsComponent implements OnInit {
         if (config.model && config.model.trim()) {
           this.selectedModel = config.model.trim();
         } else {
-          this.selectedModel = config.provider === 'gemini' ? 'gemini-3.1-pro-preview' : 'claude-sonnet-4-7';
+          this.selectedModel = config.provider === 'gemini' ? 'gemini-3-flash-preview' : 'claude-sonnet-4-7';
         }
       }
     } catch (e: any) {
@@ -713,6 +713,13 @@ export class AdminPromptsComponent implements OnInit {
 
   deleteKnowledgeRow(index: number): void {
     this.knowledgeRows.splice(index, 1);
+  }
+
+  async onRowReorder(event: any): Promise<void> {
+    this.knowledgeRows = [...this.knowledgeRows];
+    this.isDirty = true;
+    this.cdr.detectChanges();
+    await this.saveKnowledge();
   }
 
   selectAllRows: boolean = false;

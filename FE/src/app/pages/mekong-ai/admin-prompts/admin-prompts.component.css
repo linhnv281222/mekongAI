@@ -715,6 +715,23 @@
   margin-bottom: 10px;
 }
 
+/* ── PrimeNG Table Row Reorder ─────────────────────── */
+.kb-table .pi-bars,
+.kb-table tbody tr[pReorderableRow] {
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.kb-table tbody .pi-bars {
+  cursor: grab;
+  color: var(--v3-muted, #64748b);
+  font-size: 16px;
+  vertical-align: middle;
+}
+.kb-table tbody .pi-bars:active {
+  cursor: grabbing;
+}
+
 .kb-table-info {
   font-size: 13px;
   color: var(--v3-muted, #64748b);

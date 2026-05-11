@@ -91,7 +91,7 @@ export class DemoV3Service implements OnDestroy {
       xu_ly_be_mat: job.xu_ly_be_mat ?? null,
       vat_lieu_chung_nhan: job.vat_lieu_chung_nhan ?? null,
       classify_output: normalizeClassifyOutputFromJob(job),
-      ten_kh: job.ten_cong_ty || job.sender || partial.ten_kh || '',
+      thi_truong: job.thi_truong ?? null,
       source: job.source ?? partial.source ?? undefined,
       drawings: job.drawings || [],
       ghi_chu: job.ghi_chu || '',

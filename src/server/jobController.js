@@ -304,6 +304,7 @@ router.get("/", async (req, res) => {
       sender_name: j.sender_name || null,
       classify: j.classify,
       ngon_ngu: j.ngon_ngu,
+      thi_truong: j.thi_truong || null,
       classify_output: j.classify_output || null,
       lines_count: pageCount,
       attachment_count: fileCount,

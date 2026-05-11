@@ -145,8 +145,20 @@ export function normalizeDrawingToFlat(raw) {
   }
 
   // Aliases: AI có thể trả tên field khác tùy prompt version
-  const maBv = raw.ma_ban_ve ?? raw.ma_so_ban_ve ?? "";
-  const vlRaw = raw.vat_lieu ?? raw.ma_nguyen_vat_lieu ?? "";
+  const maBv =
+    raw.ma_ban_ve ?? raw.ma_so_ban_ve ?? raw.ma_so_bv ?? "";
+  const vlRaw =
+    raw.vat_lieu ?? raw.ma_nguyen_vat_lieu ?? "";
+  const xlbmRaw =
+    raw.xu_ly_be_mat ?? raw.xlbm ?? "";
+  const nhietRaw =
+    raw.xu_ly_nhiet ?? raw.hrc ?? "";
+
+  // so_trang_ban_ve: dùng làm fallback cho ma_ban_ve khi AI không đọc được mã số
+  const soTrangBanVe = raw.so_trang_ban_ve ?? null;
+
+  // kich_thuoc: ưu tiên string trực tiếp, fallback sang kich_thuoc_bao (string | object)
+  const ktRaw = raw.kich_thuoc ?? raw.kich_thuoc_bao ?? "";
 
   const lyGiai = raw.ly_giai_qt || raw.ly_giai || "";
   const vlNormalized = extractVatLieuFromLyGiai(lyGiai, vlRaw);
@@ -154,19 +166,19 @@ export function normalizeDrawingToFlat(raw) {
   const legacy =
     raw.ban_ve != null ||
     (typeof vlRaw === "object" && vlRaw !== null) ||
-    raw.kich_thuoc_bao != null;
+    (typeof raw.kich_thuoc_bao === "object" && raw.kich_thuoc_bao !== null);
 
   if (!legacy) {
     const sl = Number(raw.so_luong);
     return {
-      ma_ban_ve: toStr(maBv),
+      ma_ban_ve: toStr(maBv) || (soTrangBanVe != null ? `Trang ${soTrangBanVe}` : ""),
       vat_lieu: vlNormalized,
       so_luong: Number.isFinite(sl) && sl > 0 ? sl : 1,
-      xu_ly_be_mat: toStr(raw.xu_ly_be_mat),
-      xu_ly_nhiet: toStr(raw.xu_ly_nhiet),
+      xu_ly_be_mat: toStr(xlbmRaw),
+      xu_ly_nhiet: toStr(nhietRaw),
       dung_sai_chung: toStr(raw.dung_sai_chung),
       hinh_dang: shapeToStr(raw.hinh_dang),
-      kich_thuoc: toStr(raw.kich_thuoc),
+      kich_thuoc: toStr(ktRaw),
       so_be_mat_cnc:
         raw.so_be_mat_cnc != null && raw.so_be_mat_cnc !== ""
           ? Number(raw.so_be_mat_cnc)
@@ -185,8 +197,8 @@ export function normalizeDrawingToFlat(raw) {
   const sl = Number(sx.so_luong);
 
   return {
-    ma_ban_ve: toStr(bv.ma_ban_ve),
-    vat_lieu: extractVatLieuFromLyGiai(lyGiai, materialToStr(raw.vat_lieu)),
+    ma_ban_ve: toStr(bv.ma_ban_ve || raw.ma_so_ban_ve || soTrangBanVe || ""),
+    vat_lieu: extractVatLieuFromLyGiai(lyGiai, materialToStr(raw.vat_lieu) || raw.ma_nguyen_vat_lieu || ""),
     so_luong: Number.isFinite(sl) && sl > 0 ? sl : 1,
     xu_ly_be_mat: xuLyBeMatFromLegacy(raw),
     xu_ly_nhiet: toStr(xu.nhiet ?? raw.xu_ly_nhiet),

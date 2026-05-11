@@ -119,6 +119,7 @@ async function extractChatInfoClaude(message) {
     body: {
       model: claudeModel(),
       max_tokens: 300,
+      temperature: 0,
       messages: [{ role: "user", content: finalPrompt }],
     },
     logTag: "ChatExtract",
@@ -198,6 +199,7 @@ async function extractChatInfoWithPayloadClaude(message) {
   const requestPayload = {
     model: claudeModel(),
     max_tokens: 300,
+    temperature: 0,
     messages: [{ role: "user", content: finalPrompt }],
   };
 
@@ -286,6 +288,7 @@ async function chatAssistantReplyClaude(userMessage) {
     body: {
       model: claudeModel(),
       max_tokens: 2048,
+      temperature: 0,
       system: SYSTEM,
       messages: [{ role: "user", content: userMessage.slice(0, 12000) }],
     },

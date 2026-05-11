@@ -81,6 +81,19 @@ export function normalizeDbRow(row) {
 }
 
 /**
+ * Chuyen doi gia tri boolean tu string ("Có"/"Không") hoac so (0/1) sang boolean.
+ */
+function toBool(val) {
+  if (val === null || val === undefined) return null;
+  if (typeof val === "boolean") return val;
+  if (typeof val === "number") return val !== 0;
+  const s = String(val).trim();
+  return s === "Có" || s === "1" || s === "true" || s === "yes";
+}
+
+const BOOLEAN_FIELDS = new Set(["co_van_chuyen", "xu_ly_be_mat"]);
+
+/**
  * Lưu job mới hoặc cập nhật job cũ (chỉ ghi vào DB).
  */
 export async function saveJob(jobData) {
@@ -152,9 +165,9 @@ export async function saveJob(jobData) {
         job.ma_khach_hang || null,
         job.han_giao || job.han_giao_hang || null,
         job.hinh_thuc_giao || null,
-        job.xu_ly_be_mat ?? null,
+        toBool(job.xu_ly_be_mat),
         job.vat_lieu_chung_nhan || null,
-        job.co_van_chuyen ?? null,
+        toBool(job.co_van_chuyen),
         job.drawings ? JSON.stringify(job.drawings) : "[]",
         job.classify_output ? JSON.stringify(job.classify_output) : null,
         job.classify_ai_payload ? JSON.stringify(job.classify_ai_payload) : null,
@@ -201,6 +214,7 @@ export async function updateJob(idOrFields, fields) {
       for (const k of keys) {
         let val = updates[k];
         if (k === "lines_count") val = Number(val) || 0;
+        else if (BOOLEAN_FIELDS.has(k)) val = toBool(val);
         const isJson = val != null && (typeof val === "object" || k === "drawings" || k === "classify_output" || k === "classify_ai_payload" || k === "drawing_ai_payload" || k === "attachments" || k === "raw_email");
         if (isJson) {
           setClauses.push(`${k}=$${paramIdx}::jsonb`);
@@ -225,6 +239,7 @@ export async function updateJob(idOrFields, fields) {
       for (const k of keys) {
         let val = updates[k];
         if (k === "lines_count") val = Number(val) || 0;
+        else if (BOOLEAN_FIELDS.has(k)) val = toBool(val);
         const isJson = val != null && (typeof val === "object" || k === "drawings" || k === "classify_output" || k === "classify_ai_payload" || k === "drawing_ai_payload" || k === "attachments" || k === "raw_email");
         if (isJson) {
           setClauses.push(`${k}=$${paramIdx}::jsonb`);

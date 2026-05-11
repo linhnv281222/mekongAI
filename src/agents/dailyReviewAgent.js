@@ -204,7 +204,7 @@ async function refineWithGemini(currentPromptContent, ghiChuList, modelName) {
     GHI_CHU_LIST: ghiChuList || "(không có ghi chú)",
   });
 
-  const model = modelName || aiCfg.geminiModel || "gemini-3.1-pro-preview";
+  const model = modelName || aiCfg.geminiModel || "gemini-3-flash-preview";
 
   const requestPayload = {
     model,

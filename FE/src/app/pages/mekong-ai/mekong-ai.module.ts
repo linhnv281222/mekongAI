@@ -10,6 +10,7 @@ import { InputNumberModule } from 'primeng/inputnumber';
 import { ToastModule } from 'primeng/toast';
 import { DialogModule } from 'primeng/dialog';
 import { ProgressBarModule } from 'primeng/progressbar';
+import { ProgressSpinnerModule } from 'primeng/progressspinner';
 import { TableModule } from 'primeng/table';
 import { TabViewModule } from 'primeng/tabview';
 import { CalendarModule } from 'primeng/calendar';
@@ -51,6 +52,7 @@ import { AppPdfViewerComponent } from './pdf-viewer/pdf-viewer.component';
     ToastModule,
     DialogModule,
     ProgressBarModule,
+    ProgressSpinnerModule,
     TableModule,
     TabViewModule,
     CalendarModule,
