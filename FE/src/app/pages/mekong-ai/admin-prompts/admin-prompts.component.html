@@ -96,15 +96,15 @@
           </div>
         </div>
       </div>
-      <p-table [value]="prompts" styleClass="p-datatable-sm overview-table">
+      <p-table [value]="prompts" styleClass="p-datatable-sm overview-table" [resizableColumns]="true">
         <ng-template pTemplate="header">
           <tr>
-            <th>Tên</th>
-            <th>Mã</th>
-            <th>Phiên bản đang dùng</th>
-            <th>Biến</th>
-            <th>Nguồn</th>
-            <th></th>
+            <th pResizableColumn>Tên</th>
+            <th pResizableColumn>Mã</th>
+            <th pResizableColumn>Phiên bản đang dùng</th>
+            <th pResizableColumn>Biến</th>
+            <th pResizableColumn>Nguồn</th>
+            <th pResizableColumn></th>
           </tr>
         </ng-template>
         <ng-template pTemplate="body" let-prompt>
@@ -150,14 +150,15 @@
         [value]="knowledgeItems"
         styleClass="p-datatable-sm overview-table"
         [style]="{ 'margin-top': '16px' }"
+        [resizableColumns]="true"
       >
         <ng-template pTemplate="header">
           <tr>
-            <th>Tên</th>
-            <th>Mã</th>
-            <th></th>
-            <th>Nguồn</th>
-            <th></th>
+            <th pResizableColumn>Tên</th>
+            <th pResizableColumn>Mã</th>
+            <th pResizableColumn></th>
+            <th pResizableColumn>Nguồn</th>
+            <th pResizableColumn></th>
           </tr>
         </ng-template>
         <ng-template pTemplate="body" let-item>
@@ -576,6 +577,8 @@
           [scrollable]="true"
           scrollHeight="calc(100vh - 195px)"
           (onRowReorder)="onRowReorder($event)"
+          [resizableColumns]="true"
+          (onColResize)="onKbColResize($event)"
         >
           <ng-template pTemplate="header">
             <tr>
@@ -587,6 +590,8 @@
                   -webkit-user-select: none;
                 "
                 title="Kéo để sắp xếp"
+                pResizableColumn
+                data-col-key="_reorder"
               >
                 <span
                   class="pi pi-bars"
@@ -599,7 +604,7 @@
                   unselectable="on"
                 ></span>
               </th>
-              <th style="width: 50px; text-align: center">
+              <th style="width: 50px; text-align: center" pResizableColumn title="Chọn tất cả" data-col-key="_select">
                 <input
                   type="checkbox"
                   [(ngModel)]="selectAllRows"
@@ -611,10 +616,13 @@
                 *ngFor="let header of knowledgeHeaders; let i = index"
                 [style.minWidth.px]="80"
                 style="max-width: 300px"
+                pResizableColumn
+                [title]="header"
+                [attr.data-col-key]="'col_' + i"
               >
                 <ng-container *ngIf="editingHeaderIndex !== i; else editHeader">
                   <div class="th-inner">
-                    <span class="th-label" id="thLabel{{ i }}">{{
+                    <span class="th-label" id="thLabel{{ i }}" [title]="header">{{
                       header
                     }}</span>
                     <button
@@ -638,7 +646,7 @@
                   />
                 </ng-template>
               </th>
-              <th style="width: 70px; text-align: center">Xóa</th>
+              <th style="width: 70px; text-align: center" pResizableColumn title="Xóa" data-col-key="_delete">Xóa</th>
             </tr>
           </ng-template>
           <ng-template pTemplate="body" let-row let-i="rowIndex">
@@ -666,7 +674,7 @@
                   class="kb-row-check"
                 />
               </td>
-              <td *ngFor="let header of knowledgeHeaders">
+              <td *ngFor="let header of knowledgeHeaders" pTooltip="{{ getKbCellVal(header, row) }}" tooltipPosition="top">
                 <input
                   type="text"
                   pInputText

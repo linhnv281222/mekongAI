@@ -2,6 +2,7 @@ import {
   Component,
   OnInit,
   OnDestroy,
+  AfterViewChecked,
   ViewChild,
   ElementRef,
   ChangeDetectorRef,
@@ -12,6 +13,7 @@ import { MessageService } from 'primeng/api';
 
 import { DemoV3Service } from './demo-v3.service';
 import { MekongAiService } from '../mekong-ai.service';
+import { TableResizeService } from '../table-resize.service';
 import { EmailRow } from '../models/email.model';
 import {
   UiSchema,
@@ -45,7 +47,7 @@ export const DEFAULT_COL_WIDTHS: Record<string, number> = {
   hrc: 70,
   dung_sai: 55,
   vat_lieu: 75,
-  kich_thuoc: 100,
+  kich_thuoc: 30,
   ma_quy_trinh: 65,
   ghi_chu: 105,
   danh_gia: 30,
@@ -59,7 +61,7 @@ type SplitMode = 'normal' | 'fullLeft' | 'fullRight';
   templateUrl: './demo-v3.component.html',
   styleUrls: ['./demo-v3.component.css'],
 })
-export class DemoV3Component implements OnInit, OnDestroy {
+export class DemoV3Component implements OnInit, OnDestroy, AfterViewChecked {
   // ── State ─────────────────────────────────────────────────
   emails: EmailRow[] = [];
   activeEmail: EmailRow | null = null;
@@ -88,15 +90,9 @@ export class DemoV3Component implements OnInit, OnDestroy {
   coVanChuyen: boolean | null = null;
   xuLyBeMat: boolean | null = null;
 
-  // Column resize
+  // Column resize — widths from localStorage
   colWidths: Record<string, number> = {};
-  private resizeState: {
-    colKey: string;
-    startX: number;
-    startWidth: number;
-  } | null = null;
-  private boundMouseMove: ((event: MouseEvent) => void) | null = null;
-  private boundMouseUp: (() => void) | null = null;
+  private readonly TABLE_KEY = 'demo3_bv';
 
   // Splitter full-width toggle
   splitMode: SplitMode = 'normal';
@@ -136,10 +132,12 @@ export class DemoV3Component implements OnInit, OnDestroy {
     private mekongSvc: MekongAiService,
     private messageService: MessageService,
     private cdr: ChangeDetectorRef,
-    private route: ActivatedRoute
+    private route: ActivatedRoute,
+    private tableResizeSvc: TableResizeService
   ) {}
 
   async ngOnInit(): Promise<void> {
+    this.colWidths = this.tableResizeSvc.load(this.TABLE_KEY);
     await this.loadConfig();
 
     this.svc.startPolling(
@@ -172,7 +170,6 @@ export class DemoV3Component implements OnInit, OnDestroy {
 
   ngOnDestroy(): void {
     this.svc.stopPolling();
-    this.removeResizeListeners();
   }
 
   // ── Init ─────────────────────────────────────────────────
@@ -302,7 +299,6 @@ export class DemoV3Component implements OnInit, OnDestroy {
   resetRightPanel(): void {
     this.currentTab = 0;
     this.resetPreview();
-    this.colWidths = {};
     this.drawingLines = [];
     this.modifiedDrawingFields = new Set();
     this.ghiChu = '';
@@ -371,50 +367,33 @@ export class DemoV3Component implements OnInit, OnDestroy {
     return this.modifiedDrawingFields.has(`${rowIndex}:${field}`);
   }
 
-  // Column resize
-  onResizeMouseDown(event: MouseEvent, colKey: string): void {
-    event.preventDefault();
-    event.stopPropagation();
-    this.resizeState = {
-      colKey,
-      startX: event.clientX,
-      startWidth: this.getColWidth(colKey),
-    };
-    document.body.style.cursor = 'col-resize';
-    document.body.style.userSelect = 'none';
-    this.removeResizeListeners();
-    this.boundMouseMove = this.onResizeMouseMove.bind(this);
-    this.boundMouseUp = this.onResizeMouseUp.bind(this);
-    document.addEventListener('mousemove', this.boundMouseMove);
-    document.addEventListener('mouseup', this.boundMouseUp);
+  // Column resize — read widths directly from DOM after resize, save to localStorage
+  private readonly COL_KEYS = ['stt', 'ma_ban_ve', 'so_luong', 'hinh_dang', 'xlbm', 'hrc', 'vat_lieu', 'kich_thuoc', 'ma_quy_trinh', 'ghi_chu', 'dung_sai', 'danh_gia'];
+  private _resizeDirty = false;
+
+  ngAfterViewChecked(): void {
+    if (!this._resizeDirty) return;
+    this._resizeDirty = false;
+    setTimeout(() => {
+      const tableEl = document.querySelector('.bv-tbl') as HTMLElement;
+      if (!tableEl) return;
+      const headers = tableEl.querySelectorAll('th[data-col-key]');
+      const updated: Record<string, number> = {};
+      headers.forEach((th) => {
+        const key = th.getAttribute('data-col-key');
+        if (!key) return;
+        const w = (th as HTMLElement).offsetWidth;
+        if (w > 0) updated[key] = w;
+      });
+      if (Object.keys(updated).length > 0) {
+        this.colWidths = { ...this.colWidths, ...updated };
+        this.tableResizeSvc.save(this.TABLE_KEY, this.colWidths);
+      }
+    }, 0);
   }
 
-  private onResizeMouseMove(event: MouseEvent): void {
-    if (!this.resizeState) return;
-    const { colKey, startX, startWidth } = this.resizeState;
-    const deltaX = event.clientX - startX;
-    this.colWidths = {
-      ...this.colWidths,
-      [colKey]: Math.max(40, startWidth + deltaX),
-    };
-  }
-
-  private onResizeMouseUp(): void {
-    this.resizeState = null;
-    document.body.style.cursor = '';
-    document.body.style.userSelect = '';
-    this.removeResizeListeners();
-  }
-
-  private removeResizeListeners(): void {
-    if (this.boundMouseMove) {
-      document.removeEventListener('mousemove', this.boundMouseMove);
-      this.boundMouseMove = null;
-    }
-    if (this.boundMouseUp) {
-      document.removeEventListener('mouseup', this.boundMouseUp);
-      this.boundMouseUp = null;
-    }
+  markResizeDirty(): void {
+    this._resizeDirty = true;
   }
 
   // ── File upload ────────────────────────────────────────────
