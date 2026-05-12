@@ -521,7 +521,7 @@
               [panelSizes]="splitterPanelSizes"
             >
               <ng-template pTemplate="panel" [style]="{ minWidth: '480px' }">
-                <div class="bv-split-main">
+                <div class="bv-split-main" (mouseup)="markResizeDirty()">
                   <div class="bv-split-toolbar">
                     <span class="bv-split-label"
                       >Bản vẽ ({{ drawingLines.length }})</span
@@ -546,18 +546,26 @@
                   <p-table
                     [value]="drawingLines"
                     styleClass="bv-tbl p-datatable-sm"
+                    [resizableColumns]="true"
+                    (mouseup)="markResizeDirty()"
                   >
                     <ng-template pTemplate="header">
                       <tr>
                         <th
                           [style.width.px]="getColWidth('stt')"
                           style="font-size: 12.8px"
+                          pResizableColumn
+                          title="STT"
+                          data-col-key="stt"
                         >
                           STT
                         </th>
                         <th
                           [style.width.px]="getColWidth('ma_ban_ve')"
                           style="font-size: 12.8px"
+                          pResizableColumn
+                          title="Mã bản vẽ"
+                          data-col-key="ma_ban_ve"
                         >
                           Mã bản vẽ
                         </th>
@@ -565,60 +573,90 @@
                           class="th-right"
                           [style.width.px]="getColWidth('so_luong')"
                           style="font-size: 12.8px"
+                          pResizableColumn
+                          title="Số lượng"
+                          data-col-key="so_luong"
                         >
                           SL
                         </th>
                         <th
                           [style.width.px]="getColWidth('hinh_dang')"
                           style="font-size: 12.8px"
+                          pResizableColumn
+                          title="Hình dạng"
+                          data-col-key="hinh_dang"
                         >
                           Hình dạng
                         </th>
                         <th
                           [style.width.px]="getColWidth('xlbm')"
                           style="font-size: 12.8px"
+                          pResizableColumn
+                          title="Xử lý bề mặt"
+                          data-col-key="xlbm"
                         >
                           XLBM
                         </th>
                         <th
                           [style.width.px]="getColWidth('hrc')"
                           style="font-size: 12.8px"
+                          pResizableColumn
+                          title="Độ cứng HRC"
+                          data-col-key="hrc"
                         >
                           HRC
                         </th>
                         <th
                           [style.width.px]="getColWidth('vat_lieu')"
                           style="font-size: 12.8px"
+                          pResizableColumn
+                          title="Vật liệu"
+                          data-col-key="vat_lieu"
                         >
                           Vật liệu
                         </th>
                         <th
                           [style.width.px]="getColWidth('kich_thuoc')"
                           style="font-size: 12.8px"
+                          pResizableColumn
+                          title="Kích thước"
+                          data-col-key="kich_thuoc"
                         >
                           Kích thước
                         </th>
                         <th
                           [style.width.px]="getColWidth('ma_quy_trinh')"
                           style="font-size: 12.8px"
+                          pResizableColumn
+                          title="Mã quy trình"
+                          data-col-key="ma_quy_trinh"
                         >
                           Mã QT
                         </th>
                         <th
                           [style.width.px]="getColWidth('ghi_chu')"
                           style="font-size: 12.8px"
+                          pResizableColumn
+                          title="Ghi chú"
+                          data-col-key="ghi_chu"
                         >
                           Ghi chú
                         </th>
                         <th
                           [style.width.px]="getColWidth('dung_sai')"
                           style="font-size: 12.8px"
+                          pResizableColumn
+                          title="Dung sai"
+                          data-col-key="dung_sai"
                         >
                           Dung sai
                         </th>
                         <th
                           [style.width.px]="getColWidth('danh_gia')"
                           style="font-size: 12.8px"
+                          pResizableColumn
+                          title="Đánh giá"
+                          data-col-key="danh_gia"
                         >
                           Đánh giá
                         </th>
@@ -630,8 +668,10 @@
                       let-rowIndex="rowIndex"
                     >
                       <tr>
-                        <td class="cell-num">{{ rowIndex + 1 }}</td>
-                        <td class="cell-ma">
+                        <td class="cell-num" title="{{ rowIndex + 1 }}">
+                          {{ rowIndex + 1 }}
+                        </td>
+                        <td class="cell-ma" pTooltip="{{ drawingLine.ma_ban_ve }}" tooltipPosition="top">
                           <button
                             type="button"
                             class="bv-page-btn"
@@ -653,7 +693,7 @@
                             "
                           />
                         </td>
-                        <td class="cell-sl">
+                        <td class="cell-sl" pTooltip="{{ drawingLine.so_luong }}" tooltipPosition="top">
                           <p-inputNumber
                             [inputId]="'sl_' + rowIndex"
                             [(ngModel)]="drawingLine.so_luong"
@@ -662,7 +702,7 @@
                             inputStyleClass="bv-input bv-input--num"
                           ></p-inputNumber>
                         </td>
-                        <td>
+                        <td pTooltip="{{ drawingLine.hinh_dang }}" tooltipPosition="top">
                           <input
                             type="text"
                             class="bv-input"
@@ -676,7 +716,7 @@
                             "
                           />
                         </td>
-                        <td>
+                        <td pTooltip="{{ drawingLine.xu_ly_be_mat }}" tooltipPosition="top">
                           <input
                             type="text"
                             class="bv-input bv-input--mono bv-input--amber"
@@ -691,7 +731,7 @@
                             "
                           />
                         </td>
-                        <td>
+                        <td pTooltip="{{ drawingLine.xu_ly_nhiet }}" tooltipPosition="top">
                           <input
                             type="text"
                             class="bv-input bv-input--mono bv-input--amber"
@@ -706,7 +746,7 @@
                             "
                           />
                         </td>
-                        <td>
+                        <td pTooltip="{{ drawingLine.vat_lieu }}" tooltipPosition="top">
                           <input
                             type="text"
                             class="bv-input bv-input--mono bv-input--green"
@@ -716,13 +756,10 @@
                             "
                           />
                         </td>
-                        <td
-                          class="cell-kt"
-                          [title]="drawingLine.kich_thuoc || '—'"
-                        >
+                        <td class="cell-kt" pTooltip="{{ drawingLine.kich_thuoc }}" tooltipPosition="top">
                           {{ drawingLine.kich_thuoc || "—" }}
                         </td>
-                        <td>
+                        <td pTooltip="{{ drawingLine.ma_quy_trinh }}" tooltipPosition="top">
                           <input
                             type="text"
                             class="bv-input bv-input--mono"
@@ -738,7 +775,7 @@
                             "
                           />
                         </td>
-                        <td>
+                        <td pTooltip="{{ drawingLine.note }}" tooltipPosition="top">
                           <input
                             type="text"
                             class="bv-input"
@@ -752,7 +789,7 @@
                             "
                           />
                         </td>
-                        <td>
+                        <td pTooltip="{{ drawingLine.dung_sai }}" tooltipPosition="top">
                           <input
                             type="text"
                             class="bv-input bv-input--mono bv-input--amber"
@@ -763,7 +800,7 @@
                             "
                           />
                         </td>
-                        <td>
+                        <td pTooltip="{{ drawingLine.danh_gia === 1 ? 'OK' : drawingLine.danh_gia === 99 ? 'Fail' : '—' }}" tooltipPosition="top">
                           <div class="danh-gia-radio">
                             <p-radioButton
                               [inputId]="'danh_gia_ok_' + rowIndex"
@@ -931,4 +968,3 @@
 
 <!-- TOAST -->
 <p-toast position="top-right"></p-toast>
-

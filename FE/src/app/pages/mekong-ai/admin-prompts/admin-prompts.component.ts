@@ -2,6 +2,7 @@ import { Component, OnInit, ViewChild, ElementRef, ChangeDetectorRef } from '@an
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { MekongAiService } from 'src/app/pages/mekong-ai/mekong-ai.service';
+import { TableResizeService } from '../table-resize.service';
 import { MessageService } from 'primeng/api';
 
 interface ViewState {
@@ -87,6 +88,10 @@ export class AdminPromptsComponent implements OnInit {
   apiStatus: 'online' | 'offline' = 'online';
   selectedModel: string = 'claude-sonnet-4-7';
   fileMode: boolean = false;
+
+  // Column resize — widths persisted in localStorage
+  colWidths: Record<string, number> = {};
+  private readonly TABLE_KEY = 'admin_prompts_kb';
 
   // Debug panel state
   showTestPanel: boolean = false;
@@ -182,7 +187,8 @@ export class AdminPromptsComponent implements OnInit {
   constructor(
     private mekongAiService: MekongAiService,
     private messageService: MessageService,
-    private cdr: ChangeDetectorRef
+    private cdr: ChangeDetectorRef,
+    private tableResizeSvc: TableResizeService
   ) {}
 
   @ViewChild('csvInput') csvInput!: ElementRef;
@@ -192,6 +198,7 @@ export class AdminPromptsComponent implements OnInit {
   }
 
   async ngOnInit(): Promise<void> {
+    this.colWidths = this.tableResizeSvc.load(this.TABLE_KEY);
     await this.loadAll();
   }
 
@@ -829,6 +836,18 @@ export class AdminPromptsComponent implements OnInit {
       | undefined;
     if (!field) return;
     (row as any)[field] = value;
+  }
+
+  onKbColResize(event: { element?: HTMLElement }): void {
+    const el = event.element as HTMLElement;
+    if (!el) return;
+    const colKey = el.getAttribute('data-col-key');
+    if (!colKey) return;
+    const newWidth = parseFloat(el.style.width || '0');
+    if (newWidth > 0) {
+      this.colWidths = { ...this.colWidths, [colKey]: newWidth };
+      this.tableResizeSvc.save(this.TABLE_KEY, this.colWidths);
+    }
   }
 
   onCellChange(rowIndex: number, colIndex: number, value: string): void {
