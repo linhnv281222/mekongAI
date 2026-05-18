@@ -22,35 +22,114 @@ import {
 } from "../libs/drawingNormalize.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const DATA_DIR = path.join(__dirname, "../..", "data");
 
-/** Tranh 2 luong xu ly cung 1 Gmail message */
+// ─── FILE-BASED PROCESSED ID PERSISTENCE (no-DB fallback) ────────────────────
+
+const PROCESSED_FILE = path.join(DATA_DIR, "processed_gmail_ids.json");
+
+async function readProcessedIds() {
+  try {
+    if (!fs.existsSync(PROCESSED_FILE)) return [];
+    const raw = fs.readFileSync(PROCESSED_FILE, "utf8");
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
+}
+
+async function writeProcessedIds(ids) {
+  try {
+    if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR, { recursive: true });
+    fs.writeFileSync(PROCESSED_FILE, JSON.stringify(ids, null, 2));
+  } catch (e) {
+    console.error("[ProcessedIds] Write error:", e.message);
+  }
+}
+
+async function addProcessedId(gmailId) {
+  const ids = await readProcessedIds();
+  if (!ids.includes(gmailId)) {
+    ids.push(gmailId);
+    await writeProcessedIds(ids);
+  }
+}
+
+/**
+ * Kiểm tra email đã xử lý chưa.
+ * Thứ tự: DB → file (no-DB fallback).
+ */
+async function isProcessed(msgId) {
+  const dbProcessed = await isJobProcessed(msgId);
+  if (dbProcessed) return true;
+  const fileIds = await readProcessedIds();
+  return fileIds.includes(msgId);
+}
+
+// ─── MIME VERIFICATION ────────────────────────────────────────────────────────
+
+/** Verify buffer is actually a PDF (magic bytes check) */
+function isPdfBuffer(buf) {
+  return (
+    buf.length >= 4 &&
+    buf[0] === 0x25 && // %
+    buf[1] === 0x50 && // P
+    buf[2] === 0x44 && // D
+    buf[3] === 0x46    // F
+  );
+}
+
+// ─── REPLY DETECTION ───────────────────────────────────────────────────────────
+
+/** Extract Gmail message-ID from In-Reply-To or References header */
+function extractGmailId(header) {
+  if (!header) return null;
+  // Format: <abc123@gmail.com> or <abc123@mail.xxx>
+  const match = header.match(/<([^>]+)>/);
+  if (match) return match[1];
+  return header.trim() || null;
+}
+
+/** Check if email is a reply to an already-processed message */
+async function isReplyToProcessed(emailData) {
+  const inReplyTo = emailData.inReplyTo || "";
+  const references = emailData.references || "";
+  const threadIds = [inReplyTo, ...references.split(/\s+/)].filter(Boolean);
+
+  for (const tid of threadIds) {
+    const gmailId = extractGmailId(tid);
+    if (gmailId && (await isProcessed(gmailId))) {
+      return gmailId;
+    }
+  }
+  return null;
+}
+
+// ─── INFLIGHT PROTECTION ──────────────────────────────────────────────────────
+
 const inflightMsgIds = new Set();
 
 function makeJobId(msgId) {
   return "job_" + msgId.slice(-8) + "_" + Date.now().toString().slice(-4);
 }
 
-/** Chi cần có file đính kèm là proceed. AI classify sẽ quyết định có phải RFQ không. */
-function cheapRfqFilter(emailData) {
-  if (!emailData.attachments.length) {
-    return { pass: false, reason: "no_pdf_skip" };
-  }
-  return { pass: true };
-}
-
-// ─── PIPELINE CHINH ───────────────────────────────────────────────────────
+// ─── PIPELINE CHÍNH ──────────────────────────────────────────────────────────
 
 async function processEmail(gmail, msgId) {
-  // 1. Da xu ly chua?
-  if (await isJobProcessed(msgId)) {
-    return;
-  }
   if (inflightMsgIds.has(msgId)) {
     return;
   }
   inflightMsgIds.add(msgId);
+
   try {
-    // 2. Parse email
+    // ── 0. Kiểm tra đã xử lý chưa (DB + file) ──────────────────────────────
+    if (await isProcessed(msgId)) {
+      console.log(`[Agent] ${msgId} — đã xử lý → skip`);
+      return;
+    }
+
+    // ── 1. Parse email ───────────────────────────────────────────────────────
     let emailData;
     try {
       emailData = await parseGmailMsg(gmail, msgId);
@@ -65,27 +144,41 @@ async function processEmail(gmail, msgId) {
       }`
     );
 
-    // ── 2b. Chỉ check attachment: có file → proceed, không → skip
-    const pre = cheapRfqFilter(emailData);
-    if (!pre.pass) {
-      console.log(`[Agent] No attachment → skip, no AI call`);
+    // ── 1b. Reply detection: bỏ qua nếu reply tới email đã xử lý ──────────
+    const repliedToId = await isReplyToProcessed(emailData);
+    if (repliedToId) {
+      console.log(
+        `[Agent] Reply to processed email ${repliedToId} → skip, chỉ markRead`
+      );
       await markRead(gmail, msgId);
       return;
     }
 
-    // 3. Classify (AI call)
+    // ── 2. Cheap filter: cần có PDF attachment ──────────────────────────────
+    const pdfAttachments = emailData.attachments.filter((a) =>
+      String(a.name).toLowerCase().endsWith(".pdf")
+    );
+    if (!pdfAttachments.length) {
+      console.log(`[Agent] No PDF attachment → skip`);
+      await markRead(gmail, msgId);
+      await addProcessedId(msgId);
+      return;
+    }
+
+    // ── 3. Classify (AI call) ───────────────────────────────────────────────
     const classify = await classifyEmail(emailData);
     console.log(
-      `[Classify] config=${classify._model_used} | api=${classify._model_from_api} | body_len=${classify._body_len}/${classify._body_sent} → ${classify.loai} | ${classify.ngon_ngu} | ${classify.ly_do}`
+      `[Classify] model=${classify._model_used} | api=${classify._model_from_api} | ` +
+        `body=${classify._body_len}/${classify._body_sent} → ${classify.loai} | ` +
+        `${classify.ngon_ngu} | ${classify.ly_do}`
     );
 
-    // Build email context for drawing analysis (Gemini uses this to prioritize email > drawing)
-    const emailContext = await buildEmailContext(emailData, classify);
+    // Build email context for drawing analysis
+    const emailContext = buildEmailContext(emailData, classify);
     console.log(`[EmailContext] ${emailContext.slice(0, 120)}...`);
 
-    // AI Debug: extract request payload from classify result
+    // Extract + strip internal debug fields
     const classifyAiPayload = classify._ai_request_payload || null;
-    // Remove internal field before saving
     if (classify._ai_request_payload) {
       delete classify._ai_request_payload;
     }
@@ -99,11 +192,9 @@ async function processEmail(gmail, msgId) {
       })),
     };
 
-    // Không phải RFQ → ghi job ngắn (1 lần save, có id + created_at) rồi đánh dấu đã đọc
+    // ── 4. Không phải RFQ → ghi nhận + markRead + persist ─────────────────
     if (!["rfq", "repeat_order"].includes(classify.loai)) {
-      console.log(
-        `[Agent] Không phải RFQ (${classify.loai}) → ghi nhận, bỏ qua`
-      );
+      console.log(`[Agent] Không phải RFQ (${classify.loai}) → ghi nhận, bỏ qua`);
       await saveJob({
         id: makeJobId(msgId),
         gmail_id: msgId,
@@ -121,17 +212,18 @@ async function processEmail(gmail, msgId) {
         drawings: [],
         created_at: Date.now(),
         raw: rawMeta,
-        source: 'email',
+        source: "email",
         email_body: emailData.body || null,
-        // AI Debug
         classify_ai_payload: classifyAiPayload,
         drawing_ai_payload: null,
       });
       await markRead(gmail, msgId);
+      await addProcessedId(msgId);
       return;
     }
 
-    if (!emailData.attachments.length) {
+    // ── 5. RFQ nhưng không có PDF thực sự ──────────────────────────────────
+    if (!pdfAttachments.length) {
       await saveJob({
         id: makeJobId(msgId),
         gmail_id: msgId,
@@ -149,23 +241,22 @@ async function processEmail(gmail, msgId) {
         drawings: [],
         created_at: Date.now(),
         raw: rawMeta,
-        source: 'email',
+        source: "email",
         email_body: emailData.body || null,
-        // AI Debug
         classify_ai_payload: classifyAiPayload,
         drawing_ai_payload: null,
       });
       await markRead(gmail, msgId);
+      await addProcessedId(msgId);
       return;
     }
 
-    // RFQ + có PDF → bắt đầu xử lý, đánh dấu UNREAD ngay để chặn race
+    // ── 6. RFQ + có PDF → xử lý ────────────────────────────────────────────
     await markRead(gmail, msgId);
 
-    // 4. Xu ly tung file PDF — tach trang → AI doc → gom lai
     const allResults = [];
 
-    for (const att of emailData.attachments) {
+    for (const att of pdfAttachments) {
       let pdfBuffer;
       try {
         pdfBuffer = await downloadAttachment(
@@ -174,17 +265,29 @@ async function processEmail(gmail, msgId) {
           att.attachmentId,
           att.name
         );
-        console.log(`[Download] OK ${att.name} (${pdfBuffer.length} bytes)`);
+        console.log(
+          `[Download] OK ${att.name} (${pdfBuffer.length} bytes)`
+        );
       } catch (e) {
         console.error(`[Download] Lỗi ${att.name}:`, e.message);
         continue;
       }
 
-      // Tach trang
+      // Verify actual PDF before processing
+      if (!isPdfBuffer(pdfBuffer)) {
+        console.warn(
+          `[Agent] Skip non-PDF (magic bytes fail): ${att.name}`
+        );
+        continue;
+      }
+
+      // Tách trang
       let pages;
       try {
         pages = await splitPdf(pdfBuffer, att.name);
-        console.log(`[SplitPDF] ${att.name} → ${pages.length} trang`);
+        console.log(
+          `[SplitPDF] ${att.name} → ${pages.length} trang`
+        );
       } catch (e) {
         console.error(`[SplitPDF] Lỗi:`, e.message);
         // Fallback: gửi nguyên 1 file
@@ -196,14 +299,18 @@ async function processEmail(gmail, msgId) {
         pages = [{ path: tmpPath, page: 1, name: att.name, total: 1 }];
       }
 
-      // Doc tung trang = AI
+      // Đọc từng trang = AI
       for (const pg of pages) {
         try {
-          const result = await analyzeDrawingApi(pg.path, pg.name, emailContext);
+          const result = await analyzeDrawingApi(
+            pg.path,
+            pg.name,
+            emailContext
+          );
           const d = result.data;
           const flat = normalizeDrawingToFlat(d);
 
-          // Override so_luong tu email classify
+          // Override so_luong từ email classify
           if (classify.so_luong_chung && !classify.so_luong_theo_ma) {
             flat.so_luong = classify.so_luong_chung;
           } else if (classify.so_luong_theo_ma) {
@@ -212,18 +319,17 @@ async function processEmail(gmail, msgId) {
           }
 
           if (!drawingHasMinimalData(flat)) {
-            console.warn(`[BV] Skip trang ${pg.page} (${pg.name}) — không đủ dữ liệu AI trả về`);
-            console.warn(`[BV]   ma_ban_ve="${flat.ma_ban_ve}" vat_lieu="${flat.vat_lieu}" kich_thuoc="${flat.kich_thuoc}"`);
+            console.warn(
+              `[BV] Skip trang ${pg.page} (${pg.name}) — không đủ dữ liệu`
+            );
+            console.warn(
+              `[BV]   ma_ban_ve="${flat.ma_ban_ve}" vat_lieu="${flat.vat_lieu}" kich_thuoc="${flat.kich_thuoc}"`
+            );
             continue;
           }
 
           console.log(
-            `[BV] ✓ ${flat.ma_ban_ve} | ${flat.vat_lieu} | SL:${
-              flat.so_luong
-            } | QT:${flat.ma_quy_trinh} | ${String(flat.ly_giai_qt).slice(
-              0,
-              80
-            )}`
+            `[BV] ✓ ${flat.ma_ban_ve} | ${flat.vat_lieu} | SL:${flat.so_luong} | QT:${flat.ma_quy_trinh} | ${String(flat.ly_giai_qt).slice(0, 80)}`
           );
           allResults.push({
             ...result,
@@ -242,10 +348,8 @@ async function processEmail(gmail, msgId) {
       }
     }
 
-    // 5. Tạo job ID + lưu
+    // ── 7. Lưu job + mark đã xử lý ────────────────────────────────────────
     const jobId = makeJobId(msgId);
-
-    // Extract drawing AI payloads
     const drawingAiPayloads = allResults
       .map((r) => r.request_payload)
       .filter(Boolean);
@@ -274,33 +378,28 @@ async function processEmail(gmail, msgId) {
       drawings: allResults,
       status: "pending_review",
       created_at: Date.now(),
-      source: 'email',
-      // AI Debug payloads
+      source: "email",
       classify_ai_payload: classifyAiPayload,
       drawing_ai_payload: drawingAiPayloads,
     };
 
     await saveJob(jobData);
+    await addProcessedId(msgId);
   } finally {
     inflightMsgIds.delete(msgId);
   }
 }
 
-// ─── BUILD EMAIL CONTEXT FOR DRAWING ANALYSIS ────────────────────────────────
+// ─── BUILD EMAIL CONTEXT ───────────────────────────────────────────────────────
 
-/**
- * Xây dựng chuỗi context từ email để truyền vào Gemini drawing analysis.
- * Gemini sẽ ưu tiên: email > drawing.
- * Format: các trường quan trọng nhất, ngắn gọn, để AI hiểu.
- */
-async function buildEmailContext(emailData, classify) {
+function buildEmailContext(emailData, classify) {
   const parts = [];
 
   if (emailData.body) {
     parts.push(`[NỘI DUNG EMAIL]\n${emailData.body.slice(0, 2000)}`);
   }
 
-  if (emailData.attachments && emailData.attachments.length) {
+  if (emailData.attachments?.length) {
     const names = emailData.attachments.map((a) => a.name).join(", ");
     parts.push(`[FILE ĐÍNH KÈM] ${names}`);
   }
@@ -309,27 +408,35 @@ async function buildEmailContext(emailData, classify) {
     const extras = [];
     if (classify.ten_cong_ty) extras.push(`Công ty: ${classify.ten_cong_ty}`);
     if (classify.ngon_ngu) extras.push(`Ngôn ngữ: ${classify.ngon_ngu}`);
-    if (classify.han_giao_hang) extras.push(`Hạn giao: ${classify.han_giao_hang}`);
-    if (classify.xu_ly_be_mat) extras.push(`Xử lý bề mặt: ${classify.xu_ly_be_mat}`);
-    if (classify.vat_lieu_chung_nhan) extras.push(`VAT liệu: ${classify.vat_lieu_chung_nhan}`);
-    if (classify.so_luong_chung) extras.push(`Số lượng chung: ${classify.so_luong_chung}`);
-    if (classify.so_luong_theo_ma) extras.push(`Số lượng theo mã: ${JSON.stringify(classify.so_luong_theo_ma)}`);
+    if (classify.han_giao_hang)
+      extras.push(`Hạn giao: ${classify.han_giao_hang}`);
+    if (classify.xu_ly_be_mat)
+      extras.push(`Xử lý bề mặt: ${classify.xu_ly_be_mat}`);
+    if (classify.vat_lieu_chung_nhan)
+      extras.push(`VAT liệu: ${classify.vat_lieu_chung_nhan}`);
+    if (classify.so_luong_chung)
+      extras.push(`Số lượng chung: ${classify.so_luong_chung}`);
+    if (classify.so_luong_theo_ma)
+      extras.push(
+        `Số lượng theo mã: ${JSON.stringify(classify.so_luong_theo_ma)}`
+      );
     if (extras.length) {
       parts.push(`[THÔNG TIN PHÂN LOẠI]\n${extras.join(" | ")}`);
     }
   }
 
   if (!parts.length) return "";
-
   return parts.join("\n\n");
 }
 
-// ─── GỌI API SERVER ĐỂ ĐỌC BẢN VẼ ───────────────────────────────────────
+// ─── GỌI API SERVER ĐỌC BẢN VẼ ─────────────────────────────────────────────
 
 async function analyzeDrawingApi(pdfPath, filename, emailContext = null) {
   const { provider } = loadAiConfig();
   console.log(
-    `[analyzeDrawingApi] POST ${agentCfg.banveApiUrl}/drawings — provider=${provider} — file: ${filename}${emailContext ? " [HAS_EMAIL_CONTEXT]" : ""}`
+    `[analyzeDrawingApi] POST ${agentCfg.banveApiUrl}/drawings — ` +
+      `provider=${provider} — file: ${filename}` +
+      `${emailContext ? " [HAS_EMAIL_CONTEXT]" : ""}`
   );
   const data = await postPdfToDrawingsApi({
     pdfPath,
@@ -338,20 +445,19 @@ async function analyzeDrawingApi(pdfPath, filename, emailContext = null) {
     provider,
     emailContext,
   });
-
   return data;
 }
 
-// ─── MAIN LOOP ─────────────────────────────────────────────────────────────
+// ─── MAIN LOOP ────────────────────────────────────────────────────────────────
 
 async function scanOnce(gmail) {
   console.log(
-    `\n[Scan] ${new Date().toLocaleTimeString("vi-VN")} — Quet email moi...`
+    `\n[Scan] ${new Date().toLocaleTimeString("vi-VN")} — Quét email mới...`
   );
   try {
     const messages = await fetchUnread(gmail);
     console.log(
-      `[Scan] Tìm thấy ${messages.length} email chưa đọc có đính kèm`
+      `[Scan] Tìm thấy ${messages.length} email chưa đọc có đính kèm PDF`
     );
 
     for (const msg of messages) {
@@ -368,7 +474,6 @@ async function scanOnce(gmail) {
 }
 
 async function run() {
-  // Kiểm tra config bắt buộc
   const required = [
     "ANTHROPIC_API_KEY",
     "GMAIL_CLIENT_ID",
@@ -383,10 +488,7 @@ async function run() {
 
   const gmail = makeGmail();
 
-  // Scan lần đầu ngay khi start
   await scanOnce(gmail);
-
-  // Lặp theo interval
   setInterval(() => scanOnce(gmail), gmailCfg.scanIntervalSec * 1000);
 }
 

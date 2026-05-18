@@ -50,7 +50,17 @@ export function makeGmail() {
 }
 
 /**
- * Lấy danh sách email chưa đọc có đính kèm file trong 24h.
+ * Lấy header value case-insensitive.
+ */
+function hdr(headers, name) {
+  return (
+    headers.find((h) => h.name.toLowerCase() === name.toLowerCase())
+      ?.value || ""
+  );
+}
+
+/**
+ * Lấy danh sách email chưa đọc có đính kèm PDF trong 24h.
  * @param {object} gmail — Gmail client
  * @param {number} hoursBack — số giờ để lấy (mặc định 24)
  * @returns {Array} mang message objects
@@ -59,7 +69,7 @@ export async function fetchUnread(gmail, hoursBack = 24) {
   const since = Math.floor((Date.now() - hoursBack * 3600000) / 1000);
   const res = await gmail.users.messages.list({
     userId: "me",
-    q: `is:unread has:attachment after:${since} to:${gmailCfg.user}`,
+    q: `is:unread has:attachment filename:pdf after:${since} to:${gmailCfg.user}`,
     maxResults: 30,
   });
   return res.data.messages || [];
@@ -69,7 +79,7 @@ export async function fetchUnread(gmail, hoursBack = 24) {
  * Parse nội dung 1 email từ Gmail.
  * @param {object} gmail
  * @param {string} msgId
- * @returns {object} { msgId, subject, from, senderEmail, senderName, body, attachments }
+ * @returns {object} { msgId, subject, from, senderEmail, senderName, body, attachments, inReplyTo, references }
  */
 export async function parseGmailMsg(gmail, msgId) {
   const msg = await gmail.users.messages.get({
@@ -78,13 +88,12 @@ export async function parseGmailMsg(gmail, msgId) {
     format: "full",
   });
   const headers = msg.data.payload.headers || [];
-  const hdr = (name) =>
-    headers.find((h) => h.name.toLowerCase() === name.toLowerCase())?.value ||
-    "";
 
-  const subject = hdr("Subject");
-  const from = hdr("From");
-  const date = hdr("Date");
+  const subject = hdr(headers, "Subject");
+  const from = hdr(headers, "From");
+  const date = hdr(headers, "Date");
+  const inReplyTo = hdr(headers, "In-Reply-To");
+  const references = hdr(headers, "References");
 
   const emailMatch = from.match(/<(.+?)>/);
   const senderEmail = emailMatch?.[1] || from;
@@ -107,7 +116,7 @@ export async function parseGmailMsg(gmail, msgId) {
   // Strip thread noise
   body = stripEmailThread(body);
 
-  // PDF attachments
+  // PDF attachments only
   const attachments = [];
   function findPDFs(part) {
     if (
@@ -131,6 +140,8 @@ export async function parseGmailMsg(gmail, msgId) {
     date,
     body: body.slice(0, 4000),
     attachments,
+    inReplyTo,
+    references,
   };
 }
 
