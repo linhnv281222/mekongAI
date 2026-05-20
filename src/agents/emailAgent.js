@@ -5,7 +5,7 @@ import { fileURLToPath } from "url";
 
 import { classifyEmail } from "../ai/emailClassifier.js";
 import { loadAiConfig } from "../ai/aiConfig.js";
-import { isJobProcessed, saveJob, updateJob } from "../data/jobStore.js";
+import { isJobProcessed, saveJob } from "../data/jobStore.js";
 import { agentCfg, gmailCfg } from "../libs/config.js";
 import { postPdfToDrawingsApi } from "../libs/postDrawingUpload.js";
 import {
@@ -192,31 +192,11 @@ async function processEmail(gmail, msgId) {
       })),
     };
 
-    // ── 4. Không phải RFQ → ghi nhận + markRead + persist ─────────────────
+    // ── 4. Không phải RFQ → chỉ markRead + persist, KHÔNG save DB ─────────
     if (!["rfq", "repeat_order"].includes(classify.loai)) {
-      console.log(`[Agent] Không phải RFQ (${classify.loai}) → ghi nhận, bỏ qua`);
-      await saveJob({
-        id: makeJobId(msgId),
-        gmail_id: msgId,
-        subject: emailData.subject,
-        sender: emailData.from,
-        sender_email: emailData.senderEmail,
-        sender_name: emailData.senderName,
-        sender_company: classify.ten_cong_ty,
-        classify: classify.loai,
-        ngon_ngu: classify.ngon_ngu,
-        thi_truong: classify.thi_truong || null,
-        status: classify.loai,
-        classify_output: { ...classify },
-        attachments: [],
-        drawings: [],
-        created_at: Date.now(),
-        raw: rawMeta,
-        source: "email",
-        email_body: emailData.body || null,
-        classify_ai_payload: classifyAiPayload,
-        drawing_ai_payload: null,
-      });
+      console.log(
+        `[Agent] Không phải RFQ (${classify.loai}) → skip, không lưu DB`
+      );
       await markRead(gmail, msgId);
       await addProcessedId(msgId);
       return;
@@ -224,28 +204,7 @@ async function processEmail(gmail, msgId) {
 
     // ── 5. RFQ nhưng không có PDF thực sự ──────────────────────────────────
     if (!pdfAttachments.length) {
-      await saveJob({
-        id: makeJobId(msgId),
-        gmail_id: msgId,
-        subject: emailData.subject,
-        sender: emailData.from,
-        sender_email: emailData.senderEmail,
-        sender_name: emailData.senderName,
-        sender_company: classify.ten_cong_ty,
-        classify: classify.loai,
-        ngon_ngu: classify.ngon_ngu,
-        thi_truong: classify.thi_truong || null,
-        status: "no_pdf",
-        classify_output: { ...classify },
-        attachments: [],
-        drawings: [],
-        created_at: Date.now(),
-        raw: rawMeta,
-        source: "email",
-        email_body: emailData.body || null,
-        classify_ai_payload: classifyAiPayload,
-        drawing_ai_payload: null,
-      });
+      console.log(`[Agent] RFQ nhưng không có PDF → skip, không lưu DB`);
       await markRead(gmail, msgId);
       await addProcessedId(msgId);
       return;
