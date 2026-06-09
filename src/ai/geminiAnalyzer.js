@@ -5,45 +5,10 @@ import { fileURLToPath } from "url";
 import { aiCfg } from "../libs/config.js";
 import { generateContentWithRetry } from "../libs/geminiGenerateRetry.js";
 import { getKnowledgeBlock, getPrompt } from "../prompts/promptStore.js";
+import { extractJson } from "./jsonExtract.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const AI_CONFIG_FILE = path.join(__dirname, "../../data/ai-model-config.json");
-
-/** Extract JSON — thử parse trực tiếp, thất bại thì tìm balanced { ... } trong text */
-function extractJson(text) {
-  const cleaned = String(text || "").replace(/^```json\s*/m, "").replace(/```\s*$/m, "").trim();
-  try { return JSON.parse(cleaned); } catch {}
-  const objMatch = findBalancedBraces(cleaned, '{', '}');
-  if (objMatch) {
-    try { return JSON.parse(objMatch); } catch {}
-  }
-  const arrMatch = findBalancedBraces(cleaned, '[', ']');
-  if (arrMatch) {
-    try { return JSON.parse(arrMatch); } catch {}
-  }
-  throw new Error("Không thể extract JSON from response");
-}
-
-/** Tìm text con bắt đầu bởi openChar và kết thúc bởi closeChar (đã cân bằng) */
-function findBalancedBraces(text, openChar, closeChar) {
-  let start = -1;
-  for (let i = 0; i < text.length; i++) {
-    if (text[i] === openChar) { start = i; break; }
-  }
-  if (start === -1) return null;
-  let depth = 0, inString = false, escaped = false;
-  for (let i = start; i < text.length; i++) {
-    const ch = text[i];
-    if (escaped) { escaped = false; continue; }
-    if (ch === '\\') { escaped = true; continue; }
-    if (ch === '"' || ch === "'") { inString = !inString; continue; }
-    if (inString) continue;
-    if (ch === openChar) depth++;
-    else if (ch === closeChar) depth--;
-    if (depth === 0) return text.slice(start, i + 1);
-  }
-  return null;
-}
 
 const geminiAi = new GoogleGenAI({ apiKey: aiCfg.geminiKey });
 

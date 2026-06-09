@@ -19,62 +19,20 @@ import { chatAssistantReply } from "../ai/chatExtract.js";
 import { loadAiConfig } from "../ai/aiConfig.js";
 import { callClaudeWithRetry } from "../ai/claudeRetry.js";
 import { addSseClient, removeSseClient, emitSseEvent, ensureCleanup } from "./sseManager.mjs";
+import { extractJson } from "../ai/jsonExtract.js";
+import {
+  isDuplicateMessage,
+  markProcessed,
+  hashMessageWithAttachments,
+} from "../libs/messageDedup.js";
+import {
+  getFileCache,
+  setFileCache,
+  hashFile,
+} from "../libs/drawingCache.js";
+import { triageAllPages, filterPagesForAnalysis } from "../libs/pageTriage.js";
 
-/** Extract JSON — thử parse trực tiếp, thất bại thì tìm balanced { ... } trong text */
-function extractJson(text) {
-  const cleaned = String(text || "").replace(/```json|```/g, "").trim();
-  try { return JSON.parse(cleaned); } catch {}
-
-  const objMatch = findBalancedBraces(cleaned, '{', '}');
-  if (objMatch) {
-    try { return JSON.parse(objMatch); } catch {}
-  }
-  const arrMatch = findBalancedBraces(cleaned, '[', ']');
-  if (arrMatch) {
-    try { return JSON.parse(arrMatch); } catch {}
-  }
-  throw new Error("Không thể extract JSON from response");
-}
-
-/** Tìm text con bắt đầu bởi openChar và kết thúc bởi closeChar (đã cân bằng) */
-function findBalancedBraces(text, openChar, closeChar) {
-  let start = -1;
-  for (let i = 0; i < text.length; i++) {
-    if (text[i] === openChar) {
-      start = i;
-      break;
-    }
-  }
-  if (start === -1) return null;
-
-  let depth = 0;
-  let inString = false;
-  let escaped = false;
-  for (let i = start; i < text.length; i++) {
-    const ch = text[i];
-    if (escaped) {
-      escaped = false;
-      continue;
-    }
-    if (ch === '\\') {
-      escaped = true;
-      continue;
-    }
-    if (ch === '"' || ch === "'") {
-      inString = !inString;
-      continue;
-    }
-    if (inString) continue;
-
-    if (ch === openChar) depth++;
-    else if (ch === closeChar) depth--;
-
-    if (depth === 0) {
-      return text.slice(start, i + 1);
-    }
-  }
-  return null;
-}
+/** @deprecated Use import { extractJson } from "../ai/jsonExtract.js" instead */
 
 const chatAi = new GoogleGenAI({ apiKey: aiCfg.geminiKey });
 
@@ -340,7 +298,19 @@ async function processPage(pg, safeFileName, emailContext, chatInfoOverride, job
     });
   }
   try {
-    const result = await analyzeDrawingApi(pg.path, pg.name, emailContext);
+    // ── Drawing cache check ───────────────────────────────────────────
+    let result;
+    const cachedResult = getFileCache(pg.path);
+    if (cachedResult) {
+      console.log('[analyzeFilesForJob] CACHE HIT for ' + pg.name + ' page=' + pg.page);
+      result = cachedResult;
+    } else {
+      result = await analyzeDrawingApi(pg.path, pg.name, emailContext);
+      // Cache successful result
+      if (result?.data) {
+        setFileCache(pg.path, result);
+      }
+    }
     console.log('[analyzeFilesForJob] API result success=' + !!result.data);
     const flat = normalizeDrawingToFlat(result.data);
 
@@ -433,6 +403,21 @@ async function analyzeFilesForJob(files, jobId, emailContext = null, chatInfoOve
       }
       console.log('[analyzeFilesForJob] PDF split into ' + pages.length + ' pages');
 
+      // ── P2: Page triage — skip non-drawing pages before AI ─────────────
+      if (pages.length > 1) {
+        try {
+          const triageResults = await triageAllPages(fs.readFileSync(file.path), pages);
+          const pagesToAnalyze = filterPagesForAnalysis(triageResults, pages);
+          const skipped = pages.length - pagesToAnalyze.length;
+          if (skipped > 0) {
+            console.log(`[Triage] chat: ${file.originalname}: skip ${skipped}/${pages.length} non-drawing pages`);
+            pages = pagesToAnalyze;
+          }
+        } catch (e) {
+          console.warn('[Triage] chat triage error:', e.message);
+        }
+      }
+
       const totalTasks = pages.length;
       const pageResults = await runWithLimit(
         pages.map((pg, idx) => () => processPage(pg, safeFileName, emailContext, chatInfoOverride, jobId, idx, totalTasks)),
@@ -478,18 +463,20 @@ async function classifyChatMessageGemini(chatMessage) {
   if (!aiCfg.geminiKey) return null;
 
   try {
-    const [materials, heatTreat, surface] = await Promise.all([
-      getKnowledgeBlock("vnt-materials"),
-      getKnowledgeBlock("vnt-heat-treat"),
-      getKnowledgeBlock("vnt-surface"),
-    ]);
+    // chat-classify prompt uses {{MATERIAL}}, {{HEAT_TREAT}}, {{SURFACE}}, {{MARKET}}.
+    // MATERIAL/HEAT_TREAT/SURFACE are not reliably used in the actual prompt rules,
+    // so load only MARKET (which IS injected). This saves 3 knowledge block calls.
+    const marketData = await getKnowledgeBlock("vnt-markets");
 
     const promptText = await getPrompt("chat-classify", {
       chatMessage: chatMessage.trim(),
-      MATERIAL: materials ?? "",
-      HEAT_TREAT: heatTreat ?? "",
-      SURFACE: surface ?? "",
     });
+
+    // Inject only MARKET — MATERIAL/HEAT_TREAT/SURFACE stay as empty (prompt handles them)
+    const finalPrompt = (promptText || "").replace(
+      "{{MARKET}}",
+      marketData || "[BẢNG THỊ TRƯỜNG KHÔNG CÓ]"
+    );
 
     const response = await generateContentWithRetry(
       chatAi,
@@ -497,7 +484,7 @@ async function classifyChatMessageGemini(chatMessage) {
         model: aiCfg.geminiModel,
         contents: [
           {
-            parts: [{ text: promptText }],
+            parts: [{ text: finalPrompt }],
           },
         ],
       },
@@ -518,18 +505,18 @@ async function classifyChatMessageClaude(chatMessage) {
   if (!aiCfg.anthropicKey) return null;
 
   try {
-    const [materials, heatTreat, surface] = await Promise.all([
-      getKnowledgeBlock("vnt-materials"),
-      getKnowledgeBlock("vnt-heat-treat"),
-      getKnowledgeBlock("vnt-surface"),
-    ]);
+    // Load only MARKET — MATERIAL/HEAT_TREAT/SURFACE not used by chat-classify prompt
+    const marketData = await getKnowledgeBlock("vnt-markets");
 
     const promptText = await getPrompt("chat-classify", {
       chatMessage: chatMessage.trim(),
-      MATERIAL: materials ?? "",
-      HEAT_TREAT: heatTreat ?? "",
-      SURFACE: surface ?? "",
     });
+
+    // Inject only MARKET — MATERIAL/HEAT_TREAT/SURFACE left empty
+    const finalPrompt = (promptText || "").replace(
+      "{{MARKET}}",
+      marketData || "[BẢNG THỊ TRƯỜNG KHÔNG CÓ]"
+    );
 
     const { model } = loadAiConfig();
     const resolvedModel = (model && model.trim())
@@ -545,7 +532,7 @@ async function classifyChatMessageClaude(chatMessage) {
       body: {
         model: resolvedModel,
         max_tokens: 5024,
-        messages: [{ role: "user", content: promptText }],
+        messages: [{ role: "user", content: finalPrompt }],
       },
       logTag: "chat-classify",
     });
@@ -1068,6 +1055,22 @@ router.post("/message", chatUpload.array("files", 20), async (req, res) => {
       file.path = newPath;
       file.destination = UPLOADS_DIR;
     }
+  }
+
+  // ── Chat message dedup (body + file hash) ────────────────────────────────
+  const chatDedupKey = hashMessageWithAttachments(
+    message,
+    files.map((f) => ({ name: f.originalname || f.filename, size: f.size }))
+  );
+  if (isDuplicateMessage(chatDedupKey)) {
+    console.log(`[ChatController] Duplicate message → returning cached response`);
+    return res.json({
+      isBotReply: true,
+      reply: "Tin nhắn này đã được xử lý. Vui lòng đợi hoặc gửi tin nhắn khác.",
+      step: "duplicate",
+      job_id: jobId,
+      duplicate: true,
+    });
   }
 
   try {
