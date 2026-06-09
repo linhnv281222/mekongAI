@@ -19,14 +19,23 @@ import {
   getPromptRawContent,
   createPromptVersion,
   render,
+  invalidateCache,
 } from "../prompts/promptStore.js";
 import { aiCfg } from "../libs/config.js";
 import { loadAiConfig } from "../ai/aiConfig.js";
 import { callClaudeWithRetry } from "../ai/claudeRetry.js";
 import { generateContentWithRetry } from "../libs/geminiGenerateRetry.js";
+import { hashString } from "./messageDedup.js";
 
 // Prompt keys cần review mỗi ngày
 const PROMPT_KEYS_TO_REVIEW = ["email-classify", "gemini-drawing", "chat-classify"];
+
+// P4: In-memory dedup for daily review (prevent re-reviewing same prompt in same run)
+const _reviewedPrompts = new Set();
+
+// P4: Truncate ghi_chu to limit token cost
+const MAX_GHI_CHU_LENGTH = 2000;
+const MAX_GHI_CHU_ENTRIES = 20;
 
 /** Lấy ngày hôm qua (YYYY-MM-DD) */
 function getYesterdayStr() {
@@ -322,6 +331,14 @@ async function reviewPromptKey(promptKey, jobs, reviewDate) {
     return { promptKey, skipped: true };
   }
 
+  // P4: Dedup — skip if same prompt content was already reviewed in this run
+  const promptHash = hashString(currentContent);
+  if (_reviewedPrompts.has(promptHash)) {
+    console.log(`[DailyReview] Skip ${promptKey} — already reviewed in this run (dedup)`);
+    return { promptKey, skipped: true, reason: "already_reviewed" };
+  }
+  _reviewedPrompts.add(promptHash);
+
   // Route feedback đúng vào đúng prompt
   const ghiChuParts = [];
 
@@ -351,10 +368,20 @@ async function reviewPromptKey(promptKey, jobs, reviewDate) {
     return { promptKey, skipped: true, reason: "no_ghi_chu" };
   }
 
-  const ghiChuList = ghiChuParts.join("\n\n---\n\n");
+  // P4: Truncate entries to token budget
+  // max 20 entries × avg 200 chars ≈ 4K tokens max
+  const limitedParts = ghiChuParts.slice(0, MAX_GHI_CHU_ENTRIES);
+  let ghiChuList = limitedParts.join("\n\n---\n\n");
+
+  // P4: Hard cap on total length to limit AI token cost
+  if (ghiChuList.length > MAX_GHI_CHU_LENGTH) {
+    console.log(`[DailyReview] TRUNCATE ghi_chu: ${ghiChuList.length} → ${MAX_GHI_CHU_LENGTH} chars`);
+    ghiChuList = ghiChuList.slice(0, MAX_GHI_CHU_LENGTH);
+  }
+
   const jobIds = jobs.map((j) => j.id);
 
-  console.log(`[DailyReview] ${promptKey}: ${jobs.length} jobs, ${ghiChuParts.length} ghi_chu entries`);
+  console.log(`[DailyReview] ${promptKey}: ${jobs.length} jobs, ${limitedParts.length} entries (truncated=${ghiChuParts.length > MAX_GHI_CHU_ENTRIES})`);
   if (ghiChuList.length > 200) {
     console.log(`[DailyReview]   First entry preview: ${ghiChuList.substring(0, 200)}`);
   }
@@ -433,6 +460,13 @@ async function reviewPromptKey(promptKey, jobs, reviewDate) {
 
   if (versionResult) {
     console.log(`[DailyReview] ${promptKey}: → v${versionResult.version} (đã activate)`);
+    // P4: Invalidate promptStore cache so new version is used immediately
+    try {
+      invalidateCache(promptKey);
+      console.log(`[DailyReview] ${promptKey}: cache invalidated`);
+    } catch (e) {
+      console.warn(`[DailyReview] ${promptKey}: invalidateCache error:`, e.message);
+    }
   } else {
     console.error(`[DailyReview] ${promptKey}: Tạo version thất bại`);
   }

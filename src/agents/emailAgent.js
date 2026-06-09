@@ -20,6 +20,15 @@ import {
   drawingHasMinimalData,
   normalizeDrawingToFlat,
 } from "../libs/drawingNormalize.js";
+import { prefilterEmail } from "../libs/emailPreFilter.js";
+import { isDuplicateMessagePersistent, markProcessed, hashMessageWithAttachments } from "../libs/messageDedup.js";
+import {
+  getFileCache,
+  setFileCache,
+  hashFile,
+} from "../libs/drawingCache.js";
+import { triageAllPages, filterPagesForAnalysis } from "../libs/pageTriage.js";
+import { extractWithRules, shouldRetryWithAltModel } from "../libs/drawingRules.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const DATA_DIR = path.join(__dirname, "../..", "data");
@@ -144,13 +153,32 @@ async function processEmail(gmail, msgId) {
       }`
     );
 
-    // ── 1b. Reply detection: bỏ qua nếu reply tới email đã xử lý ──────────
+    // ── 1b. Message dedup (body + attachment hash) — AFTER parse ─────────────
+    const dedupKey = hashMessageWithAttachments(emailData.body, emailData.attachments);
+    if (isDuplicateMessagePersistent(dedupKey)) {
+      console.log(`[Agent] ${msgId} — duplicate message → skip`);
+      await markRead(gmail, msgId);
+      await addProcessedId(msgId);
+      return;
+    }
+
+    // ── 1c. Rule-based prefilter (BEFORE AI classify) ─────────────────────
+    const prefilter = prefilterEmail(emailData);
+    if (prefilter.shouldSkip) {
+      console.log(`[Agent] PREFILTER skip: ${prefilter.reason}`);
+      await markRead(gmail, msgId);
+      await addProcessedId(msgId);
+      return;
+    }
+
+    // ── 1d. Reply detection: bỏ qua nếu reply tới email đã xử lý ──────────
     const repliedToId = await isReplyToProcessed(emailData);
     if (repliedToId) {
       console.log(
         `[Agent] Reply to processed email ${repliedToId} → skip, chỉ markRead`
       );
       await markRead(gmail, msgId);
+      await addProcessedId(msgId);
       return;
     }
 
@@ -247,6 +275,22 @@ async function processEmail(gmail, msgId) {
         console.log(
           `[SplitPDF] ${att.name} → ${pages.length} trang`
         );
+
+        // ── P2: Page triage — skip non-drawing pages before AI ─────────────
+        if (pages.length > 1) {
+          const triageResults = await triageAllPages(pdfBuffer, pages);
+          const pagesToAnalyze = filterPagesForAnalysis(triageResults, pages);
+          const skipped = pages.length - pagesToAnalyze.length;
+          if (skipped > 0) {
+            console.log(`[Triage] ${att.name}: skip ${skipped}/${pages.length} non-drawing pages`);
+            for (const [pgNum, triage] of triageResults.entries()) {
+              if (triage.type === "non-drawing") {
+                console.log(`[Triage]   skip page ${pgNum}: ${triage.reason}`);
+              }
+            }
+          }
+          pages = pagesToAnalyze;
+        }
       } catch (e) {
         console.error(`[SplitPDF] Lỗi:`, e.message);
         // Fallback: gửi nguyên 1 file
@@ -258,51 +302,102 @@ async function processEmail(gmail, msgId) {
         pages = [{ path: tmpPath, page: 1, name: att.name, total: 1 }];
       }
 
-      // Đọc từng trang = AI
+      // Đọc từng trang = AI (with cache check)
       for (const pg of pages) {
+        // ── Drawing cache check ──────────────────────────────────────────────
+        let cachedResult = null;
         try {
-          const result = await analyzeDrawingApi(
-            pg.path,
-            pg.name,
-            emailContext
-          );
-          const d = result.data;
-          const flat = normalizeDrawingToFlat(d);
-
-          // Override so_luong từ email classify
-          if (classify.so_luong_chung && !classify.so_luong_theo_ma) {
-            flat.so_luong = classify.so_luong_chung;
-          } else if (classify.so_luong_theo_ma) {
-            const override = classify.so_luong_theo_ma[flat.ma_ban_ve];
-            if (override) flat.so_luong = override;
-          }
-
-          if (!drawingHasMinimalData(flat)) {
-            console.warn(
-              `[BV] Skip trang ${pg.page} (${pg.name}) — không đủ dữ liệu`
-            );
-            console.warn(
-              `[BV]   ma_ban_ve="${flat.ma_ban_ve}" vat_lieu="${flat.vat_lieu}" kich_thuoc="${flat.kich_thuoc}"`
-            );
-            continue;
-          }
-
-          console.log(
-            `[BV] ✓ ${flat.ma_ban_ve} | ${flat.vat_lieu} | SL:${flat.so_luong} | QT:${flat.ma_quy_trinh} | ${String(flat.ly_giai_qt).slice(0, 80)}`
-          );
-          allResults.push({
-            ...result,
-            data: flat,
-            filename: att.name,
-            page: pg.page,
-            fileIndex: 0,
-          });
+          cachedResult = getFileCache(pg.path);
         } catch (e) {
-          console.error(`[BV] Lỗi trang ${pg.page}:`, e.message);
-        } finally {
-          fs.unlink(pg.path, () => {});
+          console.warn(`[Cache] getFileCache error for ${pg.name}:`, e.message);
         }
 
+        let result;
+        if (cachedResult) {
+          console.log(`[Cache] HIT for ${pg.name} — skipping AI call`);
+          result = cachedResult;
+        } else {
+          try {
+            result = await analyzeDrawingApi(
+              pg.path,
+              pg.name,
+              emailContext
+            );
+            // Cache successful result
+            if (result?.data) {
+              try {
+                setFileCache(pg.path, result);
+              } catch (e) {
+                console.warn(`[Cache] setFileCache error:`, e.message);
+              }
+            }
+          } catch (e) {
+            console.error(`[BV] Lỗi trang ${pg.page}:`, e.message);
+            result = null;
+          }
+        }
+
+        if (!result?.data) {
+          console.warn(`[BV] No result for ${pg.name} — skipping`);
+          try { fs.unlink(pg.path, () => {}); } catch {}
+          continue;
+        }
+
+        const d = result.data;
+        const flat = normalizeDrawingToFlat(d);
+
+        // ── P3: Rule-based enrichment — fill missing fields ─────────────────
+        try {
+          const enriched = extractWithRules("", flat);
+          if (enriched.confidence > 0 && enriched.fieldsFound > 0) {
+            console.log(`[Rules] enriched: fields=${enriched.fieldsFound} conf=${enriched.confidence}/10 missing=${enriched.missing.join(",") || "none"}`);
+          }
+          // Only fill truly empty fields, don't override AI output
+          for (const key of enriched.missing) {
+            if (flat[key] == null || flat[key] === "" || flat[key] === "Không ghi trên bản vẽ") {
+              if (enriched.extracted[key] != null && enriched.extracted[key] !== "") {
+                flat[key] = enriched.extracted[key];
+                console.log(`[Rules] filled ${key} = "${flat[key]}"`);
+              }
+            }
+          }
+        } catch (e) {
+          console.warn(`[Rules] enrichment error:`, e.message);
+        }
+
+        // Override so_luong từ email classify
+        if (classify.so_luong_chung && !classify.so_luong_theo_ma) {
+          flat.so_luong = classify.so_luong_chung;
+        } else if (classify.so_luong_theo_ma) {
+          const override = classify.so_luong_theo_ma[flat.ma_ban_ve];
+          if (override) flat.so_luong = override;
+        }
+
+        if (!drawingHasMinimalData(flat)) {
+          console.warn(
+            `[BV] Skip trang ${pg.page} (${pg.name}) — không đủ dữ liệu`
+          );
+          console.warn(
+            `[BV]   ma_ban_ve="${flat.ma_ban_ve}" vat_lieu="${flat.vat_lieu}" kich_thuoc="${flat.kich_thuoc}"`
+          );
+          try { fs.unlink(pg.path, () => {}); } catch {}
+          continue;
+        }
+
+        console.log(
+          `[BV] ✓ ${flat.ma_ban_ve} | ${flat.vat_lieu} | SL:${flat.so_luong} | QT:${flat.ma_quy_trinh} | ${String(flat.ly_giai_qt).slice(0, 80)}`
+        );
+        allResults.push({
+          ...result,
+          data: flat,
+          filename: att.name,
+          page: pg.page,
+          fileIndex: 0,
+        });
+
+        try { fs.unlink(pg.path, () => {}); } catch {}
+
+        // Rate limit between AI calls
         await new Promise((r) => setTimeout(r, 1500));
       }
     }
@@ -344,6 +439,7 @@ async function processEmail(gmail, msgId) {
 
     await saveJob(jobData);
     await addProcessedId(msgId);
+    markProcessed(dedupKey); // mark message dedup
   } finally {
     inflightMsgIds.delete(msgId);
   }

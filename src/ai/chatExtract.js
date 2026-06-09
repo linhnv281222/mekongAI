@@ -5,44 +5,9 @@ import { getPrompt, getKnowledgeBlock } from "../prompts/promptStore.js";
 import { generateContentWithRetry } from "../libs/geminiGenerateRetry.js";
 import { loadAiConfig } from "./aiConfig.js";
 import { callClaudeWithRetry } from "./claudeRetry.js";
+import { extractJson } from "./jsonExtract.js";
 
 const geminiAi = new GoogleGenAI({ apiKey: aiCfg.geminiKey });
-
-/** Extract JSON — thử parse trực tiếp, thất bại thì tìm balanced { ... } trong text */
-function extractJson(text) {
-  const cleaned = String(text || "").replace(/^```json\s*/m, "").replace(/```\s*$/m, "").trim();
-  try { return JSON.parse(cleaned); } catch {}
-  const objMatch = findBalancedBraces(cleaned, '{', '}');
-  if (objMatch) {
-    try { return JSON.parse(objMatch); } catch {}
-  }
-  const arrMatch = findBalancedBraces(cleaned, '[', ']');
-  if (arrMatch) {
-    try { return JSON.parse(arrMatch); } catch {}
-  }
-  throw new Error("Không thể extract JSON from response");
-}
-
-/** Tìm text con bắt đầu bởi openChar và kết thúc bởi closeChar (đã cân bằng) */
-function findBalancedBraces(text, openChar, closeChar) {
-  let start = -1;
-  for (let i = 0; i < text.length; i++) {
-    if (text[i] === openChar) { start = i; break; }
-  }
-  if (start === -1) return null;
-  let depth = 0, inString = false, escaped = false;
-  for (let i = start; i < text.length; i++) {
-    const ch = text[i];
-    if (escaped) { escaped = false; continue; }
-    if (ch === '\\') { escaped = true; continue; }
-    if (ch === '"' || ch === "'") { inString = !inString; continue; }
-    if (inString) continue;
-    if (ch === openChar) depth++;
-    else if (ch === closeChar) depth--;
-    if (depth === 0) return text.slice(start, i + 1);
-  }
-  return null;
-}
 
 function chatModel() {
   const m = (process.env.CHAT_GEMINI_MODEL || "").trim();
@@ -75,10 +40,18 @@ async function extractChatInfoGemini(message) {
     getKnowledgeBlock("vnt-markets"),
   ]);
 
-  const finalPrompt = (promptText || "").replace(
+  // chat-classify prompt has {{MATERIAL}}, {{HEAT_TREAT}}, {{SURFACE}} placeholders
+  // but we don't inject them → they render as empty strings.
+  // For chat extraction, only MARKET block is relevant. Strip unused placeholders.
+  let finalPrompt = (promptText || "").replace(
     "{{MARKET}}",
     marketData || "[BẢNG THỊ TRƯỜNG KHÔNG CÓ]"
   );
+  finalPrompt = finalPrompt
+    .replace(/\{\{MATERIAL\}\}/g, "")
+    .replace(/\{\{HEAT_TREAT\}\}/g, "")
+    .replace(/\{\{SURFACE\}\}/g, "")
+    .trim();
 
   const response = await generateContentWithRetry(
     geminiAi,
@@ -105,10 +78,16 @@ async function extractChatInfoClaude(message) {
     getKnowledgeBlock("vnt-markets"),
   ]);
 
-  const finalPrompt = (promptText || "").replace(
+  // Strip unused knowledge placeholders — chat-classify only needs MARKET
+  let finalPrompt = (promptText || "").replace(
     "{{MARKET}}",
     marketData || "[BẢNG THỊ TRƯỜNG KHÔNG CÓ]"
   );
+  finalPrompt = finalPrompt
+    .replace(/\{\{MATERIAL\}\}/g, "")
+    .replace(/\{\{HEAT_TREAT\}\}/g, "")
+    .replace(/\{\{SURFACE\}\}/g, "")
+    .trim();
 
   const res = await callClaudeWithRetry({
     headers: {
@@ -157,10 +136,15 @@ async function extractChatInfoWithPayloadGemini(message) {
     getKnowledgeBlock("vnt-markets"),
   ]);
 
-  const finalPrompt = (promptText || "").replace(
+  let finalPrompt = (promptText || "").replace(
     "{{MARKET}}",
     marketData || "[BẢNG THỊ TRƯỜNG KHÔNG CÓ]"
   );
+  finalPrompt = finalPrompt
+    .replace(/\{\{MATERIAL\}\}/g, "")
+    .replace(/\{\{HEAT_TREAT\}\}/g, "")
+    .replace(/\{\{SURFACE\}\}/g, "")
+    .trim();
 
   const requestPayload = {
     model: chatModel(),
@@ -191,10 +175,15 @@ async function extractChatInfoWithPayloadClaude(message) {
     getKnowledgeBlock("vnt-markets"),
   ]);
 
-  const finalPrompt = (promptText || "").replace(
+  let finalPrompt = (promptText || "").replace(
     "{{MARKET}}",
     marketData || "[BẢNG THỊ TRƯỜNG KHÔNG CÓ]"
   );
+  finalPrompt = finalPrompt
+    .replace(/\{\{MATERIAL\}\}/g, "")
+    .replace(/\{\{HEAT_TREAT\}\}/g, "")
+    .replace(/\{\{SURFACE\}\}/g, "")
+    .trim();
 
   const requestPayload = {
     model: claudeModel(),
