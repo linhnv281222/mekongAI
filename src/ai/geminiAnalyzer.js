@@ -6,6 +6,7 @@ import { aiCfg } from "../libs/config.js";
 import { generateContentWithRetry } from "../libs/geminiGenerateRetry.js";
 import { getKnowledgeBlock, getPrompt } from "../prompts/promptStore.js";
 import { extractJson } from "./jsonExtract.js";
+import { parseWithMinerU } from "../libs/pdfMinerU.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const AI_CONFIG_FILE = path.join(__dirname, "../../data/ai-model-config.json");
@@ -45,6 +46,20 @@ export async function analyzeDrawingGemini(pdfPath, model = null, emailContext =
 
   let debugPayload = null;
 
+  // ── P5: MinerU preprocessor ────────────────────────────────────────────────
+  // Try MinerU first. If available, extract text and send to AI as text (much cheaper).
+  // If MinerU unavailable or fails, fall back to original PDF→Vision approach.
+  let mineruText = null;
+  try {
+    const mineruResult = await parseWithMinerU(pdfPath);
+    if (mineruResult?.mineruText) {
+      mineruText = mineruResult.mineruText;
+      console.log(`[GeminiAnalyzer] MinerU OK: ${mineruText.length} chars extracted, ${mineruResult.pageCount} pages`);
+    }
+  } catch (e) {
+    console.warn(`[GeminiAnalyzer] MinerU error (will use PDF bytes):`, e.message);
+  }
+
   try {
     const pdfBuffer = fs.readFileSync(pdfPath);
     const base64 = pdfBuffer.toString("base64");
@@ -66,47 +81,70 @@ export async function analyzeDrawingGemini(pdfPath, model = null, emailContext =
       SURFACE: surface ?? "",
       SHAPE: shapes ?? "",
       EMAIL_CONTEXT: emailContext ?? "",
+      MINERU_TEXT: mineruText
+        ? `[TRÍCH XUẤT TỪ MinerU — NỘI DUNG BẢN VẼ]\n${mineruText.slice(0, 50000)}\n\n[KẾT THÚC TRÍCH XUẤT MinerU]`
+        : "",
     });
 
-    const requestPayload = {
-      model: modelName,
-      contents: [
-        {
-          parts: [
-            {
-              inlineData: {
-                mimeType: "application/pdf",
-                data: base64,
-              },
-            },
-            { text: promptText },
-          ],
-        },
-      ],
-      generationConfig: { temperature: 0 },
-    };
+    let requestPayload;
 
-    // Debug payload: thay base64 bằng tên file để hiển thị (không ảnh hưởng request thật)
-    debugPayload = {
-      ...requestPayload,
-      contents: requestPayload.contents.map((c) => ({
-        ...c,
-        parts: c.parts.map((p) => {
-          if (p.inlineData) {
-            return {
-              ...p,
-              inlineData: {
-                ...p.inlineData,
-                data: `[FILE: ${
-                  pdfPath ? path.basename(pdfPath) : "corrected"
-                }]`,
+    if (mineruText) {
+      // ── MinerU path: send extracted text instead of PDF bytes ──────────────
+      // This is MUCH cheaper: text tokens << vision tokens
+      // MinerU has already done OCR/layout analysis, so AI just needs to parse structure
+      requestPayload = {
+        model: modelName,
+        contents: [{ role: "user", parts: [{ text: promptText }] }],
+        generationConfig: { temperature: 0 },
+      };
+
+      debugPayload = {
+        ...requestPayload,
+        _source: "mineru",
+        _mineruChars: mineruText.length,
+        _mineruTruncated: mineruText.length > 50000,
+      };
+    } else {
+      // ── Original path: send PDF as inline data ─────────────────────────────────
+      requestPayload = {
+        model: modelName,
+        contents: [
+          {
+            parts: [
+              {
+                inlineData: {
+                  mimeType: "application/pdf",
+                  data: base64,
+                },
               },
-            };
-          }
-          return p;
-        }),
-      })),
-    };
+              { text: promptText },
+            ],
+          },
+        ],
+        generationConfig: { temperature: 0 },
+      };
+
+      // Debug payload: thay base64 bằng tên file để hiển thị (không ảnh hưởng request thật)
+      debugPayload = {
+        ...requestPayload,
+        _source: "pdf_vision",
+        contents: requestPayload.contents.map((c) => ({
+          ...c,
+          parts: c.parts.map((p) => {
+            if (p.inlineData) {
+              return {
+                ...p,
+                inlineData: {
+                  ...p.inlineData,
+                  data: `[FILE: ${path.basename(pdfPath)}]`,
+                },
+              };
+            }
+            return p;
+          }),
+        })),
+      };
+    }
 
     console.log('[GeminiAnalyzer] Calling Gemini API... memMB=' + Math.round(process.memoryUsage().heapUsed / 1024 / 1024));
     const response = await generateContentWithRetry(

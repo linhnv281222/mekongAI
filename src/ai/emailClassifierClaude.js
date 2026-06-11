@@ -44,9 +44,10 @@ export async function classifyEmailClaude(emailData) {
 
   const requestPayload = {
     model: CLASSIFY_MODEL,
-    max_tokens: 5000,
+    max_tokens: 2048,
     temperature: 0,
-    messages: [{ role: "user", content: finalPrompt }],
+    system: [{ type: "text", text: finalPrompt, cache_control: { type: "ephemeral" } }],
+    messages: [{ role: "user", content: "Phân loại email trên và trả về kết quả JSON." }],
   };
 
   const res = await callClaudeWithRetry({
@@ -54,6 +55,7 @@ export async function classifyEmailClaude(emailData) {
       "Content-Type": "application/json",
       "x-api-key": aiCfg.anthropicKey,
       "anthropic-version": "2023-06-01",
+      "anthropic-beta": "prompt-caching-2024-07-31",
     },
     body: requestPayload,
     logTag: "email-classify",
@@ -75,6 +77,11 @@ export async function classifyEmailClaude(emailData) {
 
   const data = res.data;
   const modelFromApi = data.model || "(không có)";
+  const usage = data.usage ?? {};
+  console.log(
+    `[Classify] tokens=in:${usage.input_tokens ?? 0}|out:${usage.output_tokens ?? 0}|cache:${usage.cache_read_tokens ?? 0} ` +
+    `model=${modelFromApi} bodyLen=${emailData.body.length}`
+  );
   console.log(`[Classify] API trả về: model=${modelFromApi}, id=${data.id ? data.id.slice(0, 12) + "..." : "na"} (attempt ${res.attempt})`);
 
   const text = data.content?.[0]?.text || "{}";

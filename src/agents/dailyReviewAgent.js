@@ -186,6 +186,7 @@ async function refineWithClaude(currentPromptContent, ghiChuList, modelName) {
       "Content-Type": "application/json",
       "x-api-key": aiCfg.anthropicKey,
       "anthropic-version": "2023-06-01",
+      "anthropic-beta": "prompt-caching-2024-07-31",
     },
     body: requestPayload,
     logTag: "daily-review",
