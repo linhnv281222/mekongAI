@@ -6,6 +6,7 @@ import { getKnowledgeBlock, getPrompt } from "../prompts/promptStore.js";
 import { loadAiConfig } from "./aiConfig.js";
 import { callClaudeWithRetry } from "./claudeRetry.js";
 import { extractJson } from "./jsonExtract.js";
+import { parseWithMinerU } from "../libs/pdfMinerU.js";
 
 function anthropicModel() {
   const { model } = loadAiConfig();
@@ -19,6 +20,7 @@ function anthropicKey() {
 
 /**
  * Đọc bản vẽ PDF = Claude Sonnet/Opus.
+ * MinerU: nếu có → gửi text thay vì PDF bytes (tiết kiệm token vision).
  */
 export async function analyzeDrawingClaude(pdfPath, emailContext = null) {
   if (!anthropicKey()) {
@@ -26,6 +28,20 @@ export async function analyzeDrawingClaude(pdfPath, emailContext = null) {
   }
 
   const modelName = anthropicModel();
+
+  // ── P5: MinerU preprocessor ─────────────────────────────────────────
+  let mineruText = null;
+  if (pdfPath) {
+    try {
+      const mineruResult = await parseWithMinerU(pdfPath);
+      if (mineruResult?.mineruText) {
+        mineruText = mineruResult.mineruText;
+        console.log(`[ClaudeAnalyzer] MinerU OK: ${mineruText.length} chars`);
+      }
+    } catch (e) {
+      console.warn(`[ClaudeAnalyzer] MinerU error (will use PDF bytes):`, e.message);
+    }
+  }
 
   const [vntKnowledge, materials, heatTreat, surface, shapes] =
     await Promise.all([
@@ -43,59 +59,88 @@ export async function analyzeDrawingClaude(pdfPath, emailContext = null) {
     SURFACE: surface ?? "",
     SHAPE: shapes ?? "",
     EMAIL_CONTEXT: emailContext ?? "",
+    MINERU_TEXT: mineruText
+      ? `[TRÍCH XUẤT TỪ MinerU — NỘI DUNG BẢN VẼ]\n${mineruText.slice(0, 50000)}\n\n[KẾT THÚC TRÍCH XUẤT MinerU]`
+      : "",
   });
 
-  let base64 = null;
-  let filename = "corrected";
-  if (pdfPath) {
-    const pdfBuffer = fs.readFileSync(pdfPath);
-    base64 = pdfBuffer.toString("base64");
-    filename = path.basename(pdfPath);
-  }
+  let requestPayload;
+  let debugPayload;
 
-  const requestPayload = {
-    model: modelName,
-    max_tokens: 4096,
-    temperature: 0,
-    system: [{ type: "text", text: promptText }],
-    messages: [
-      {
-        role: "user",
-        content: [
-          {
-            type: "document",
-            source: {
-              type: "base64",
-              media_type: "application/pdf",
-              data: base64,
+  if (mineruText) {
+    // ── MinerU path: text tokens (much cheaper) ──────────────────────────
+    requestPayload = {
+      model: modelName,
+      max_tokens: 4096,
+      temperature: 0,
+      system: [
+        { type: "text", text: promptText, cache_control: { type: "ephemeral" } }
+      ],
+      messages: [
+        {
+          role: "user",
+          content: `Phân tích bản vẽ kỹ thuật từ nội dung MinerU bên trên và trả về kết quả JSON.`,
+        },
+      ],
+    };
+    debugPayload = { ...requestPayload, _source: "mineru", _mineruChars: mineruText.length };
+  } else {
+    // ── Original path: PDF as base64 document ────────────────────────────
+    let base64 = null;
+    let filename = "corrected";
+    if (pdfPath) {
+      const pdfBuffer = fs.readFileSync(pdfPath);
+      base64 = pdfBuffer.toString("base64");
+      filename = path.basename(pdfPath);
+    }
+
+    requestPayload = {
+      model: modelName,
+      max_tokens: 4096,
+      temperature: 0,
+      system: [
+        { type: "text", text: promptText, cache_control: { type: "ephemeral" } }
+      ],
+      messages: [
+        {
+          role: "user",
+          content: [
+            {
+              type: "document",
+              source: {
+                type: "base64",
+                media_type: "application/pdf",
+                data: base64,
+              },
             },
-          },
-          {
-            type: "text",
-            text: "Phân tích bản vẽ PDF trên và trả về kết quả.",
-          },
-        ],
-      },
-    ],
-  };
-
-  const debugPayload = {
-    ...requestPayload,
-    messages: requestPayload.messages.map((m) => ({
-      ...m,
-      content: m.content.map((c) =>
-        c.type === "document"
-          ? { ...c, source: { ...c.source, data: `[FILE: ${filename}]` } }
-          : c
-      ),
-    })),
-  };
+            {
+              type: "text",
+              text: "Phân tích bản vẽ PDF trên và trả về kết quả.",
+            },
+          ],
+        },
+      ],
+    };
+    debugPayload = {
+      ...requestPayload,
+      _source: "pdf_vision",
+      messages: requestPayload.messages.map((m) => ({
+        ...m,
+        content: m.content.map((c) =>
+          c.type === "document"
+            ? { ...c, source: { ...c.source, data: `[FILE: ${filename}]` } }
+            : c
+        ),
+      })),
+    };
+  }
 
   const res = await callClaudeWithRetry({
     headers: {
       "Content-Type": "application/json",
       "x-api-key": anthropicKey(),
       "anthropic-version": "2023-06-01",
+      "anthropic-beta": "prompt-caching-2024-07-31",
     },
     body: requestPayload,
     logTag: "analyzeDrawing",
@@ -114,11 +159,17 @@ export async function analyzeDrawingClaude(pdfPath, emailContext = null) {
   const raw = data.content?.[0]?.text || "";
   const parsed = extractJson(raw);
 
+  const usage = data.usage ?? {};
+  console.log(
+    `[ClaudeAnalyzer] tokens=in:${usage.input_tokens ?? 0}|out:${usage.output_tokens ?? 0}|cache:${usage.cache_read_tokens ?? 0} ` +
+    `src=${debugPayload._source} model=${modelName} file=${debugPayload._mineruChars ? path.basename(pdfPath ?? "N/A") : "N/A"}`
+  );
+
   return {
     success: true,
     data: parsed,
     raw,
-    usage: data.usage ?? {},
+    usage,
     request_payload: debugPayload,
   };
 }
@@ -148,7 +199,9 @@ export async function debugPromptClaude(systemPrompt, userMessage, schema = "") 
     model: anthropicModel(),
     max_tokens: 4096,
     temperature: 0,
-    system: [{ type: "text", text: systemPrompt }],
+    system: [
+      { type: "text", text: systemPrompt, cache_control: { type: "ephemeral" } }
+    ],
     messages: [{ role: "user", content: userContent }],
   };
 
@@ -157,6 +210,7 @@ export async function debugPromptClaude(systemPrompt, userMessage, schema = "") 
       "Content-Type": "application/json",
       "x-api-key": anthropicKey(),
       "anthropic-version": "2023-06-01",
+      "anthropic-beta": "prompt-caching-2024-07-31",
     },
     body: requestPayload,
     logTag: "debugPrompt",
@@ -179,11 +233,17 @@ export async function debugPromptClaude(systemPrompt, userMessage, schema = "") 
     parsed = raw;
   }
 
+  const usage = res.data.usage ?? {};
+  console.log(
+    `[ClaudeAnalyzer] tokens=in:${usage.input_tokens ?? 0}|out:${usage.output_tokens ?? 0}|cache:${usage.cache_read_tokens ?? 0} ` +
+    `src=debug model=${anthropicModel()}`
+  );
+
   return {
     success: true,
     data: parsed,
     raw,
-    usage: res.data.usage ?? {},
+    usage,
     request_payload: requestPayload,
   };
 }

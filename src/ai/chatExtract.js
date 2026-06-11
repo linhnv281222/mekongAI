@@ -40,18 +40,11 @@ async function extractChatInfoGemini(message) {
     getKnowledgeBlock("vnt-markets"),
   ]);
 
-  // chat-classify prompt has {{MATERIAL}}, {{HEAT_TREAT}}, {{SURFACE}} placeholders
-  // but we don't inject them → they render as empty strings.
-  // For chat extraction, only MARKET block is relevant. Strip unused placeholders.
   let finalPrompt = (promptText || "").replace(
-    "{{MARKET}}",
+    "{{MARKET_KB}}",
     marketData || "[BẢNG THỊ TRƯỜNG KHÔNG CÓ]"
   );
-  finalPrompt = finalPrompt
-    .replace(/\{\{MATERIAL\}\}/g, "")
-    .replace(/\{\{HEAT_TREAT\}\}/g, "")
-    .replace(/\{\{SURFACE\}\}/g, "")
-    .trim();
+  finalPrompt = finalPrompt.trim();
 
   const response = await generateContentWithRetry(
     geminiAi,
@@ -94,6 +87,7 @@ async function extractChatInfoClaude(message) {
       "Content-Type": "application/json",
       "x-api-key": aiCfg.anthropicKey,
       "anthropic-version": "2023-06-01",
+      "anthropic-beta": "prompt-caching-2024-07-31",
     },
     body: {
       model: claudeModel(),
@@ -197,6 +191,7 @@ async function extractChatInfoWithPayloadClaude(message) {
       "Content-Type": "application/json",
       "x-api-key": aiCfg.anthropicKey,
       "anthropic-version": "2023-06-01",
+      "anthropic-beta": "prompt-caching-2024-07-31",
     },
     body: requestPayload,
     logTag: "ChatExtract",
@@ -212,8 +207,12 @@ async function extractChatInfoWithPayloadClaude(message) {
     .replace(/```\s*$/m, "")
     .trim();
   const parsed = extractJson(cleaned);
+  const usage = res.data.usage ?? {};
+  console.log(
+    `[ChatExtract] tokens=in:${usage.input_tokens ?? 0}|out:${usage.output_tokens ?? 0}|cache:${usage.cache_read_tokens ?? 0} model=${claudeModel()}`
+  );
 
-  return { data: parsed, raw, request_payload: requestPayload };
+  return { data: parsed, raw, request_payload: requestPayload, usage };
 }
 
 /**
@@ -273,12 +272,13 @@ async function chatAssistantReplyClaude(userMessage) {
       "Content-Type": "application/json",
       "x-api-key": aiCfg.anthropicKey,
       "anthropic-version": "2023-06-01",
+      "anthropic-beta": "prompt-caching-2024-07-31",
     },
     body: {
       model: claudeModel(),
       max_tokens: 2048,
       temperature: 0,
-      system: SYSTEM,
+      system: [{ type: "text", text: SYSTEM, cache_control: { type: "ephemeral" } }],
       messages: [{ role: "user", content: userMessage.slice(0, 12000) }],
     },
     logTag: "ChatAssistant",
@@ -289,5 +289,9 @@ async function chatAssistantReplyClaude(userMessage) {
   }
 
   const raw = res.data.content?.[0]?.text || "";
+  const usage = res.data.usage ?? {};
+  console.log(
+    `[ChatAssistant] tokens=in:${usage.input_tokens ?? 0}|out:${usage.output_tokens ?? 0}|cache:${usage.cache_read_tokens ?? 0} model=${claudeModel()}`
+  );
   return raw || "Không nhận được phản hồi từ Claude. Thử lại nhé.";
 }

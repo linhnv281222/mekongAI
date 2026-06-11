@@ -84,6 +84,35 @@ export const agentCfg = {
   banveApiUrl: process.env.BANVE_API_URL || "http://localhost:3000",
 };
 
+// ─── MINERU CONFIG ────────────────────────────────────────────────────────
+// MinerU là preprocessor tùy chọn. Set MINERU_API_URL để bật.
+// Khi bật, MinerU extract Markdown/JSON từ PDF trước khi gọi AI Vision.
+// Chi phí: token text << token vision, và MinerU đã loại noise (header/footer).
+
+export const mineruCfg = {
+  // MinerU server URL. Để trống = disabled (dùng workflow hiện tại)
+  apiUrl: process.env.MINERU_API_URL || "",
+
+  // Sync: true = chờ kết quả, false = submit + poll
+  // Sync đơn giản hơn nhưng block request. Async cho batch.
+  syncMode: process.env.MINERU_SYNC !== "false",
+
+  // Timeout sync (ms) — PDF lớn có thể cần lâu hơn
+  syncTimeoutMs: parseInt(process.env.MINERU_SYNC_TIMEOUT_MS || "120000", 10),
+
+  // Timeout async polling (ms)
+  asyncTimeoutMs: parseInt(process.env.MINERU_ASYNC_TIMEOUT_MS || "300000", 10),
+
+  // Poll interval async (ms)
+  pollIntervalMs: parseInt(process.env.MINERU_POLL_INTERVAL_MS || "3000", 10),
+
+  // Cache MinerU results by file hash (recommend: true)
+  useCache: process.env.MINERU_CACHE !== "false",
+
+  // Enable MinerU: true only if apiUrl is set
+  enabled: !!process.env.MINERU_API_URL,
+};
+
 // ─── AGGREGATE CFG ───────────────────────────────────────
 
 export const CFG = {
@@ -93,6 +122,7 @@ export const CFG = {
   erp: erpCfg,
   gmail: gmailCfg,
   agent: agentCfg,
+  mineru: mineruCfg,
 };
 
 export default CFG;
