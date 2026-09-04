@@ -14,6 +14,7 @@ import { MessageService } from 'primeng/api';
 import { DemoV3Service } from './demo-v3.service';
 import { MekongAiService } from '../mekong-ai.service';
 import { TableResizeService } from '../table-resize.service';
+import { VersionService, DrawingVersion } from './version.service';
 import { EmailRow } from '../models/email.model';
 import {
   UiSchema,
@@ -59,7 +60,7 @@ type SplitMode = 'normal' | 'fullLeft' | 'fullRight';
 @Component({
   selector: 'app-demo-v3',
   templateUrl: './demo-v3.component.html',
-  styleUrls: ['./demo-v3.component.css'],
+  styleUrls: ['./demo-v3.component.css', './version-panel.css'],
 })
 export class DemoV3Component implements OnInit, OnDestroy, AfterViewChecked {
   // ── State ─────────────────────────────────────────────────
@@ -90,6 +91,12 @@ export class DemoV3Component implements OnInit, OnDestroy, AfterViewChecked {
   coVanChuyen: boolean | null = null;
   xuLyBeMat: boolean | null = null;
 
+  // Version tracking
+  drawingVersions: Map<number, DrawingVersion[]> = new Map();
+  currentVersionType: 'ai_extracted' | 'user_draft' | 'approved' = 'ai_extracted';
+  showVersionHistory = false;
+  selectedDrawingIndex: number | null = null;
+
   // Column resize — widths from localStorage
   colWidths: Record<string, number> = {};
   private readonly TABLE_KEY = 'demo3_bv';
@@ -97,14 +104,18 @@ export class DemoV3Component implements OnInit, OnDestroy, AfterViewChecked {
   // Splitter full-width toggle
   splitMode: SplitMode = 'normal';
 
-  get splitterPanelSizes(): number[] {
+  splitterPanelSizes: number[] = [70, 30];
+
+  updateSplitterSizes(): void {
     switch (this.splitMode) {
       case 'fullLeft':
-        return [100, 0];
+        this.splitterPanelSizes = [100, 0];
+        break;
       case 'fullRight':
-        return [0, 100];
+        this.splitterPanelSizes = [0, 100];
+        break;
       default:
-        return [70, 30];
+        this.splitterPanelSizes = [70, 30];
     }
   }
 
@@ -130,6 +141,7 @@ export class DemoV3Component implements OnInit, OnDestroy, AfterViewChecked {
   constructor(
     private svc: DemoV3Service,
     private mekongSvc: MekongAiService,
+    private versionSvc: VersionService,
     private messageService: MessageService,
     private cdr: ChangeDetectorRef,
     private route: ActivatedRoute,
@@ -314,6 +326,7 @@ export class DemoV3Component implements OnInit, OnDestroy, AfterViewChecked {
     } else {
       this.splitMode = mode === 'left' ? 'fullLeft' : 'fullRight';
     }
+    this.updateSplitterSizes();
   }
 
   private loadDrawingLines(): void {
@@ -342,11 +355,11 @@ export class DemoV3Component implements OnInit, OnDestroy, AfterViewChecked {
     return this.colWidths[key] ?? DEFAULT_COL_WIDTHS[key] ?? 100;
   }
 
-  onDrawingFieldChange(
+  async onDrawingFieldChange(
     rowIndex: number,
     field: keyof DrawingLine,
     event: Event
-  ): void {
+  ): Promise<void> {
     const input = event.target as HTMLInputElement | HTMLSelectElement;
     let value: string | number = input.value;
     if (input.type === 'number') {
@@ -354,6 +367,9 @@ export class DemoV3Component implements OnInit, OnDestroy, AfterViewChecked {
     } else if (field === 'danh_gia') {
       value = parseInt(input.value, 10) as 0 | 1 | 99;
     }
+
+    const oldValue = this.drawingLines[rowIndex][field];
+    
     this.drawingLines = this.drawingLines.map((dl, idx) =>
       idx === rowIndex ? { ...dl, [field]: value } : dl
     );
@@ -361,6 +377,55 @@ export class DemoV3Component implements OnInit, OnDestroy, AfterViewChecked {
       ...this.modifiedDrawingFields,
       `${rowIndex}:${String(field)}`,
     ]);
+
+    // Auto-save draft after field change (debounced in real implementation)
+    if (this.activeEmail?.id) {
+      await this.saveDraftForDrawing(rowIndex, field, oldValue, value);
+    }
+  }
+
+  private async saveDraftForDrawing(
+    rowIndex: number,
+    field: string,
+    oldValue: unknown,
+    newValue: unknown
+  ): Promise<void> {
+    if (!this.activeEmail?.id) return;
+
+    try {
+      const drawingData = this.drawingLines[rowIndex];
+      const data = {
+        ...drawingData._raw,
+        ma_ban_ve: drawingData.ma_ban_ve,
+        vat_lieu: drawingData.vat_lieu,
+        so_luong: drawingData.so_luong,
+        xu_ly_be_mat: drawingData.xu_ly_be_mat,
+        xu_ly_nhiet: drawingData.xu_ly_nhiet,
+        dung_sai_chung: drawingData.dung_sai_chung,
+        hinh_dang: drawingData.hinh_dang,
+        kich_thuoc: drawingData.kich_thuoc,
+        so_be_mat_cnc: drawingData.so_be_mat_cnc,
+        dung_sai_chat_nhat: drawingData.dung_sai_chat_nhat,
+        co_gdt: drawingData.co_gdt,
+        ma_quy_trinh: drawingData.ma_quy_trinh,
+        ly_giai_qt: drawingData.ly_giai_qt,
+        note: drawingData.note,
+        danh_gia: drawingData.danh_gia,
+      };
+
+      const changedFields = {
+        [field]: { oldValue, newValue }
+      };
+
+      await this.versionSvc.saveDraft(
+        this.activeEmail.id,
+        rowIndex,
+        data,
+        changedFields
+      );
+    } catch (err) {
+      console.error('[DemoV3] saveDraftForDrawing error', err);
+    }
   }
 
   isDrawingFieldModified(rowIndex: number, field: string): boolean {
@@ -767,6 +832,8 @@ export class DemoV3Component implements OnInit, OnDestroy, AfterViewChecked {
         summary: 'Đã lưu phiếu',
         life: 2000,
       });
+      // Clear modified markers after save
+      this.modifiedDrawingFields.clear();
     } else {
       this.messageService.add({
         severity: 'error',
@@ -774,6 +841,104 @@ export class DemoV3Component implements OnInit, OnDestroy, AfterViewChecked {
         life: 3000,
       });
     }
+  }
+
+  async approveJob(): Promise<void> {
+    if (!this.activeEmail?.id) return;
+    
+    try {
+      this.saving = true;
+      this.cdr.markForCheck();
+
+      const result = await this.versionSvc.approveJob(this.activeEmail.id);
+      
+      this.saving = false;
+      this.cdr.markForCheck();
+
+      if (result.success) {
+        this.messageService.add({
+          severity: 'success',
+          summary: 'Đã duyệt phiếu',
+          detail: 'Tất cả drawings đã được chuyển sang trạng thái approved',
+          life: 3000,
+        });
+        this.modifiedDrawingFields.clear();
+      } else {
+        this.messageService.add({
+          severity: 'error',
+          summary: 'Duyệt thất bại',
+          detail: result.message || 'Lỗi không xác định',
+          life: 3000,
+        });
+      }
+    } catch (err) {
+      this.saving = false;
+      this.cdr.markForCheck();
+      const error = err as Error;
+      this.messageService.add({
+        severity: 'error',
+        summary: 'Duyệt thất bại',
+        detail: error?.message,
+        life: 3000,
+      });
+    }
+  }
+
+  async loadVersionHistory(drawingIndex: number): Promise<void> {
+    if (!this.activeEmail?.id) return;
+    
+    try {
+      const versions = await this.versionSvc.getDrawingVersions(
+        this.activeEmail.id,
+        drawingIndex
+      );
+      this.drawingVersions.set(drawingIndex, versions);
+      this.selectedDrawingIndex = drawingIndex;
+      this.showVersionHistory = true;
+      this.cdr.markForCheck();
+    } catch (err) {
+      console.error('[DemoV3] loadVersionHistory error', err);
+      this.messageService.add({
+        severity: 'error',
+        summary: 'Không tải được lịch sử',
+        life: 2000,
+      });
+    }
+  }
+
+  closeVersionHistory(): void {
+    this.showVersionHistory = false;
+    this.selectedDrawingIndex = null;
+    this.cdr.markForCheck();
+  }
+
+  getVersionsForDrawing(drawingIndex: number): DrawingVersion[] {
+    return this.drawingVersions.get(drawingIndex) || [];
+  }
+
+  getVersionTypeLabel(type: string): string {
+    const labels: Record<string, string> = {
+      ai_extracted: 'AI trích xuất',
+      user_draft: 'Nháp của user',
+      approved: 'Đã duyệt',
+      erp_confirmed: 'Đã đẩy ERP',
+    };
+    return labels[type] || type;
+  }
+
+  getVersionTypeSeverity(
+    type: string
+  ): 'success' | 'info' | 'warning' | 'danger' | 'secondary' {
+    const severities: Record<
+      string,
+      'success' | 'info' | 'warning' | 'danger' | 'secondary'
+    > = {
+      ai_extracted: 'info',
+      user_draft: 'warning',
+      approved: 'success',
+      erp_confirmed: 'secondary',
+    };
+    return severities[type] || 'secondary';
   }
 
   trackByEmailId(index: number, emailItem: EmailRow): number | string {

@@ -565,6 +565,20 @@ async function handleBaoGiaChatAsync(message, files, jobId) {
     chatInfo = await classifyChatMessage(message);
     console.log("[handleBaoGiaChat] classify result:", JSON.stringify(chatInfo));
 
+    // ── Skip non-RFQ messages ───────────────────────────────────────────────
+    if (chatInfo?.loai && chatInfo.loai !== "rfq") {
+      console.log(`[handleBaoGiaChat] Không phải RFQ (${chatInfo.loai}) → skip, không lưu DB`);
+      emitSseEvent(jobId, "done", {
+        result: {
+          isBotReply: true,
+          reply: `Tin nhắn này được phân loại là "${chatInfo.loai}" — không tạo yêu cầu báo giá.`,
+          step: "skipped",
+          classify: chatInfo,
+        },
+      });
+      return;
+    }
+
     const emailContext = buildChatContextForAnalyzer(message, chatInfo);
     const chatInfoNormalized = normalizeChatInfo(chatInfo);
 
@@ -626,6 +640,17 @@ async function handleBaoGiaChatAsync(message, files, jobId) {
 async function handleBaoGiaChat(message, files, jobId) {
   const chatInfo = await classifyChatMessage(message);
   console.log("[handleBaoGiaChat] classify result:", JSON.stringify(chatInfo));
+
+  // ── Skip non-RFQ messages ───────────────────────────────────────────────
+  if (chatInfo?.loai && chatInfo.loai !== "rfq") {
+    console.log(`[handleBaoGiaChat] Không phải RFQ (${chatInfo.loai}) → skip, không lưu DB`);
+    return {
+      isBotReply: true,
+      reply: `Tin nhắn này được phân loại là "${chatInfo.loai}" — không tạo yêu cầu báo giá.`,
+      step: "skipped",
+      classify: chatInfo,
+    };
+  }
 
   const emailContext = buildChatContextForAnalyzer(message, chatInfo);
   const chatInfoNormalized = normalizeChatInfo(chatInfo);

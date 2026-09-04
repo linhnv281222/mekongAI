@@ -6,6 +6,7 @@ import { fileURLToPath } from "url";
 import { classifyEmail } from "../ai/emailClassifier.js";
 import { loadAiConfig } from "../ai/aiConfig.js";
 import { isJobProcessed, saveJob } from "../data/jobStore.js";
+import { saveDrawingVersion, saveFieldEvidence } from "../data/jobVersionStore.js";
 import { agentCfg, gmailCfg } from "../libs/config.js";
 import { postPdfToDrawingsApi } from "../libs/postDrawingUpload.js";
 import {
@@ -36,6 +37,24 @@ const DATA_DIR = path.join(__dirname, "../..", "data");
 // ─── FILE-BASED PROCESSED ID PERSISTENCE (no-DB fallback) ────────────────────
 
 const PROCESSED_FILE = path.join(DATA_DIR, "processed_gmail_ids.json");
+
+/**
+ * Get job DB id from gmail_id (helper for Phase 1)
+ */
+async function getJobDbId(gmailId) {
+  const { pool } = await import("../data/jobStore.js");
+  if (!pool) return null;
+  try {
+    const result = await pool.query(
+      "SELECT id FROM mekongai.agent_jobs WHERE gmail_id = $1 LIMIT 1",
+      [gmailId]
+    );
+    return result.rows[0]?.id || null;
+  } catch (e) {
+    console.error("[EmailAgent] getJobDbId error:", e.message);
+    return null;
+  }
+}
 
 async function readProcessedIds() {
   try {
@@ -221,7 +240,7 @@ async function processEmail(gmail, msgId) {
     };
 
     // ── 4. Không phải RFQ → chỉ markRead + persist, KHÔNG save DB ─────────
-    if (!["rfq", "repeat_order"].includes(classify.loai)) {
+    if (classify.loai !== "rfq") {
       console.log(
         `[Agent] Không phải RFQ (${classify.loai}) → skip, không lưu DB`
       );
@@ -438,6 +457,31 @@ async function processEmail(gmail, msgId) {
     };
 
     await saveJob(jobData);
+
+    // ── Phase 1: Save ai_extracted versions ────────────────────────────────
+    // Get job DB id (saveJob returns job.id)
+    const savedJobId = await getJobDbId(msgId);
+    if (savedJobId && allResults.length > 0) {
+      console.log(`[EmailAgent] Saving ${allResults.length} ai_extracted versions for job ${savedJobId}`);
+      for (let i = 0; i < allResults.length; i++) {
+        const drawing = allResults[i];
+        const sourceModel = drawing.request_payload?.model || classify._model_used || 'unknown';
+        
+        await saveDrawingVersion(
+          savedJobId,
+          i, // drawing_index
+          'ai_extracted',
+          drawing,
+          {
+            source: 'ai',
+            source_model: sourceModel,
+            created_by: 'emailAgent',
+            change_reason: 'AI extracted from email attachment',
+          }
+        );
+      }
+    }
+
     await addProcessedId(msgId);
     markProcessed(dedupKey); // mark message dedup
   } finally {

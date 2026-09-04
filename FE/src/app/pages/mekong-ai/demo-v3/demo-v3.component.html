@@ -528,6 +528,16 @@
                     >
                     <button
                       type="button"
+                      class="btn-version-history"
+                      (click)="loadVersionHistory(0)"
+                      *ngIf="drawingLines.length > 0"
+                      title="Xem lịch sử thay đổi"
+                    >
+                      <i class="pi pi-history"></i>
+                      Lịch sử
+                    </button>
+                    <button
+                      type="button"
                       class="bv-split-toggle"
                       [class.active]="splitMode === 'fullLeft'"
                       (click)="toggleSplitFull('left')"
@@ -902,6 +912,15 @@
         ></p-button>
 
         <p-button
+          label="Duyệt phiếu"
+          icon="pi pi-check-circle"
+          styleClass="p-button-success btn-approve"
+          [loading]="saving"
+          (onClick)="approveJob()"
+          [disabled]="drawingLines.length === 0"
+        ></p-button>
+
+        <p-button
           label="In PBG"
           icon="pi pi-print"
           styleClass="p-button-secondary"
@@ -968,3 +987,51 @@
 
 <!-- TOAST -->
 <p-toast position="top-right"></p-toast>
+
+<!-- VERSION HISTORY PANEL -->
+<div class="version-history-panel" [class.is-open]="showVersionHistory">
+  <div class="version-history-header">
+    <div class="version-history-title">
+      Lịch sử thay đổi
+      <span *ngIf="selectedDrawingIndex !== null">
+        - Bản vẽ #{{ selectedDrawingIndex + 1 }}
+      </span>
+    </div>
+    <button
+      type="button"
+      class="version-history-close"
+      (click)="closeVersionHistory()"
+      aria-label="Đóng"
+    >
+      <i class="pi pi-times"></i>
+    </button>
+  </div>
+  <div class="version-history-body">
+    <div
+      *ngFor="let version of getVersionsForDrawing(selectedDrawingIndex || 0)"
+      class="version-item"
+    >
+      <div class="version-item-header">
+        <p-tag
+          [value]="getVersionTypeLabel(version.version_type)"
+          [severity]="getVersionTypeSeverity(version.version_type)"
+        ></p-tag>
+        <span class="version-time">{{
+          version.created_at | date: 'dd/MM HH:mm'
+        }}</span>
+      </div>
+      <div class="version-data">
+        <div *ngIf="version.source_model" style="margin-bottom: 8px;">
+          <strong>Model:</strong> {{ version.source_model }}
+        </div>
+        <pre>{{ version.data | json }}</pre>
+      </div>
+    </div>
+    <div
+      *ngIf="getVersionsForDrawing(selectedDrawingIndex || 0).length === 0"
+      style="text-align: center; padding: 40px; color: var(--color-text-tertiary);"
+    >
+      Chưa có lịch sử thay đổi
+    </div>
+  </div>
+</div>

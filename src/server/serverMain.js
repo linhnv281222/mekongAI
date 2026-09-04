@@ -16,6 +16,7 @@ import jobController, {
 } from "./jobController.js";
 import promptController from "./promptController.js";
 import chatController from "./chatController.js";
+import versionController from "./versionController.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const PROJECT_ROOT = path.resolve(__dirname, "../.."); // mekongAI/
@@ -76,6 +77,7 @@ app.use("/chat/jobs", (req, res) => {
 });
 
 app.use("/jobs", jobController);
+app.use("/jobs", versionController); // Phase 1: version API
 app.use("/admin/prompts", promptController);
 
 app.get("/health", (req, res) => {
