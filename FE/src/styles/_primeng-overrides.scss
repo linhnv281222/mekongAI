@@ -1,0 +1,576 @@
+// ═══════════════════════════════════════════════════════════
+// Mekong AI - PrimeNG Component Overrides
+// Custom styling for PrimeNG components
+// ═══════════════════════════════════════════════════════════
+
+// ── Global PrimeNG Variables ───────────────────────────────
+:root {
+  --primary-color: var(--v3-brand);
+  --primary-color-text: #ffffff;
+  --surface-ground: var(--v3-bg);
+  --surface-section: var(--v3-surface);
+  --surface-card: var(--v3-surface);
+  --surface-overlay: var(--v3-surface);
+  --surface-border: var(--v3-line);
+  --text-color: var(--v3-ink);
+  --text-color-secondary: var(--v3-muted);
+  --border-radius: var(--radius-md);
+  --content-padding: var(--space-4);
+  --focus-ring: var(--shadow-focus);
+}
+
+// ── Buttons (Apple Style) ──────────────────────────────────
+.p-button {
+  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", sans-serif;
+  font-weight: 500;
+  font-size: 12px;
+  padding: 6px 16px;
+  border-radius: 8px;
+  border: none;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: none;
+  letter-spacing: -0.01em;
+
+  &:hover:not(:disabled) {
+    transform: none;
+    box-shadow: none;
+    opacity: 0.8;
+  }
+
+  &:active:not(:disabled) {
+    transform: scale(0.98);
+    opacity: 0.9;
+  }
+
+  &:focus {
+    box-shadow: 0 0 0 3px rgba(0, 122, 255, 0.15);
+  }
+
+  &:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+  }
+
+  // Icon spacing
+  .p-button-icon {
+    font-size: 16px;
+  }
+
+  .p-button-icon-left {
+    margin-right: 6px;
+  }
+
+  .p-button-icon-right {
+    margin-left: 6px;
+  }
+
+  // Primary button
+  &.p-button-primary {
+    background: #007AFF;
+    color: white;
+
+    &:hover:not(:disabled) {
+      background: #0051D5;
+    }
+  }
+
+  // Secondary button
+  &.p-button-secondary {
+    background: #f5f5f7;
+    color: #1d1d1f;
+    border: 1px solid rgba(0, 0, 0, 0.08);
+
+    &:hover:not(:disabled) {
+      background: #e8e8ed;
+      border-color: rgba(0, 0, 0, 0.12);
+    }
+  }
+
+  // Success button
+  &.p-button-success {
+    background: #34C759;
+
+    &:hover:not(:disabled) {
+      background: #30A46C;
+    }
+  }
+
+  // Warning button
+  &.p-button-warning {
+    background: #FF9500;
+
+    &:hover:not(:disabled) {
+      background: #E68A00;
+    }
+  }
+
+  // Danger button
+  &.p-button-danger {
+    background: #FF3B30;
+
+    &:hover:not(:disabled) {
+      background: #E63329;
+    }
+  }
+
+  // Text button
+  &.p-button-text {
+    background: transparent;
+    color: #007AFF;
+    box-shadow: none;
+
+    &:hover:not(:disabled) {
+      background: rgba(0, 122, 255, 0.08);
+      transform: none;
+    }
+  }
+
+  // Outlined button
+  &.p-button-outlined {
+    background: transparent;
+    border: 1px solid #007AFF;
+    color: #007AFF;
+    box-shadow: none;
+
+    &:hover:not(:disabled) {
+      background: rgba(0, 122, 255, 0.08);
+    }
+  }
+
+  // Small button
+  &.p-button-sm {
+    font-size: 11px;
+    padding: 4px 12px;
+    height: 28px;
+  }
+
+  // Large button
+  &.p-button-lg {
+    font-size: 14px;
+    padding: 10px 20px;
+  }
+}
+
+// ── Input Text (Apple Style) ───────────────────────────────
+.p-inputtext {
+  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", sans-serif;
+  font-size: 12px;
+  padding: 6px 10px;
+  border: 1px solid rgba(0, 0, 0, 0.12);
+  border-radius: 8px;
+  background: #fff;
+  color: #1d1d1f;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  height: 32px;
+
+  &:hover {
+    border-color: rgba(0, 0, 0, 0.18);
+  }
+
+  &:focus {
+    border-color: #007AFF;
+    box-shadow: 0 0 0 3px rgba(0, 122, 255, 0.1);
+    outline: none;
+  }
+
+  &:disabled {
+    background: #fafafa;
+    color: #86868b;
+    cursor: not-allowed;
+    opacity: 0.6;
+  }
+
+  &::placeholder {
+    color: #86868b;
+  }
+
+  &.p-invalid {
+    border-color: #FF3B30;
+
+    &:focus {
+      box-shadow: 0 0 0 3px rgba(255, 59, 48, 0.1);
+    }
+  }
+}
+
+// Input group
+.p-inputgroup {
+  .p-inputtext {
+    &:not(:first-child) {
+      border-top-left-radius: 0;
+      border-bottom-left-radius: 0;
+    }
+
+    &:not(:last-child) {
+      border-top-right-radius: 0;
+      border-bottom-right-radius: 0;
+    }
+  }
+}
+
+// ── Textarea ───────────────────────────────────────────────
+.p-inputtextarea {
+  @extend .p-inputtext;
+  resize: vertical;
+  min-height: 80px;
+  line-height: var(--leading-relaxed);
+}
+
+// ── Input Number ───────────────────────────────────────────
+.p-inputnumber-input {
+  @extend .p-inputtext;
+}
+
+// ── Dropdown ───────────────────────────────────────────────
+.p-dropdown {
+  border: 1px solid var(--v3-line);
+  border-radius: var(--radius-md);
+  background: var(--v3-surface);
+  transition: all var(--transition-fast);
+
+  &:hover {
+    border-color: var(--v3-line2);
+  }
+
+  &.p-focus {
+    border-color: var(--v3-brand);
+    box-shadow: var(--shadow-focus);
+  }
+
+  .p-dropdown-label {
+    font-size: var(--text-sm);
+    padding: var(--space-2) var(--space-3);
+  }
+
+  .p-dropdown-trigger {
+    color: var(--v3-muted);
+  }
+}
+
+.p-dropdown-panel {
+  border: 1px solid var(--v3-line);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-lg);
+  background: var(--v3-surface);
+
+  .p-dropdown-items {
+    .p-dropdown-item {
+      font-size: var(--text-sm);
+      padding: var(--space-2) var(--space-3);
+      color: var(--v3-ink);
+      transition: all var(--transition-fast);
+
+      &:hover {
+        background: var(--v3-elevated);
+      }
+
+      &.p-highlight {
+        background: var(--v3-brand-soft);
+        color: var(--v3-brand);
+      }
+    }
+  }
+}
+
+// ── Calendar ───────────────────────────────────────────────
+.p-calendar {
+  .p-inputtext {
+    width: 100%;
+  }
+
+  .p-datepicker-trigger {
+    color: var(--v3-muted);
+  }
+}
+
+.p-datepicker {
+  border: 1px solid var(--v3-line);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-lg);
+  background: var(--v3-surface);
+  padding: var(--space-2);
+
+  .p-datepicker-header {
+    padding: var(--space-2);
+    border-bottom: 1px solid var(--v3-line);
+  }
+
+  table {
+    font-size: var(--text-sm);
+
+    td {
+      padding: var(--space-1);
+
+      > span {
+        border-radius: var(--radius-sm);
+        transition: all var(--transition-fast);
+
+        &:hover {
+          background: var(--v3-elevated);
+        }
+
+        &.p-highlight {
+          background: var(--v3-brand);
+          color: white;
+        }
+      }
+    }
+  }
+}
+
+// ── Tags (Apple Style) ─────────────────────────────────────
+.p-tag {
+  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", sans-serif;
+  font-size: 10px;
+  font-weight: 500;
+  letter-spacing: 0;
+  padding: 2px 6px;
+  border-radius: 4px;
+  text-transform: none;
+  line-height: 1.4;
+
+  &.p-tag-success {
+    background: rgba(52, 199, 89, 0.1);
+    color: #30A46C;
+  }
+
+  &.p-tag-warning {
+    background: rgba(255, 149, 0, 0.1);
+    color: #F59E0B;
+  }
+
+  &.p-tag-danger {
+    background: rgba(255, 59, 48, 0.1);
+    color: #EF4444;
+  }
+
+  &.p-tag-info {
+    background: rgba(0, 122, 255, 0.1);
+    color: #007AFF;
+  }
+
+  &.p-tag-secondary {
+    background: rgba(142, 142, 147, 0.12);
+    color: #6e6e73;
+  }
+
+  mat-icon {
+    font-size: 12px;
+    width: 12px;
+    height: 12px;
+    vertical-align: middle;
+  }
+}
+
+// ── Chips ──────────────────────────────────────────────────
+.p-chip {
+  font-size: var(--text-xs);
+  padding: var(--space-1) var(--space-3);
+  border-radius: var(--radius-full);
+  background: var(--v3-elevated);
+  color: var(--v3-ink);
+
+  .p-chip-text {
+    font-weight: var(--font-medium);
+  }
+
+  .p-chip-remove-icon {
+    font-size: 14px;
+    margin-left: var(--space-1);
+  }
+}
+
+// ── Toast ──────────────────────────────────────────────────
+.p-toast {
+  .p-toast-message {
+    border-radius: var(--radius-md);
+    box-shadow: var(--shadow-lg);
+    border-left: 4px solid;
+
+    &.p-toast-message-success {
+      background: white;
+      border-left-color: var(--v3-success);
+
+      .p-toast-message-icon,
+      .p-toast-summary {
+        color: var(--v3-success);
+      }
+    }
+
+    &.p-toast-message-warn {
+      background: white;
+      border-left-color: var(--v3-warning);
+
+      .p-toast-message-icon,
+      .p-toast-summary {
+        color: var(--v3-warning);
+      }
+    }
+
+    &.p-toast-message-error {
+      background: white;
+      border-left-color: var(--v3-error);
+
+      .p-toast-message-icon,
+      .p-toast-summary {
+        color: var(--v3-error);
+      }
+    }
+
+    &.p-toast-message-info {
+      background: white;
+      border-left-color: var(--v3-info);
+
+      .p-toast-message-icon,
+      .p-toast-summary {
+        color: var(--v3-info);
+      }
+    }
+  }
+}
+
+// ── Progress Spinner ───────────────────────────────────────
+.p-progress-spinner {
+  .p-progress-spinner-circle {
+    stroke: var(--v3-brand);
+    animation-duration: 1.5s;
+  }
+}
+
+// ── Progress Bar ───────────────────────────────────────────
+.p-progressbar {
+  border-radius: var(--radius-full);
+  background: var(--v3-elevated);
+  height: 8px;
+
+  .p-progressbar-value {
+    background: var(--v3-brand);
+    border-radius: var(--radius-full);
+  }
+}
+
+// ── Dialog ─────────────────────────────────────────────────
+.p-dialog {
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-2xl);
+  border: 1px solid var(--v3-line);
+
+  .p-dialog-header {
+    padding: var(--space-6);
+    border-bottom: 1px solid var(--v3-line);
+
+    .p-dialog-title {
+      font-size: var(--text-xl);
+      font-weight: var(--font-semibold);
+      color: var(--v3-ink);
+    }
+  }
+
+  .p-dialog-content {
+    padding: var(--space-6);
+  }
+
+  .p-dialog-footer {
+    padding: var(--space-6);
+    border-top: 1px solid var(--v3-line);
+    background: var(--v3-elevated);
+
+    .p-button {
+      margin-left: var(--space-2);
+    }
+  }
+}
+
+// ── Table ──────────────────────────────────────────────────
+.p-datatable {
+  .p-datatable-thead > tr > th {
+    background: var(--v3-elevated);
+    border-bottom: 2px solid var(--v3-line2);
+    padding: var(--space-3) var(--space-2);
+    font-weight: var(--font-semibold);
+    font-size: var(--text-xs);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--v3-muted);
+  }
+
+  .p-datatable-tbody > tr {
+    transition: background var(--transition-fast);
+
+    &:hover {
+      background: var(--v3-elevated);
+    }
+
+    > td {
+      padding: var(--space-3) var(--space-2);
+      border-bottom: 1px solid var(--v3-line);
+      font-size: var(--text-sm);
+      color: var(--v3-ink);
+    }
+  }
+
+  .p-datatable-emptymessage > td {
+    text-align: center;
+    padding: var(--space-12);
+    color: var(--v3-muted);
+  }
+}
+
+// ── Virtual Scroller ───────────────────────────────────────
+.p-virtualscroller {
+  border: none;
+
+  .p-virtualscroller-content {
+    border: none;
+  }
+}
+
+// ── Tooltip ────────────────────────────────────────────────
+.p-tooltip {
+  .p-tooltip-text {
+    background: var(--v3-ink);
+    color: white;
+    font-size: var(--text-xs);
+    padding: var(--space-1) var(--space-2);
+    border-radius: var(--radius-sm);
+    box-shadow: var(--shadow-md);
+  }
+
+  .p-tooltip-arrow {
+    border-top-color: var(--v3-ink);
+  }
+}
+
+// ── Tab View ───────────────────────────────────────────────
+.p-tabview {
+  .p-tabview-nav {
+    background: transparent;
+    border-bottom: 1px solid var(--v3-line);
+
+    li {
+      .p-tabview-nav-link {
+        padding: var(--space-3) var(--space-4);
+        font-weight: var(--font-medium);
+        color: var(--v3-muted);
+        border: none;
+        transition: all var(--transition-fast);
+
+        &:hover {
+          color: var(--v3-ink);
+          background: transparent;
+        }
+      }
+
+      &.p-highlight {
+        .p-tabview-nav-link {
+          color: var(--v3-brand);
+          border-bottom: 2px solid var(--v3-brand);
+        }
+      }
+    }
+  }
+
+  .p-tabview-panels {
+    padding: var(--space-6) 0;
+  }
+}

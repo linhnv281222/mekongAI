@@ -149,12 +149,15 @@ export class DemoV3Component implements OnInit, OnDestroy, AfterViewChecked {
   ) {}
 
   async ngOnInit(): Promise<void> {
+    console.log('[DemoV3] ngOnInit started');
     this.colWidths = this.tableResizeSvc.load(this.TABLE_KEY);
     await this.loadConfig();
 
     this.svc.startPolling(
       (agentEmails: EmailRow[]) => {
+        console.log('[DemoV3] Polling callback - received emails:', agentEmails.length);
         this.emails = mergeAgentIntoInbox(agentEmails, this.emails);
+        console.log('[DemoV3] After merge - total emails:', this.emails.length);
         if (this.activeEmail?.id) {
           const refreshed = this.emails.find(
             (e) => e.id === this.activeEmail!.id
@@ -165,11 +168,13 @@ export class DemoV3Component implements OnInit, OnDestroy, AfterViewChecked {
         this.cdr.markForCheck();
       },
       (updatedEmail: EmailRow) => {
+        console.log('[DemoV3] Email updated:', updatedEmail.id);
         this.cdr.markForCheck();
       }
     );
 
     setTimeout(() => {
+      console.log('[DemoV3] Timeout - setting initialLoading to false. Current emails:', this.emails.length);
       this.initialLoading = false;
       this.cdr.markForCheck();
     }, 8000);
@@ -249,13 +254,16 @@ export class DemoV3Component implements OnInit, OnDestroy, AfterViewChecked {
   // ── Mailbox ───────────────────────────────────────────────
 
   get filteredEmails(): EmailRow[] {
+    console.log('[DemoV3] filteredEmails getter - emails.length:', this.emails.length, 'searchQuery:', this.searchQuery);
     if (!this.searchQuery) return this.emails;
     const query = this.searchQuery.toLowerCase();
-    return this.emails.filter(
+    const filtered = this.emails.filter(
       (emailItem) =>
         emailItem.from.toLowerCase().includes(query) ||
         (emailItem.subject || '').toLowerCase().includes(query)
     );
+    console.log('[DemoV3] After filter - filtered.length:', filtered.length);
+    return filtered;
   }
 
   get unreadCount(): number {
@@ -886,7 +894,7 @@ export class DemoV3Component implements OnInit, OnDestroy, AfterViewChecked {
 
   async loadVersionHistory(drawingIndex: number): Promise<void> {
     if (!this.activeEmail?.id) return;
-    
+
     try {
       const versions = await this.versionSvc.getDrawingVersions(
         this.activeEmail.id,
@@ -894,6 +902,17 @@ export class DemoV3Component implements OnInit, OnDestroy, AfterViewChecked {
       );
       this.drawingVersions.set(drawingIndex, versions);
       this.selectedDrawingIndex = drawingIndex;
+
+      if (versions.length === 0) {
+        this.messageService.add({
+          severity: 'info',
+          summary: 'Chưa có lịch sử thay đổi',
+          detail: 'Bản vẽ này chưa có lịch sử chỉnh sửa',
+          life: 3000,
+        });
+        return;
+      }
+
       this.showVersionHistory = true;
       this.cdr.markForCheck();
     } catch (err) {
@@ -914,6 +933,10 @@ export class DemoV3Component implements OnInit, OnDestroy, AfterViewChecked {
 
   getVersionsForDrawing(drawingIndex: number): DrawingVersion[] {
     return this.drawingVersions.get(drawingIndex) || [];
+  }
+
+  getVersionCountForDrawing(drawingIndex: number): number {
+    return this.drawingVersions.get(drawingIndex)?.length || 0;
   }
 
   getVersionTypeLabel(type: string): string {

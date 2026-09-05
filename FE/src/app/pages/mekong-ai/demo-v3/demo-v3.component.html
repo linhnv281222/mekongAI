@@ -13,7 +13,7 @@
         role="button"
       >
         <div class="guide-card-title">
-          <span aria-hidden="true">📬</span>
+          <mat-icon aria-hidden="true">mail</mat-icon>
           Cách gửi yêu cầu báo giá
         </div>
         <span class="guide-chevron" [class.is-open]="guideExpanded">▼</span>
@@ -84,11 +84,10 @@
       <div *ngIf="initialLoading" class="mb-loading">
         <p-progressSpinner strokeWidth="4"></p-progressSpinner>
       </div>
-      <div class="mb-list">
-        <ng-container
-          *ngFor="let emailItem of filteredEmails; trackBy: trackByEmailId"
-        >
+      <div class="mb-list" *ngIf="!initialLoading">
+        <div class="mb-list-simple">
           <div
+            *ngFor="let emailItem of filteredEmails"
             class="ei"
             [class.active]="activeEmail?.id === emailItem.id"
             (click)="onEmailClick(emailItem)"
@@ -108,7 +107,7 @@
               ></p-tag>
               <p-tag
                 *ngIf="emailItem.classify === 'rfq'"
-                value="✓ RFQ"
+                value="RFQ"
                 severity="success"
               ></p-tag>
               <p-tag
@@ -128,7 +127,7 @@
               ></p-tag>
             </div>
           </div>
-        </ng-container>
+        </div>
         <div *ngIf="filteredEmails.length === 0" class="mb-empty">
           Chưa có yêu cầu nào
         </div>
@@ -141,7 +140,9 @@
     <!-- EMPTY STATE -->
     <ng-container *ngIf="!activeEmail">
       <div class="empty-state">
-        <div class="empty-icon" aria-hidden="true">✉</div>
+        <div class="empty-icon" aria-hidden="true">
+          <mat-icon>drafts</mat-icon>
+        </div>
         <div class="empty-title">Chọn một yêu cầu</div>
         <div class="empty-hint">
           Hoặc gửi email RFQ kèm PDF tới hộp thư đã hướng dẫn ở cột trái — mục
@@ -181,7 +182,9 @@
           </div>
         </div>
         <div class="not-rfq-body">
-          <div class="not-rfq-icon">💬</div>
+          <div class="not-rfq-icon">
+            <mat-icon>chat_bubble_outline</mat-icon>
+          </div>
           <div class="not-rfq-text">
             Không phải RFQ — không tạo phiếu báo giá
           </div>
@@ -219,7 +222,9 @@
           </ng-container>
         </div>
         <div class="e-tags">
-          <p-tag value="✓ RFQ" severity="success"></p-tag>
+          <p-tag value="RFQ" severity="success">
+            <mat-icon class="icon-xs" style="margin-right: 4px;">check_circle</mat-icon>
+          </p-tag>
           <p-tag
             *ngIf="activeEmail.source"
             [value]="getSourceLabel(activeEmail.source)"
@@ -449,7 +454,8 @@
         <div class="tab-content" *ngIf="currentTab === 1">
           <div class="bv-toolbar">
             <p-button
-              label="📎 Upload PDF / ảnh bản vẽ"
+              label="Upload PDF / ảnh bản vẽ"
+              icon="pi pi-upload"
               styleClass="p-button-outlined p-button-secondary"
               (onClick)="triggerFileUpload()"
             ></p-button>
@@ -504,13 +510,16 @@
               class="upload-zone"
               (click)="triggerFileUpload()"
             >
-              <div class="upload-zone-icon">📄</div>
+              <div class="upload-zone-icon">
+                <mat-icon class="icon-xl">description</mat-icon>
+              </div>
               <div class="upload-zone-title">Upload PDF / ảnh bản vẽ</div>
               <div class="upload-zone-sub">
                 PDF nhiều trang — mỗi trang = 1 bản vẽ · ảnh xem trước bên phải
               </div>
               <div class="upload-zone-ai">
-                ⚡ AI tự động đọc và bóc tách dữ liệu
+                <mat-icon class="icon-sm">bolt</mat-icon>
+                AI tự động đọc và bóc tách dữ liệu
               </div>
             </div>
 
@@ -535,6 +544,9 @@
                     >
                       <i class="pi pi-history"></i>
                       Lịch sử
+                      <span class="version-badge" *ngIf="getVersionCountForDrawing(0) > 0">
+                        {{ getVersionCountForDrawing(0) }}
+                      </span>
                     </button>
                     <button
                       type="button"
@@ -688,7 +700,7 @@
                             (click)="loadPdfPageByLine(drawingLine)"
                             [title]="'Xem trang ' + drawingLine.page"
                           >
-                            📄
+                            <mat-icon class="icon-sm">description</mat-icon>
                           </button>
                           <input
                             type="text"
@@ -821,7 +833,7 @@
                             <label
                               [for]="'danh_gia_ok_' + rowIndex"
                               class="radio-label radio-ok"
-                              >✓</label
+                              ><mat-icon class="icon-sm">check</mat-icon></label
                             >
                             <p-radioButton
                               [inputId]="'danh_gia_fail_' + rowIndex"
@@ -832,7 +844,7 @@
                             <label
                               [for]="'danh_gia_fail_' + rowIndex"
                               class="radio-label radio-fail"
-                              >✗</label
+                              ><mat-icon class="icon-sm">close</mat-icon></label
                             >
                           </div>
                         </td>
@@ -868,7 +880,8 @@
                       class="bv-preview-filename"
                       [class.bv-preview-filename--empty]="!previewName"
                     >
-                      {{ previewName ? "📄 " + previewName : "Chưa chọn file" }}
+                      <mat-icon *ngIf="previewName" class="icon-sm" style="margin-right: 4px;">description</mat-icon>
+                      {{ previewName || "Chưa chọn file" }}
                     </span>
                   </div>
                   <div class="bv-preview-body">
@@ -888,7 +901,7 @@
                       class="bv-preview-empty"
                     >
                       <div>
-                        Bấm <strong>📎</strong> trên tag file để xem trực
+                        Bấm <mat-icon class="icon-sm" style="vertical-align: middle;">attach_file</mat-icon> trên tag file để xem trực
                         tiếp.<br />
                         Hoặc <strong>Upload</strong> PDF/ảnh để xem tại đây.
                       </div>

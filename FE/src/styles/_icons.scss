@@ -1,0 +1,186 @@
+// ═══════════════════════════════════════════════════════════
+// Mekong AI - Material Icons Styling
+// Global styles for Material Icons and Symbols
+// ═══════════════════════════════════════════════════════════
+
+// ── Material Icons Base ────────────────────────────────────
+mat-icon {
+  font-family: 'Material Icons', 'Material Symbols Outlined';
+  font-weight: normal;
+  font-style: normal;
+  font-size: 24px;
+  line-height: 1;
+  letter-spacing: normal;
+  text-transform: none;
+  display: inline-block;
+  white-space: nowrap;
+  word-wrap: normal;
+  direction: ltr;
+  -webkit-font-feature-settings: 'liga';
+  -webkit-font-smoothing: antialiased;
+  vertical-align: middle;
+  color: currentColor;
+  user-select: none;
+
+  // Size variants
+  &.icon-xs {
+    font-size: 16px;
+  }
+
+  &.icon-sm {
+    font-size: 18px;
+  }
+
+  &.icon-md {
+    font-size: 24px;
+  }
+
+  &.icon-lg {
+    font-size: 32px;
+  }
+
+  &.icon-xl {
+    font-size: 48px;
+  }
+
+  // Color variants
+  &.icon-brand {
+    color: var(--v3-brand);
+  }
+
+  &.icon-muted {
+    color: var(--v3-muted);
+  }
+
+  &.icon-success {
+    color: var(--v3-success);
+  }
+
+  &.icon-warning {
+    color: var(--v3-warning);
+  }
+
+  &.icon-error {
+    color: var(--v3-error);
+  }
+
+  &.icon-info {
+    color: var(--v3-info);
+  }
+}
+
+// ── Material Symbols Outlined ──────────────────────────────
+.material-symbols-outlined {
+  font-family: 'Material Symbols Outlined';
+  font-weight: normal;
+  font-style: normal;
+  font-size: 24px;
+  line-height: 1;
+  letter-spacing: normal;
+  text-transform: none;
+  display: inline-block;
+  white-space: nowrap;
+  word-wrap: normal;
+  direction: ltr;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+  font-feature-settings: 'liga';
+  vertical-align: middle;
+  color: currentColor;
+  user-select: none;
+}
+
+// ── Icon in Buttons ────────────────────────────────────────
+.p-button {
+  mat-icon {
+    font-size: 18px;
+    vertical-align: middle;
+    margin-top: -2px;
+  }
+
+  &.p-button-sm mat-icon {
+    font-size: 16px;
+  }
+
+  &.p-button-lg mat-icon {
+    font-size: 20px;
+  }
+}
+
+// ── Icon in Input Groups ───────────────────────────────────
+.p-input-icon-left,
+.p-input-icon-right {
+  mat-icon {
+    color: var(--v3-muted);
+    font-size: 20px;
+  }
+}
+
+// ── Icon in Tags ───────────────────────────────────────────
+.p-tag {
+  mat-icon {
+    font-size: 14px;
+    vertical-align: middle;
+    margin-right: var(--space-1);
+  }
+}
+
+// ── Icon in Dialog Headers ─────────────────────────────────
+.p-dialog-header {
+  mat-icon {
+    margin-right: var(--space-2);
+    color: var(--v3-brand);
+  }
+}
+
+// ── Icon States ────────────────────────────────────────────
+.icon-interactive {
+  cursor: pointer;
+  transition: all var(--transition-fast);
+
+  &:hover {
+    color: var(--v3-brand);
+    transform: scale(1.1);
+  }
+
+  &:active {
+    transform: scale(0.95);
+  }
+}
+
+.icon-spinning {
+  animation: icon-spin 1s linear infinite;
+}
+
+@keyframes icon-spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+// ── Icon with Badge ────────────────────────────────────────
+.icon-badge-wrapper {
+  position: relative;
+  display: inline-block;
+
+  .icon-badge {
+    position: absolute;
+    top: -4px;
+    right: -4px;
+    min-width: 16px;
+    height: 16px;
+    padding: 0 4px;
+    font-size: 10px;
+    font-weight: var(--font-semibold);
+    line-height: 16px;
+    text-align: center;
+    color: white;
+    background: var(--v3-error);
+    border-radius: var(--radius-full);
+    border: 2px solid var(--v3-surface);
+  }
+}

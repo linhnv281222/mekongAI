@@ -48,6 +48,10 @@
             ],
             "styles": [
               "src/styles.css",
+              "src/styles/_design-tokens.scss",
+              "src/styles/_typography.scss",
+              "src/styles/_icons.scss",
+              "src/styles/_primeng-overrides.scss",
               "node_modules/primeicons/primeicons.css",
               "node_modules/primeng/resources/themes/lara-light-blue/theme.css",
               "node_modules/primeng/resources/primeng.min.css"

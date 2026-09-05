@@ -1,0 +1,147 @@
+// ═══════════════════════════════════════════════════════════
+// Mekong AI - Design Tokens
+// Centralized design system variables
+// ═══════════════════════════════════════════════════════════
+
+:root {
+  // ── Brand Colors ──────────────────────────────────────────
+  --v3-brand: #4F46E5;        // Indigo 600 - Primary action
+  --v3-brand2: #4338CA;       // Indigo 700 - Hover state
+  --v3-brand-soft: #EEF2FF;   // Indigo 50 - Soft background
+  --v3-brand-muted: #A5B4FC;  // Indigo 300 - Disabled state
+
+  // ── Surface Colors ────────────────────────────────────────
+  --v3-bg: #F8FAFC;           // Slate 50 - Page background
+  --v3-surface: #FFFFFF;      // White - Card/panel surface
+  --v3-elevated: #F1F5F9;     // Slate 100 - Hover/elevated surface
+
+  // ── Text Colors ───────────────────────────────────────────
+  --v3-ink: #0F172A;          // Slate 900 - Primary text
+  --v3-muted: #64748B;        // Slate 500 - Secondary text
+  --v3-faint: #CBD5E1;        // Slate 300 - Disabled text
+  --v3-placeholder: #94A3B8;  // Slate 400 - Placeholder text
+
+  // ── Border Colors ─────────────────────────────────────────
+  --v3-line: #E2E8F0;         // Slate 200 - Default border
+  --v3-line2: #CBD5E1;        // Slate 300 - Strong border
+  --v3-divider: #F1F5F9;      // Slate 100 - Subtle divider
+
+  // ── Status Colors ─────────────────────────────────────────
+  --v3-success: #10B981;      // Emerald 500
+  --v3-success-bg: #D1FAE5;   // Emerald 100
+  --v3-success-text: #065F46; // Emerald 800
+
+  --v3-warning: #F59E0B;      // Amber 500
+  --v3-warning-bg: #FEF3C7;   // Amber 100
+  --v3-warning-text: #92400E; // Amber 800
+
+  --v3-error: #EF4444;        // Red 500
+  --v3-error-bg: #FEE2E2;     // Red 100
+  --v3-error-text: #991B1B;   // Red 800
+
+  --v3-info: #3B82F6;         // Blue 500
+  --v3-info-bg: #DBEAFE;      // Blue 100
+  --v3-info-text: #1E40AF;    // Blue 800
+
+  // ── Spacing Scale (8px base) ──────────────────────────────
+  --space-0: 0;
+  --space-1: 0.25rem;   /* 4px */
+  --space-2: 0.5rem;    /* 8px */
+  --space-3: 0.75rem;   /* 12px */
+  --space-4: 1rem;      /* 16px */
+  --space-5: 1.25rem;   /* 20px */
+  --space-6: 1.5rem;    /* 24px */
+  --space-8: 2rem;      /* 32px */
+  --space-10: 2.5rem;   /* 40px */
+  --space-12: 3rem;     /* 48px */
+  --space-16: 4rem;     /* 64px */
+
+  // ── Border Radius ─────────────────────────────────────────
+  --radius-xs: 4px;
+  --radius-sm: 6px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+  --radius-xl: 16px;
+  --radius-full: 9999px;
+
+  // Legacy support
+  --v3-radius-sm: var(--radius-sm);
+  --v3-radius-card: var(--radius-md);
+
+  // ── Shadows ───────────────────────────────────────────────
+  --shadow-xs: 0 1px 2px 0 rgba(15, 23, 42, 0.05);
+  --shadow-sm: 0 1px 3px 0 rgba(15, 23, 42, 0.1), 0 1px 2px -1px rgba(15, 23, 42, 0.1);
+  --shadow-md: 0 4px 6px -1px rgba(15, 23, 42, 0.1), 0 2px 4px -2px rgba(15, 23, 42, 0.1);
+  --shadow-lg: 0 10px 15px -3px rgba(15, 23, 42, 0.1), 0 4px 6px -4px rgba(15, 23, 42, 0.1);
+  --shadow-xl: 0 20px 25px -5px rgba(15, 23, 42, 0.1), 0 8px 10px -6px rgba(15, 23, 42, 0.1);
+  --shadow-2xl: 0 25px 50px -12px rgba(15, 23, 42, 0.25);
+
+  // Interactive shadows
+  --shadow-focus: 0 0 0 3px rgba(79, 70, 229, 0.12);
+  --shadow-hover: 0 4px 12px rgba(79, 70, 229, 0.15);
+
+  // ── Typography ────────────────────────────────────────────
+  --font-sans: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --font-mono: "IBM Plex Mono", "Fira Code", "SF Mono", "Cascadia Code", monospace;
+
+  // Legacy support
+  --v3-font: var(--font-sans);
+
+  // Font sizes
+  --text-xs: 0.75rem;     /* 12px */
+  --text-sm: 0.875rem;    /* 14px */
+  --text-base: 1rem;      /* 16px */
+  --text-lg: 1.125rem;    /* 18px */
+  --text-xl: 1.25rem;     /* 20px */
+  --text-2xl: 1.5rem;     /* 24px */
+  --text-3xl: 1.875rem;   /* 30px */
+  --text-4xl: 2.25rem;    /* 36px */
+
+  // Line heights
+  --leading-none: 1;
+  --leading-tight: 1.25;
+  --leading-snug: 1.375;
+  --leading-normal: 1.5;
+  --leading-relaxed: 1.625;
+  --leading-loose: 2;
+
+  // Font weights
+  --font-light: 300;
+  --font-normal: 400;
+  --font-medium: 500;
+  --font-semibold: 600;
+  --font-bold: 700;
+  --font-extrabold: 800;
+
+  // ── Transitions ───────────────────────────────────────────
+  --transition-fast: 150ms cubic-bezier(0.4, 0, 0.2, 1);
+  --transition-base: 200ms cubic-bezier(0.4, 0, 0.2, 1);
+  --transition-slow: 300ms cubic-bezier(0.4, 0, 0.2, 1);
+  --transition-slower: 500ms cubic-bezier(0.4, 0, 0.2, 1);
+
+  // Easing curves
+  --ease-in: cubic-bezier(0.4, 0, 1, 1);
+  --ease-out: cubic-bezier(0, 0, 0.2, 1);
+  --ease-in-out: cubic-bezier(0.4, 0, 0.2, 1);
+
+  // ── Z-Index Scale ─────────────────────────────────────────
+  --z-base: 0;
+  --z-dropdown: 1000;
+  --z-sticky: 1020;
+  --z-fixed: 1030;
+  --z-modal-backdrop: 1040;
+  --z-modal: 1050;
+  --z-popover: 1060;
+  --z-tooltip: 1070;
+  --z-toast: 1080;
+
+  // ── Interactive States ────────────────────────────────────
+  --hover-overlay: rgba(79, 70, 229, 0.04);
+  --active-overlay: rgba(79, 70, 229, 0.08);
+  --disabled-opacity: 0.5;
+
+  // ── Layout ────────────────────────────────────────────────
+  --sidebar-width: 320px;
+  --header-height: 64px;
+  --container-max: 1280px;
+}

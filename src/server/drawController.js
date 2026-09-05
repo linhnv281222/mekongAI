@@ -6,6 +6,7 @@ import { PDFDocument } from "pdf-lib";
 import { fileURLToPath } from "url";
 import { analyzeDrawingGemini, correctDrawingGemini } from "../ai/geminiAnalyzer.js";
 import { analyzeDrawingClaude, correctDrawingClaude } from "../ai/anthropicAnalyzer.js";
+import { analyzeDrawingXiaomi } from "../ai/xiaomiAnalyzer.js";
 import {
   getDrawing,
   listDrawings,
@@ -39,9 +40,12 @@ function loadAiConfig() {
   return { provider: "gemini", model: null };
 }
 
-/** Chọn analyzer — gemini hoặc claude theo config */
+/** Chọn analyzer — xiaomi / gemini / claude theo config */
 function selectAnalyzer() {
   const { provider } = loadAiConfig();
+  if (provider === "xiaomi") {
+    return { fn: analyzeDrawingXiaomi, label: "xiaomi" };
+  }
   if (provider === "claude") {
     return { fn: analyzeDrawingClaude, label: "claude" };
   }

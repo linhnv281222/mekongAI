@@ -4,6 +4,11 @@ import { FormsModule, ReactiveFormsModule } from '@angular/forms';
 import { HttpClientModule } from '@angular/common/http';
 import { TranslateModule } from '@ngx-translate/core';
 import { RouterModule } from '@angular/router';
+
+// Angular Material
+import { MatIconModule } from '@angular/material/icon';
+
+// PrimeNG Modules
 import { ButtonModule } from 'primeng/button';
 import { InputTextModule } from 'primeng/inputtext';
 import { InputNumberModule } from 'primeng/inputnumber';
@@ -27,6 +32,8 @@ import { ConfirmDialogModule } from 'primeng/confirmdialog';
 import { InputMaskModule } from 'primeng/inputmask';
 import { SplitterModule } from 'primeng/splitter';
 import { InputSwitchModule } from 'primeng/inputswitch';
+import { VirtualScrollerModule } from 'primeng/virtualscroller';
+
 import { MessageService } from 'primeng/api';
 import { ConfirmationService } from 'primeng/api';
 import { MekongAiRoutingModule } from './mekong-ai-routing.module';
@@ -46,6 +53,7 @@ import { AppPdfViewerComponent } from './pdf-viewer/pdf-viewer.component';
     ReactiveFormsModule,
     HttpClientModule,
     TranslateModule,
+    MatIconModule,
     ButtonModule,
     InputTextModule,
     InputNumberModule,
@@ -69,6 +77,7 @@ import { AppPdfViewerComponent } from './pdf-viewer/pdf-viewer.component';
     InputMaskModule,
     InputSwitchModule,
     SplitterModule,
+    VirtualScrollerModule,
     RouterModule,
     SharedComponentsModule,
     MekongAiRoutingModule,
