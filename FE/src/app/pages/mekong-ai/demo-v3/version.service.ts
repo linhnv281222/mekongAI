@@ -12,6 +12,7 @@ export interface DrawingVersion {
   source_model?: string;
   created_at: string;
   created_by?: string;
+  change_reason?: string;
 }
 
 export interface FieldEvidence {
@@ -131,19 +132,36 @@ export class VersionService {
 
   // Approve job (all drawings)
   async approveJob(
-    jobId: number | string
+    jobId: number | string,
+    actor?: string
   ): Promise<{ success: boolean; message?: string }> {
-    const response = await firstValueFrom(
-      this.http.post<{ success: boolean; message?: string }>(
-        `${this.path}/jobs/${jobId}/approve`,
-        {},
-        {
-          headers: this.jsonHeaders(),
-          observe: 'response',
-        }
-      )
-    );
-    return response.body || { success: false };
+    try {
+      const response = await firstValueFrom(
+        this.http.post<{ ok?: boolean; success?: boolean; message?: string; error?: string }>(
+          `${this.path}/jobs/${jobId}/approve`,
+          {
+            actor: actor || 'web-user'
+          },
+          {
+            headers: this.jsonHeaders(),
+            observe: 'response',
+          }
+        )
+      );
+      const body = response.body || {};
+      // Backend returns { ok: true } or { success: true }
+      const isSuccess = body.ok === true || body.success === true;
+      return {
+        success: isSuccess,
+        message: body.message || body.error
+      };
+    } catch (error: any) {
+      console.error('[VersionService] approveJob error:', error);
+      return {
+        success: false,
+        message: error?.error?.error || error?.error?.message || error?.message || 'Unknown error'
+      };
+    }
   }
 
   // Diff two versions

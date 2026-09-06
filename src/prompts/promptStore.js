@@ -24,7 +24,7 @@ const PROMPT_DEFAULTS = {
     name: "Drawing Analysis — Gemini Prompt",
     description: "Prompt for backup drawing analysis using Gemini 2.5",
     file: "gemini-drawing.txt",
-    variables: ["MATERIAL", "HEAT_TREAT", "SURFACE", "SHAPE", "VNT_KNOWLEDGE", "EMAIL_CONTEXT"],
+    variables: ["MATERIAL", "HEAT_TREAT", "SURFACE", "SHAPE", "VNT_KNOWLEDGE", "EMAIL_CONTEXT", "FEATURES"],
   },
   "chat-classify": {
     name: "Chat Classification — AI Extraction",
@@ -55,6 +55,11 @@ const KNOWLEDGE_DEFAULTS = {
     name: "Phân loại hình dạng",
     description: "Bảng hình dạng và phương án gia công VNT",
     file: "vnt-shapes.txt",
+  },
+  "vnt-features": {
+    name: "CNC Features Classification",
+    description: "Bảng phân loại đặc điểm gia công CNC (lỗ, vát, rãnh...)",
+    file: "vnt-features.txt",
   },
 };
 
@@ -682,7 +687,8 @@ export async function listPromptTemplates() {
 
   const result = await pool.query(
     `SELECT pt.key, pt.name, pt.description,
-            pv.version, pv.content, pv.variables, pv.note, pv.created_by, pv.created_at
+            pv.version, pv.content, pv.variables, pv.note, pv.created_by, pv.created_at,
+            (SELECT COUNT(*) FROM prompt_versions pv2 WHERE pv2.template_id = pt.id) as total_versions
      FROM prompt_templates pt
      LEFT JOIN prompt_versions pv ON pv.template_id = pt.id AND pv.is_active = true
      ORDER BY pt.id`
@@ -700,6 +706,7 @@ export async function listPromptTemplates() {
     last_note: row.note ?? null,
     last_author: row.created_by ?? null,
     last_updated: row.created_at ?? null,
+    total_versions: parseInt(row.total_versions) || 0,
   }));
 }
 

@@ -40,13 +40,14 @@ export async function analyzeDrawingXiaomi(pdfPath, emailContext = null) {
     const filename = path.basename(pdfPath);
 
     // Load knowledge blocks and prompt
-    const [vntKnowledge, materials, heatTreat, surface, shapes] =
+    const [vntKnowledge, materials, heatTreat, surface, shapes, features] =
       await Promise.all([
         getKnowledgeBlock("vnt-knowledge"),
         getKnowledgeBlock("vnt-materials"),
         getKnowledgeBlock("vnt-heat-treat"),
         getKnowledgeBlock("vnt-surface"),
         getKnowledgeBlock("vnt-shapes"),
+        getKnowledgeBlock("vnt-features"),
       ]);
 
     const systemPrompt = await getPrompt("gemini-drawing", {
@@ -55,6 +56,7 @@ export async function analyzeDrawingXiaomi(pdfPath, emailContext = null) {
       HEAT_TREAT: heatTreat ?? "",
       SURFACE: surface ?? "",
       SHAPE: shapes ?? "",
+      FEATURES: features ?? "",
       EMAIL_CONTEXT: emailContext ?? "",
     });
 

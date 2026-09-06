@@ -1,43 +1,38 @@
 import {
-  Component,
-  OnInit,
-  OnDestroy,
   AfterViewChecked,
-  ViewChild,
-  ElementRef,
   ChangeDetectorRef,
+  Component,
+  ElementRef,
+  OnDestroy,
+  OnInit,
+  ViewChild,
 } from '@angular/core';
 import { ActivatedRoute } from '@angular/router';
-import { FormsModule } from '@angular/forms';
 import { MessageService } from 'primeng/api';
 
-import { DemoV3Service } from './demo-v3.service';
 import { MekongAiService } from '../mekong-ai.service';
-import { TableResizeService } from '../table-resize.service';
-import { VersionService, DrawingVersion } from './version.service';
 import { EmailRow } from '../models/email.model';
 import {
-  UiSchema,
+  KnowledgeBlock,
   UiCell,
   UiRow,
-  KnowledgeBlock,
+  UiSchema,
 } from '../models/prompt.model';
-import { DrawingLine } from '../utils/drawing.util';
-import { drawingToLine } from '../utils/drawing.util';
+import { TableResizeService } from '../table-resize.service';
+import { DrawingLine, drawingToLine } from '../utils/drawing.util';
 import {
-  mapJobRowToEmail,
-  mergeAgentIntoInbox,
-  normalizeClassifyOutputFromJob,
-  fmtDDMMHHmm,
-  fmtDDMM,
-  resolveClassifyValue,
   collectSchemaKeys,
-  truthyClassify,
-  inferExtraFieldType,
+  fmtDDMM,
+  fmtDDMMHHmm,
   humanizeClassifyKey,
-  toDateInputValue,
+  inferExtraFieldType,
+  mergeAgentIntoInbox,
   parseHanGiaoToDate,
+  resolveClassifyValue,
+  truthyClassify
 } from '../utils/email.util';
+import { DemoV3Service } from './demo-v3.service';
+import { DrawingVersion, VersionService } from './version.service';
 
 export const DEFAULT_COL_WIDTHS: Record<string, number> = {
   stt: 36,
@@ -51,7 +46,6 @@ export const DEFAULT_COL_WIDTHS: Record<string, number> = {
   kich_thuoc: 30,
   ma_quy_trinh: 65,
   ghi_chu: 105,
-  danh_gia: 30,
 };
 
 type ViewTab = 0 | 1;
@@ -100,7 +94,7 @@ export class DemoV3Component implements OnInit, OnDestroy, AfterViewChecked {
   // Column resize — widths from localStorage
   colWidths: Record<string, number> = {};
   private readonly TABLE_KEY = 'demo3_bv';
-
+  private readonly COL_KEYS = ['stt', 'ma_ban_ve', 'so_luong', 'hinh_dang', 'xlbm', 'hrc', 'vat_lieu', 'kich_thuoc', 'ma_quy_trinh', 'ghi_chu', 'dung_sai'];
   // Splitter full-width toggle
   splitMode: SplitMode = 'normal';
 
@@ -149,15 +143,12 @@ export class DemoV3Component implements OnInit, OnDestroy, AfterViewChecked {
   ) {}
 
   async ngOnInit(): Promise<void> {
-    console.log('[DemoV3] ngOnInit started');
     this.colWidths = this.tableResizeSvc.load(this.TABLE_KEY);
     await this.loadConfig();
 
     this.svc.startPolling(
       (agentEmails: EmailRow[]) => {
-        console.log('[DemoV3] Polling callback - received emails:', agentEmails.length);
         this.emails = mergeAgentIntoInbox(agentEmails, this.emails);
-        console.log('[DemoV3] After merge - total emails:', this.emails.length);
         if (this.activeEmail?.id) {
           const refreshed = this.emails.find(
             (e) => e.id === this.activeEmail!.id
@@ -168,13 +159,11 @@ export class DemoV3Component implements OnInit, OnDestroy, AfterViewChecked {
         this.cdr.markForCheck();
       },
       (updatedEmail: EmailRow) => {
-        console.log('[DemoV3] Email updated:', updatedEmail.id);
         this.cdr.markForCheck();
       }
     );
 
     setTimeout(() => {
-      console.log('[DemoV3] Timeout - setting initialLoading to false. Current emails:', this.emails.length);
       this.initialLoading = false;
       this.cdr.markForCheck();
     }, 8000);
@@ -248,13 +237,16 @@ export class DemoV3Component implements OnInit, OnDestroy, AfterViewChecked {
       job.co_van_chuyen ?? (full.classify_output as any)?.co_van_chuyen ?? null;
     this.xuLyBeMat =
       job.xu_ly_be_mat ?? (full.classify_output as any)?.xu_ly_be_mat ?? null;
+
+    // Load version counts
+    await this.loadAllVersionCounts();
+
     this.cdr.markForCheck();
   }
 
   // ── Mailbox ───────────────────────────────────────────────
 
   get filteredEmails(): EmailRow[] {
-    console.log('[DemoV3] filteredEmails getter - emails.length:', this.emails.length, 'searchQuery:', this.searchQuery);
     if (!this.searchQuery) return this.emails;
     const query = this.searchQuery.toLowerCase();
     const filtered = this.emails.filter(
@@ -262,7 +254,6 @@ export class DemoV3Component implements OnInit, OnDestroy, AfterViewChecked {
         emailItem.from.toLowerCase().includes(query) ||
         (emailItem.subject || '').toLowerCase().includes(query)
     );
-    console.log('[DemoV3] After filter - filtered.length:', filtered.length);
     return filtered;
   }
 
@@ -274,7 +265,7 @@ export class DemoV3Component implements OnInit, OnDestroy, AfterViewChecked {
     this.selectEmail(emailItem);
   }
 
-  async selectEmail(emailItem: EmailRow): Promise<void> {
+  private async selectEmail(emailItem: EmailRow): Promise<void> {
     this.resetRightPanel();
     this.activeEmail = emailItem;
     this.cdr.markForCheck();
@@ -297,6 +288,9 @@ export class DemoV3Component implements OnInit, OnDestroy, AfterViewChecked {
         null;
       this.xuLyBeMat =
         job.xu_ly_be_mat ?? (full.classify_output as any)?.xu_ly_be_mat ?? null;
+
+      // Load version counts for all drawings
+      await this.loadAllVersionCounts();
     } else if (this.activeEmail?.drawings?.length) {
       this.loadDrawingLines();
       this.ghiChu =
@@ -312,6 +306,23 @@ export class DemoV3Component implements OnInit, OnDestroy, AfterViewChecked {
     }
 
     this.cdr.markForCheck();
+  }
+
+  private async loadAllVersionCounts(): Promise<void> {
+    if (!this.activeEmail?.id || !this.drawingLines.length) return;
+
+    try {
+      for (let i = 0; i < this.drawingLines.length; i++) {
+        const versions = await this.versionSvc.getDrawingVersions(
+          this.activeEmail.id,
+          i
+        );
+        this.drawingVersions.set(i, versions);
+      }
+      this.cdr.markForCheck();
+    } catch (err) {
+      // Silent fail
+    }
   }
 
   // ── Right panel: reset UI state ────────────────────────────
@@ -377,7 +388,7 @@ export class DemoV3Component implements OnInit, OnDestroy, AfterViewChecked {
     }
 
     const oldValue = this.drawingLines[rowIndex][field];
-    
+
     this.drawingLines = this.drawingLines.map((dl, idx) =>
       idx === rowIndex ? { ...dl, [field]: value } : dl
     );
@@ -418,7 +429,6 @@ export class DemoV3Component implements OnInit, OnDestroy, AfterViewChecked {
         ma_quy_trinh: drawingData.ma_quy_trinh,
         ly_giai_qt: drawingData.ly_giai_qt,
         note: drawingData.note,
-        danh_gia: drawingData.danh_gia,
       };
 
       const changedFields = {
@@ -441,7 +451,6 @@ export class DemoV3Component implements OnInit, OnDestroy, AfterViewChecked {
   }
 
   // Column resize — read widths directly from DOM after resize, save to localStorage
-  private readonly COL_KEYS = ['stt', 'ma_ban_ve', 'so_luong', 'hinh_dang', 'xlbm', 'hrc', 'vat_lieu', 'kich_thuoc', 'ma_quy_trinh', 'ghi_chu', 'dung_sai', 'danh_gia'];
   private _resizeDirty = false;
 
   ngAfterViewChecked(): void {
@@ -812,7 +821,6 @@ export class DemoV3Component implements OnInit, OnDestroy, AfterViewChecked {
         ma_quy_trinh: dl.ma_quy_trinh,
         ly_giai_qt: dl.ly_giai_qt,
         note: dl.note,
-        danh_gia: dl.danh_gia,
       },
     }));
 
@@ -853,13 +861,16 @@ export class DemoV3Component implements OnInit, OnDestroy, AfterViewChecked {
 
   async approveJob(): Promise<void> {
     if (!this.activeEmail?.id) return;
-    
+
     try {
       this.saving = true;
       this.cdr.markForCheck();
 
-      const result = await this.versionSvc.approveJob(this.activeEmail.id);
-      
+      const result = await this.versionSvc.approveJob(
+        this.activeEmail.id,
+        'web-user'
+      );
+
       this.saving = false;
       this.cdr.markForCheck();
 
@@ -871,6 +882,8 @@ export class DemoV3Component implements OnInit, OnDestroy, AfterViewChecked {
           life: 3000,
         });
         this.modifiedDrawingFields.clear();
+        // Reload version counts after approval
+        await this.loadAllVersionCounts();
       } else {
         this.messageService.add({
           severity: 'error',
@@ -882,12 +895,13 @@ export class DemoV3Component implements OnInit, OnDestroy, AfterViewChecked {
     } catch (err) {
       this.saving = false;
       this.cdr.markForCheck();
-      const error = err as Error;
+      const error = err as any;
+      const errorDetail = error?.error?.message || error?.message || JSON.stringify(error);
       this.messageService.add({
         severity: 'error',
         summary: 'Duyệt thất bại',
-        detail: error?.message,
-        life: 3000,
+        detail: errorDetail,
+        life: 5000,
       });
     }
   }
@@ -916,19 +930,12 @@ export class DemoV3Component implements OnInit, OnDestroy, AfterViewChecked {
       this.showVersionHistory = true;
       this.cdr.markForCheck();
     } catch (err) {
-      console.error('[DemoV3] loadVersionHistory error', err);
       this.messageService.add({
         severity: 'error',
         summary: 'Không tải được lịch sử',
         life: 2000,
       });
     }
-  }
-
-  closeVersionHistory(): void {
-    this.showVersionHistory = false;
-    this.selectedDrawingIndex = null;
-    this.cdr.markForCheck();
   }
 
   getVersionsForDrawing(drawingIndex: number): DrawingVersion[] {
@@ -1000,5 +1007,10 @@ export class DemoV3Component implements OnInit, OnDestroy, AfterViewChecked {
     if (source === 'email') return 'Email';
     if (source === 'chat') return 'Chat';
     return '';
+  }
+
+  getVersionDataString(data: Record<string, unknown>, key: string): string {
+    const value = data[key];
+    return value != null ? String(value) : '';
   }
 }

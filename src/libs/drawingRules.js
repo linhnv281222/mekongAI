@@ -158,6 +158,170 @@ const HEAT_TREAT_PATTERNS = [
   [/\bHRC\s*(\d+)\b/i, (m) => `HRC ${m[1]}`],
 ];
 
+// ── FEATURE PATTERNS ─────────────────────────────────────────────────────────
+
+const FEATURE_PATTERNS = {
+  // Standard holes: φ9×15, Ø12 depth 20, D9×15
+  lo_thuong: [
+    [/(?:φ|Ø|⌀|D)(\d+(?:\.\d+)?)\s*(?:×|x|depth|深さ)?\s*(\d+(?:\.\d+)?)/gi,
+     (m) => ({
+       type: 'lo_thuong',
+       code: `D${Math.round(parseFloat(m[1]))}`,
+       diameter: parseFloat(m[1]),
+       depth: parseFloat(m[2])
+     })],
+  ],
+
+  // Tapped holes: M6×1.0 depth 12, M8-6H
+  lo_taro: [
+    [/(M\d+)(?:×|x)?(\d+(?:\.\d+)?)?\s*(?:depth|深さ)?\s*(\d+(?:\.\d+)?)?/gi,
+     (m) => ({
+       type: 'lo_taro',
+       code: m[1],
+       diameter: parseInt(m[1].slice(1), 10),
+       thread_pitch: m[2] ? parseFloat(m[2]) : null,
+       depth: m[3] ? parseFloat(m[3]) : null
+     })],
+  ],
+
+  // Tolerance holes: φ10H7, P6H7
+  lo_dung_sai: [
+    [/(?:φ|Ø|P)(\d+)([H|h|P|p]\d+)/gi,
+     (m) => ({
+       type: 'lo_dung_sai',
+       code: `P${m[1]}${m[2].toUpperCase()}`,
+       diameter: parseFloat(m[1]),
+       tolerance: m[2].toUpperCase()
+     })],
+  ],
+
+  // Counterbore: φ12×8 / φ8×20 (detect two-stage pattern)
+  lo_bac: [
+    [/(?:φ|Ø)(\d+(?:\.\d+)?)\s*×\s*(\d+(?:\.\d+)?)\s*\/\s*(?:φ|Ø)(\d+(?:\.\d+)?)\s*×\s*(\d+(?:\.\d+)?)/gi,
+     (m) => ({
+       type: 'lo_bac',
+       code: `D${Math.round(parseFloat(m[1]))}B`,
+       diameter_outer: parseFloat(m[1]),
+       depth_outer: parseFloat(m[2]),
+       diameter_inner: parseFloat(m[3]),
+       depth_inner: parseFloat(m[4])
+     })],
+  ],
+
+  // Countersink: ⌴φ10×90°
+  lo_chim: [
+    [/[⌴⌵](?:φ|Ø)?(\d+(?:\.\d+)?)\s*(?:×|x)?\s*(\d+)°?/gi,
+     (m) => ({
+       type: 'lo_chim',
+       code: `D${Math.round(parseFloat(m[1]))}C`,
+       diameter_outer: parseFloat(m[1]),
+       angle: parseFloat(m[2])
+     })],
+  ],
+
+  // Chamfers: C0.5, C1×45°
+  vat_mep: [
+    [/\bC(\d+(?:\.\d+)?)\s*(?:×|x)?\s*(\d+)?°?/gi,
+     (m) => ({
+       type: 'vat_mep',
+       code: `C${m[1]}`,
+       size: parseFloat(m[1]),
+       angle: m[2] ? parseFloat(m[2]) : 45
+     })],
+    // Reverse notation: 0.5C
+    [/(\d+(?:\.\d+)?)\s*C\b/gi,
+     (m) => ({
+       type: 'vat_mep',
+       code: `C${m[1]}`,
+       size: parseFloat(m[1]),
+       angle: 45
+     })],
+  ],
+
+  // Fillets: R2, R5
+  bo_goc: [
+    [/\bR(\d+(?:\.\d+)?)\b/gi,
+     (m) => ({
+       type: 'bo_goc',
+       code: `R${m[1]}`,
+       radius: parseFloat(m[1])
+     })],
+  ],
+
+  // Surface finish: Ra3.2, Ra1.6
+  surface_finish: [
+    [/\bRa\s*(\d+(?:\.\d+)?)\b/gi,
+     (m) => ({
+       type: 'surface_finish',
+       code: `Ra${m[1]}`,
+       ra_value: parseFloat(m[1])
+     })],
+    [/\bRz\s*(\d+(?:\.\d+)?)\b/gi,
+     (m) => ({
+       type: 'surface_finish',
+       code: `Rz${m[1]}`,
+       rz_value: parseFloat(m[1])
+     })],
+    // Triangle symbols: ▽ = Ra12.5, ▽▽ = Ra6.3, ▽▽▽ = Ra3.2, ▽▽▽▽ = Ra1.6
+    [/▽{1,4}/g,
+     (m) => {
+       const count = m[0].length;
+       const raMap = { 1: 12.5, 2: 6.3, 3: 3.2, 4: 1.6 };
+       return {
+         type: 'surface_finish',
+         code: `Ra${raMap[count]}`,
+         ra_value: raMap[count]
+       };
+     }],
+  ],
+
+  // Keyway: Keyway 6×6×30, Then 8×7×50
+  ranh_then: [
+    [/(?:keyway|then|key)\s*(\d+(?:\.\d+)?)\s*[×x]\s*(\d+(?:\.\d+)?)\s*[×x]\s*(\d+(?:\.\d+)?)/gi,
+     (m) => ({
+       type: 'ranh_then',
+       code: `KEY${Math.round(parseFloat(m[1]))}`,
+       width: parseFloat(m[1]),
+       depth: parseFloat(m[2]),
+       length: parseFloat(m[3])
+     })],
+  ],
+
+  // Pocket: Pocket 20×15×5
+  pocket: [
+    [/pocket\s*(\d+(?:\.\d+)?)\s*[×x]\s*(\d+(?:\.\d+)?)\s*[×x]\s*(\d+(?:\.\d+)?)/gi,
+     (m) => ({
+       type: 'pocket',
+       code: 'PKT',
+       length: parseFloat(m[1]),
+       width: parseFloat(m[2]),
+       depth: parseFloat(m[3]),
+       shape: 'rectangular'
+     })],
+  ],
+
+  // GD&T symbols: ⌖φ0.05 A, ⊥0.02 A
+  gdt: [
+    [/([⌖⊕⊥∥∠])(?:φ|Ø)?(\d+(?:\.\d+)?)\s*([A-Z])?/gi,
+     (m) => {
+       const symbolMap = {
+         '⌖': 'position',
+         '⊕': 'concentricity',
+         '⊥': 'perpendicularity',
+         '∥': 'parallelism',
+         '∠': 'angularity'
+       };
+       return {
+         type: 'gdt',
+         symbol: m[1],
+         symbol_name: symbolMap[m[1]] || 'unknown',
+         tolerance: parseFloat(m[2]),
+         datum: m[3] || null
+       };
+     }],
+  ],
+};
+
 // ── TOLERANCE STANDARDS ─────────────────────────────────────────────────────
 
 const TOLERANCE_PATTERNS = [
@@ -216,6 +380,77 @@ export function inferProcessCode(partialData) {
   return { ma_quy_trinh: "", reason: "không xác định được hình dạng" };
 }
 
+// ── FEATURE EXTRACTION API ──────────────────────────────────────────────────
+
+/**
+ * Extract CNC features from raw drawing text.
+ * Used to: fill missing features, validate AI output.
+ *
+ * @param {string} rawText — raw text from drawing
+ * @returns {{ features: object[], totalFound: number }}
+ */
+export function extractFeatures(rawText) {
+  const features = [];
+  const seenFeatures = new Set(); // Deduplicate by code+diameter+depth
+
+  for (const [featureType, patterns] of Object.entries(FEATURE_PATTERNS)) {
+    for (const [pattern, resolver] of patterns) {
+      // Use matchAll for global patterns
+      const matches = [...rawText.matchAll(pattern)];
+      for (const m of matches) {
+        try {
+          const feature = resolver(m);
+          if (feature) {
+            // Deduplicate: same code+diameter+depth = same feature
+            const key = `${feature.code || featureType}_${feature.diameter || 0}_${feature.depth || 0}_${feature.size || 0}_${feature.radius || 0}`;
+            if (!seenFeatures.has(key)) {
+              seenFeatures.add(key);
+              features.push({
+                ...feature,
+                quantity: 1, // Default, AI should override with actual count
+                lan_ga: null, // To be filled by AI or inference
+                location: null, // To be filled by AI
+              });
+            }
+          }
+        } catch (e) {
+          console.warn(`[extractFeatures] Pattern error for ${featureType}:`, e.message);
+        }
+      }
+    }
+  }
+
+  return {
+    features,
+    totalFound: features.length,
+  };
+}
+
+/**
+ * Merge AI features with rule-extracted features.
+ * Priority: AI > Rules (only fill missing)
+ *
+ * @param {object[]} aiFeatures — features from AI
+ * @param {object[]} ruleFeatures — features from rules
+ * @returns {object[]} merged features
+ */
+export function mergeFeatures(aiFeatures = [], ruleFeatures = []) {
+  const merged = [...aiFeatures];
+  const aiCodes = new Set(aiFeatures.map(f => f.code).filter(Boolean));
+
+  // Add rule features that AI didn't find
+  for (const ruleFeature of ruleFeatures) {
+    if (!aiCodes.has(ruleFeature.code)) {
+      merged.push({
+        ...ruleFeature,
+        source: 'rule_extraction',
+      });
+    }
+  }
+
+  return merged;
+}
+
 // ── MAIN EXTRACTION API ─────────────────────────────────────────────────────
 
 /**
@@ -224,7 +459,7 @@ export function inferProcessCode(partialData) {
  *
  * @param {string} rawText — raw text from drawing (not AI result)
  * @param {object} aiResult — existing AI-parsed result (may have empty fields)
- * @returns {{ extracted: object, missing: string[], confidence: number }}
+ * @returns {{ extracted: object, missing: string[], confidence: number, features: object[] }}
  */
 export function extractWithRules(rawText, aiResult = {}) {
   const extracted = { ...aiResult };
@@ -322,11 +557,24 @@ export function extractWithRules(rawText, aiResult = {}) {
 
   if (!extracted.hinh_dang) missing.push("hinh_dang");
 
+  // Extract features from raw text
+  const { features: ruleFeatures } = extractFeatures(rawText);
+
+  // Merge with AI features if present
+  const aiFeatures = extracted.features_cnc || [];
+  const mergedFeatures = mergeFeatures(aiFeatures, ruleFeatures);
+
+  if (mergedFeatures.length > 0) {
+    extracted.features_cnc = mergedFeatures;
+    confidence += Math.min(3, Math.floor(mergedFeatures.length / 2)); // Bonus for features
+    fieldsFound += mergedFeatures.length;
+  }
+
   // Confidence score: 0-10
   // 7+ → high confidence (AI mostly agrees with rules)
   // 4-6 → medium (some fields missing or uncertain)
   // <4 → low (many fields missing, may need retry)
-  const maxPossible = 8;
+  const maxPossible = 11; // Updated to account for features bonus
   const confidenceScore = Math.min(10, Math.round((confidence / maxPossible) * 10));
 
   return {
@@ -335,6 +583,7 @@ export function extractWithRules(rawText, aiResult = {}) {
     confidence: confidenceScore,
     fieldsFound,
     fieldsTotal: missing.length + fieldsFound,
+    features: mergedFeatures,
   };
 }
 

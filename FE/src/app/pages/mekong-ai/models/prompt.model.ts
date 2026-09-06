@@ -8,6 +8,7 @@ export interface PromptTemplate {
   active_version?: number;
   active_content?: string;
   variables?: string[];
+  total_versions?: number;
 }
 
 export interface PromptVersion {

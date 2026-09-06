@@ -1,8 +1,13 @@
 import express from "express";
 import fs from "fs";
+import os from "os";
 import path from "path";
 import { fileURLToPath } from "url";
 import { getJob, getJobAsync, getJobs, getJobsAsync, updateJob, pool, normalizeDbRow } from "../data/jobStore.js";
+import {
+  buildQuotationHeader,
+  runQuotationWorkflow,
+} from "../integrate/erpAPI.js";
 import {
   downloadAttachment,
   makeGmail,
@@ -12,6 +17,82 @@ import {
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 const router = express.Router();
+
+function buildErpItems(drawings = []) {
+  return drawings.map((drawing, index) => {
+    const data = drawing?.data || {};
+    return {
+      id: index,
+      fileNameOld: data.ma_ban_ve || drawing.filename?.replace(/\.pdf$/i, "") || `BV_${index + 1}`,
+      fileNameNew: data.ten_chi_tiet || data.ten_san_pham || null,
+      filePath: null,
+      totalFiles: drawings.length,
+      ma_nvl: data.vat_lieu || data.ma_vat_lieu || null,
+      so_luong: data.so_luong || 1,
+      kl_phoi_kg: data.kl_phoi_kg || data.klPhoiKg || 0,
+      ma_quy_trinh: data.ma_quy_trinh || null,
+      hinh_dang: data.hinh_dang || null,
+      xu_ly_nhiet: data.xu_ly_nhiet || data.nhiet_luyen || null,
+      xu_ly_be_mat: data.xu_ly_be_mat || null,
+      he_so_phuc_tap: data.he_so_phuc_tap || null,
+      drawing_db_id: drawing.id || null,
+    };
+  });
+}
+
+async function createErpWorkflowInput(job, res) {
+  const drawings = Array.isArray(job.drawings) ? job.drawings : [];
+  const attachments = Array.isArray(job.attachments) ? job.attachments : [];
+  const pdfAttachment = attachments.find((attachment) =>
+    String(typeof attachment === "string" ? attachment : attachment?.name || "")
+      .toLowerCase()
+      .endsWith(".pdf")
+  );
+  console.log(`[createErpWorkflowInput] job.id=${job.id}, drawings=${drawings.length}, attachments=${attachments.length}, pdfAttachment=${pdfAttachment ? (typeof pdfAttachment === "string" ? pdfAttachment : pdfAttachment.name) : "none"}`);
+  if (!pdfAttachment) {
+    throw new Error("Job không có file PDF để đẩy sang ERP");
+  }
+
+  const filename = typeof pdfAttachment === "string" ? pdfAttachment : pdfAttachment.name;
+  const fileResult = await loadAttachmentPdfBuffer(job.id, filename, res);
+  if (!fileResult.ok) throw new Error(fileResult.body?.error || "Không tải được file PDF");
+
+  const tempPath = path.join(os.tmpdir(), filename);
+  await fs.writeFileSync(tempPath, fileResult.buf);
+  console.log(`[createErpWorkflowInput] Saved PDF to temp path: ${tempPath}`);
+  const classify = job.classify_output || {
+    ngon_ngu: job.ngon_ngu,
+    ten_cong_ty: job.ten_cong_ty,
+    han_giao_hang: job.han_giao,
+    hinh_thuc_giao: job.hinh_thuc_giao,
+    xu_ly_be_mat: job.xu_ly_be_mat,
+  };
+  const header = buildQuotationHeader(
+    {
+      date: job.created_at,
+      senderEmail: job.sender_email,
+      subject: job.subject,
+    },
+    classify,
+    {
+      company_code: 1,
+      customer_code: job.ma_khach_hang || 64,
+      quotation_currency: classify.quotation_currency,
+    }
+  );
+
+  return {
+    tempPath,
+    input: {
+      header,
+      drawing: { pdfPath: tempPath, filename },
+      f1: { items: buildErpItems(drawings), drawings },
+      f3: null,
+      f4: null,
+      f5: null,
+    },
+  };
+}
 
 function resolveAttachmentFilename(req) {
   const bodyF = req.body?.f;
@@ -412,10 +493,48 @@ router.put("/:id", async (req, res) => {
 router.post("/:id/push-erp", async (req, res) => {
   const job = await getJobAsync(req.params.id);
   if (!job) return res.status(404).json({ error: "Không tìm thấy" });
+  console.log(`[POST /jobs/${job.id}/push-erp] job:`, JSON.stringify(job.id));
 
-  updateJob(job.id, { status: "pushed", pushed_at: Date.now() });
+  let tempPath;
+  try {
+    const workflow = await createErpWorkflowInput(job, res);
+    tempPath = workflow.tempPath;
+    const erpResult = await runQuotationWorkflow(workflow.input);
+    const updates = {
+      status: "pushed",
+      pushed_at: Date.now(),
+      erp_quote_id: erpResult.quotaCode,
+      error: null,
+    };
+    if (Number.isFinite(Number(job.id))) {
+      await updateJob(Number(job.id), updates);
+    } else {
+      await updateJob({ gmail_id: job.gmail_id, ...updates });
+    }
 
-  res.json({ ok: true, job_id: job.id, message: "Push ERP thanh cong" });
+    res.json({
+      ok: true,
+      job_id: job.id,
+      quota_code: erpResult.quotaCode,
+      message: "Push ERP thanh cong",
+      result: erpResult,
+    });
+  } catch (error) {
+    console.error(`[POST /jobs/${job.id}/push-erp]`, error);
+    const updates = { status: "erp_error", error: error.message };
+    if (Number.isFinite(Number(job.id))) {
+      await updateJob(Number(job.id), updates);
+    } else {
+      await updateJob({ gmail_id: job.gmail_id, ...updates });
+    }
+    res.status(502).json({
+      ok: false,
+      job_id: job.id,
+      error: error.message || "Push ERP thất bại",
+    });
+  } finally {
+    if (tempPath) fs.unlink(tempPath, () => {});
+  }
 });
 
 export default router;

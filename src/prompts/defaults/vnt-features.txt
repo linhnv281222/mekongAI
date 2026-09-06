@@ -1,0 +1,188 @@
+[VNT CNC FEATURES CLASSIFICATION]
+
+## Bảng phân loại đặc điểm gia công CNC
+
+Feature Type | Vietnamese | English | Mã code | Nhận dạng
+--- | --- | --- | --- | ---
+lo_thuong | Lỗ thường | Standard hole | D5, D9, D12 | φ/Ø + chiều sâu, không có thread
+lo_taro | Lỗ taro | Tapped hole | M6, M8, M12 | M prefix, có ren (M6×1.0)
+lo_bac | Lỗ bậc | Counterbore/Stepped | D9B, D12B | 2 đường kính khác nhau
+lo_chim | Lỗ chìm | Countersink | D9C | Hình nón, góc 90°/120°
+lo_dung_sai | Lỗ dung sai | Tolerance hole | P6H7, P12H7 | H7/H8/P6/P7 tolerance
+ranh_then | Rãnh then | Keyway | KEY6, KEY8 | Rãnh chữ nhật trên trục/lỗ
+vat_mep | Vát mép | Chamfer | C0.5, C1 | C + kích thước (C0.5, C1×45°)
+bo_goc | Bo góc | Fillet/Radius | R2, R5 | R + bán kính (R2, R5)
+surface_finish | Hoàn thiện bề mặt | Surface finish | Ra3.2, Ra1.6 | Ra/Rz/N/▽ symbols
+gdt | GD&T | Geometric tolerance | GDT | ⌖⊕⊥∥∠ frame symbols
+pocket | Túi phay | Pocket milling | PKT | Hình chữ nhật/tròn lõm xuống
+slot | Rãnh | Slot/Groove | SLOT | Rãnh dài, có chiều rộng + sâu
+
+## Quy tắc extraction cho từng loại feature
+
+### 1. LỖ THƯỜNG (lo_thuong)
+- Pattern: φ9×15, Ø12 depth 20, D9×15
+- Đặc điểm: Có đường kính + chiều sâu, KHÔNG có ren
+- JSON output:
+  {
+    "type": "lo_thuong",
+    "code": "D9",
+    "diameter": 9,
+    "depth": 15,
+    "quantity": 4,
+    "lan_ga": "MC11"
+  }
+
+### 2. LỖ TARO (lo_taro)
+- Pattern: M6×1.0 depth 12, M8-6H, M12×1.75
+- Đặc điểm: M prefix, có ren, có pitch
+- JSON output:
+  {
+    "type": "lo_taro",
+    "code": "M6",
+    "diameter": 6,
+    "depth": 12,
+    "thread_pitch": 1.0,
+    "quantity": 8,
+    "lan_ga": "MC12"
+  }
+
+### 3. LỖ BẬC (lo_bac / Counterbore)
+- Pattern: φ12×8 / φ8×20 (2 đường kính)
+- Đặc điểm: Lỗ 2 bậc, đường kính lớn + nhỏ
+- JSON output:
+  {
+    "type": "lo_bac",
+    "code": "D12B",
+    "diameter_outer": 12,
+    "depth_outer": 8,
+    "diameter_inner": 8,
+    "depth_inner": 20,
+    "quantity": 4,
+    "lan_ga": "MC11"
+  }
+
+### 4. LỖ DUNG SAI (lo_dung_sai)
+- Pattern: φ10H7 depth 25, P6H7×30
+- Đặc điểm: Có tolerance suffix (H7, H8, P6, P7)
+- JSON output:
+  {
+    "type": "lo_dung_sai",
+    "code": "P6H7",
+    "diameter": 6,
+    "tolerance": "H7",
+    "depth": 30,
+    "quantity": 2,
+    "lan_ga": "MC12"
+  }
+
+### 5. VÁT MÉP (vat_mep / Chamfer)
+- Pattern: C0.5, C1×45°, 0.5C
+- Đặc điểm: C notation, có góc (mặc định 45°)
+- JSON output:
+  {
+    "type": "vat_mep",
+    "code": "C1",
+    "size": 1.0,
+    "angle": 45,
+    "quantity": 4,
+    "location": "all edges"
+  }
+
+### 6. BO GÓC (bo_goc / Fillet)
+- Pattern: R2, R5, R0.5
+- Đặc điểm: R notation, bán kính bo
+- JSON output:
+  {
+    "type": "bo_goc",
+    "code": "R2",
+    "radius": 2.0,
+    "quantity": 4,
+    "location": "inside corners"
+  }
+
+### 7. HOÀN THIỆN BỀ MẶT (surface_finish)
+- Pattern: Ra3.2, Ra1.6, Ra0.8, ▽▽▽
+- Đặc điểm: Ra/Rz value hoặc ▽ symbols
+- Mapping: ▽ = Ra12.5, ▽▽ = Ra6.3, ▽▽▽ = Ra3.2, ▽▽▽▽ = Ra1.6
+- JSON output:
+  {
+    "type": "surface_finish",
+    "code": "Ra3.2",
+    "ra_value": 3.2,
+    "location": "top face",
+    "area": "all visible surfaces"
+  }
+
+### 8. GD&T (Geometric Dimensioning & Tolerancing)
+- Pattern: ⌖φ0.05 A, ⊥0.02 A, ∥0.01 B
+- Symbols: ⌖ (position), ⊕ (concentricity), ⊥ (perpendicularity), ∥ (parallelism), ∠ (angularity)
+- JSON output:
+  {
+    "type": "gdt",
+    "symbol": "⌖",
+    "tolerance": 0.05,
+    "datum": "A",
+    "feature": "hole pattern"
+  }
+
+### 9. RÃNH THEN (ranh_then / Keyway)
+- Pattern: Keyway 6×6×30, Then 8×7×50
+- Đặc điểm: Rãnh chữ nhật, 3 dimensions (width × depth × length)
+- JSON output:
+  {
+    "type": "ranh_then",
+    "code": "KEY6",
+    "width": 6,
+    "depth": 6,
+    "length": 30,
+    "quantity": 1,
+    "location": "shaft"
+  }
+
+### 10. TÚI PHAY (pocket)
+- Pattern: Pocket 20×15×5 (L×W×D)
+- Đặc điểm: Vùng lõm xuống, hình chữ nhật hoặc tròn
+- JSON output:
+  {
+    "type": "pocket",
+    "code": "PKT",
+    "length": 20,
+    "width": 15,
+    "depth": 5,
+    "shape": "rectangular",
+    "quantity": 2,
+    "lan_ga": "MC11"
+  }
+
+## Mapping mã code sang thời gian gia công (DM_TG_Cut)
+
+| Mã code | Loại | Base time (giây) | Z chuẩn (mm) | ATC | Set dao |
+|---------|------|------------------|--------------|-----|---------|
+| D5      | Lỗ thường φ5 | 15 | 10 | 5s | 10s |
+| D9      | Lỗ thường φ9 | 18 | 15 | 5s | 10s |
+| D12     | Lỗ thường φ12 | 22 | 20 | 5s | 10s |
+| M6      | Lỗ taro M6 | 25 | 12 | 5s | 15s |
+| M8      | Lỗ taro M8 | 28 | 15 | 5s | 15s |
+| M12     | Lỗ taro M12 | 35 | 18 | 5s | 15s |
+| M6B     | Lỗ bậc M6 | 35 | 20 | 5s | 15s |
+| M6C     | Lỗ chìm M6 | 30 | 15 | 5s | 15s |
+| P6H7    | Lỗ dung sai P6H7 | 40 | 30 | 5s | 20s |
+| P12H7   | Lỗ dung sai P12H7 | 50 | 40 | 5s | 20s |
+
+## Lưu ý quan trọng
+
+1. **Lần gá (lan_ga)**: Mỗi feature phải gắn với lần gá cụ thể (MC11, MC12, LC21...)
+   - MC11/MC12 = Máy phay CNC lần gá 1/2
+   - LC21/LC22 = Máy tiện CNC lần gá 1/2
+
+2. **Quantity**: Số lượng feature (VD: 4 lỗ M6 → quantity = 4)
+
+3. **Location**: Vị trí feature trên bản vẽ (top face, bottom, side...)
+
+4. **Thời gian tính toán**:
+   - TG cắt thực (giây) = Cut Base × (chiều sâu thực / Z chuẩn)
+   - Sau đó + ATC + Set dao
+   - Đổi sang phút
+   - Nhân hệ số vật liệu
+
+5. **Backend tra bảng**: Features là input cho Backend tra DM_TG_Cut, KHÔNG để AI tính thời gian.

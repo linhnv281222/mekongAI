@@ -369,7 +369,7 @@ async function processEmail(gmail, msgId) {
         try {
           const enriched = extractWithRules("", flat);
           if (enriched.confidence > 0 && enriched.fieldsFound > 0) {
-            console.log(`[Rules] enriched: fields=${enriched.fieldsFound} conf=${enriched.confidence}/10 missing=${enriched.missing.join(",") || "none"}`);
+            console.log(`[Rules] enriched: fields=${enriched.fieldsFound} conf=${enriched.confidence}/10 missing=${enriched.missing.join(",") || "none"} features=${enriched.features?.length || 0}`);
           }
           // Only fill truly empty fields, don't override AI output
           for (const key of enriched.missing) {
@@ -378,6 +378,17 @@ async function processEmail(gmail, msgId) {
                 flat[key] = enriched.extracted[key];
                 console.log(`[Rules] filled ${key} = "${flat[key]}"`);
               }
+            }
+          }
+          // Merge features_cnc if rules found any
+          if (enriched.features && enriched.features.length > 0) {
+            const aiFeatures = flat.features_cnc || [];
+            const ruleOnlyFeatures = enriched.features.filter(rf =>
+              !aiFeatures.some(af => af.code === rf.code)
+            );
+            if (ruleOnlyFeatures.length > 0) {
+              flat.features_cnc = [...aiFeatures, ...ruleOnlyFeatures];
+              console.log(`[Rules] added ${ruleOnlyFeatures.length} features from rules: ${ruleOnlyFeatures.map(f => f.code).join(', ')}`);
             }
           }
         } catch (e) {

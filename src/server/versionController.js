@@ -4,6 +4,8 @@
 // ============================================================
 
 import express from "express";
+import fs from "fs";
+import path from "path";
 import {
   getDrawingVersions,
   getLatestDrawingVersion,
@@ -18,6 +20,19 @@ import { getJob, updateJob } from "../data/jobStore.js";
 
 const router = express.Router();
 
+// Logging utility
+const logDir = path.join(process.cwd(), 'logs');
+if (!fs.existsSync(logDir)) {
+  fs.mkdirSync(logDir, { recursive: true });
+}
+
+function writeLog(message) {
+  const timestamp = new Date().toISOString();
+  const logFile = path.join(logDir, `version-${new Date().toISOString().split('T')[0]}.log`);
+  const logLine = `[${timestamp}] ${message}\n`;
+  fs.appendFileSync(logFile, logLine);
+}
+
 // ══════════════════════════════════════════════════════════
 // 1. GET /jobs/:id/versions — Lấy tất cả versions của job
 // ══════════════════════════════════════════════════════════
@@ -30,9 +45,9 @@ router.get("/:id/versions", async (req, res) => {
 
   try {
     const versions = await getAllJobVersions(jobId);
-    res.json({ ok: true, versions });
+    res.json({ data: versions });
   } catch (e) {
-    console.error("[VersionAPI] GET /jobs/:id/versions error:", e.message);
+    writeLog(`ERROR: GET /jobs/:id/versions - ${e.message}`);
     res.status(500).json({ error: e.message });
   }
 });
@@ -51,9 +66,10 @@ router.get("/:id/drawings/:index/versions", async (req, res) => {
 
   try {
     const versions = await getDrawingVersions(jobId, drawingIndex);
-    res.json({ ok: true, versions });
+    writeLog(`GET /jobs/${jobId}/drawings/${drawingIndex}/versions - Found ${versions.length} versions`);
+    res.json({ data: versions });
   } catch (e) {
-    console.error("[VersionAPI] GET /jobs/:id/drawings/:index/versions error:", e.message);
+    writeLog(`ERROR: GET /jobs/:id/drawings/:index/versions - ${e.message}`);
     res.status(500).json({ error: e.message });
   }
 });
@@ -76,9 +92,9 @@ router.get("/:id/drawings/:index/latest", async (req, res) => {
     if (!version) {
       return res.status(404).json({ error: "Version not found" });
     }
-    res.json({ ok: true, version });
+    res.json({ data: version });
   } catch (e) {
-    console.error("[VersionAPI] GET /jobs/:id/drawings/:index/latest error:", e.message);
+    writeLog(`ERROR: GET /jobs/:id/drawings/:index/latest - ${e.message}`);
     res.status(500).json({ error: e.message });
   }
 });
@@ -140,27 +156,74 @@ router.post("/:id/drawings/:index/draft", async (req, res) => {
 
 router.post("/:id/approve", async (req, res) => {
   const jobId = parseInt(req.params.id, 10);
-  const { actor, drawings } = req.body;
+  const { actor } = req.body;
+
+  writeLog(`=== APPROVE JOB START === Job ID: ${jobId}, Actor: ${actor}`);
 
   if (isNaN(jobId)) {
+    writeLog(`ERROR: Invalid job id: ${req.params.id}`);
     return res.status(400).json({ error: "Invalid job id" });
   }
 
   try {
-    // Save approved versions for all drawings
-    if (drawings && Array.isArray(drawings)) {
-      for (let i = 0; i < drawings.length; i++) {
-        await saveDrawingVersion(
+    const job = await getJob(jobId);
+    if (!job) {
+      writeLog(`ERROR: Job ${jobId} not found`);
+      return res.status(404).json({ error: "Job not found" });
+    }
+
+    // Get all drawing indexes from job
+    const drawingCount = job.drawings?.length || 0;
+    writeLog(`Job ${jobId} has ${drawingCount} drawings`);
+
+    // For each drawing, get latest user_draft or ai_extracted and save as approved
+    for (let i = 0; i < drawingCount; i++) {
+      let dataToApprove = null;
+      let sourceNote = '';
+
+      writeLog(`Processing drawing ${i}...`);
+
+      // Try to get user_draft first
+      const latestDraft = await getLatestDrawingVersion(jobId, i, "user_draft");
+      if (latestDraft) {
+        dataToApprove = latestDraft.data;
+        sourceNote = "from user_draft";
+        writeLog(`  Found user_draft version ${latestDraft.versionNo}`);
+      } else {
+        writeLog(`  No user_draft found, checking ai_extracted...`);
+        // If no draft, try ai_extracted
+        const aiExtracted = await getLatestDrawingVersion(jobId, i, "ai_extracted");
+        if (aiExtracted) {
+          dataToApprove = aiExtracted.data;
+          sourceNote = "from ai_extracted";
+          writeLog(`  Found ai_extracted version ${aiExtracted.versionNo}`);
+        } else {
+          writeLog(`  No ai_extracted found, using job.drawings data...`);
+          // If no version exists, use current job.drawings data
+          if (job.drawings && job.drawings[i]) {
+            dataToApprove = job.drawings[i];
+            sourceNote = "from job.drawings (no version history)";
+            writeLog(`  Using job.drawings[${i}] data`);
+          }
+        }
+      }
+
+      if (dataToApprove) {
+        writeLog(`  Saving approved version for drawing ${i} ${sourceNote}`);
+        const versionId = await saveDrawingVersion(
           jobId,
           i,
           "approved",
-          drawings[i],
+          dataToApprove,
           {
             source: "user",
             created_by: actor || "unknown",
-            change_reason: "User approved",
+            change_reason: `User approved ${sourceNote}`,
           }
         );
+        writeLog(`  Saved version ID: ${versionId}`);
+      } else {
+        writeLog(`  WARNING: No data found for drawing ${i}, skipping`);
       }
     }
 
@@ -171,9 +234,12 @@ router.post("/:id/approve", async (req, res) => {
       approved_at: new Date().toISOString(),
     });
 
-    res.json({ ok: true, message: "Job approved" });
+    writeLog(`Job ${jobId} approved successfully`);
+    writeLog(`=== APPROVE JOB END ===`);
+    res.json({ success: true, message: "Job approved" });
   } catch (e) {
-    console.error("[VersionAPI] POST /jobs/:id/approve error:", e.message);
+    writeLog(`ERROR: Approve job failed: ${e.message}`);
+    writeLog(`Stack: ${e.stack}`);
     res.status(500).json({ error: e.message });
   }
 });

@@ -673,15 +673,6 @@
                         >
                           Dung sai
                         </th>
-                        <th
-                          [style.width.px]="getColWidth('danh_gia')"
-                          style="font-size: 12.8px"
-                          pResizableColumn
-                          title="Đánh giá"
-                          data-col-key="danh_gia"
-                        >
-                          Đánh giá
-                        </th>
                       </tr>
                     </ng-template>
                     <ng-template
@@ -821,32 +812,6 @@
                               onDrawingFieldChange(rowIndex, 'dung_sai', $event)
                             "
                           />
-                        </td>
-                        <td pTooltip="{{ drawingLine.danh_gia === 1 ? 'OK' : drawingLine.danh_gia === 99 ? 'Fail' : '—' }}" tooltipPosition="top">
-                          <div class="danh-gia-radio">
-                            <p-radioButton
-                              [inputId]="'danh_gia_ok_' + rowIndex"
-                              [name]="'danh_gia_' + rowIndex"
-                              [value]="1"
-                              [(ngModel)]="drawingLine.danh_gia"
-                            ></p-radioButton>
-                            <label
-                              [for]="'danh_gia_ok_' + rowIndex"
-                              class="radio-label radio-ok"
-                              ><mat-icon class="icon-sm">check</mat-icon></label
-                            >
-                            <p-radioButton
-                              [inputId]="'danh_gia_fail_' + rowIndex"
-                              [name]="'danh_gia_' + rowIndex"
-                              [value]="99"
-                              [(ngModel)]="drawingLine.danh_gia"
-                            ></p-radioButton>
-                            <label
-                              [for]="'danh_gia_fail_' + rowIndex"
-                              class="radio-label radio-fail"
-                              ><mat-icon class="icon-sm">close</mat-icon></label
-                            >
-                          </div>
                         </td>
                       </tr>
                     </ng-template>
@@ -1002,49 +967,88 @@
 <p-toast position="top-right"></p-toast>
 
 <!-- VERSION HISTORY PANEL -->
-<div class="version-history-panel" [class.is-open]="showVersionHistory">
-  <div class="version-history-header">
+<p-dialog
+  [(visible)]="showVersionHistory"
+  [modal]="true"
+  [style]="{ width: '90vw', maxWidth: '1400px' }"
+  [resizable]="true"
+  [draggable]="false"
+  styleClass="version-history-dialog"
+  [maximizable]="true"
+>
+  <ng-template pTemplate="header">
     <div class="version-history-title">
-      Lịch sử thay đổi
-      <span *ngIf="selectedDrawingIndex !== null">
-        - Bản vẽ #{{ selectedDrawingIndex + 1 }}
-      </span>
+      Lịch sử thay đổi - Bản vẽ #{{ (selectedDrawingIndex || 0) + 1 }}
     </div>
-    <button
-      type="button"
-      class="version-history-close"
-      (click)="closeVersionHistory()"
-      aria-label="Đóng"
-    >
-      <i class="pi pi-times"></i>
-    </button>
-  </div>
+  </ng-template>
+
   <div class="version-history-body">
     <div
-      *ngFor="let version of getVersionsForDrawing(selectedDrawingIndex || 0)"
+      *ngFor="let version of getVersionsForDrawing(selectedDrawingIndex || 0); let i = index"
       class="version-item"
     >
       <div class="version-item-header">
-        <p-tag
-          [value]="getVersionTypeLabel(version.version_type)"
-          [severity]="getVersionTypeSeverity(version.version_type)"
-        ></p-tag>
-        <span class="version-time">{{
-          version.created_at | date: 'dd/MM HH:mm'
-        }}</span>
-      </div>
-      <div class="version-data">
-        <div *ngIf="version.source_model" style="margin-bottom: 8px;">
-          <strong>Model:</strong> {{ version.source_model }}
+        <div class="version-badge-group">
+          <p-tag
+            [value]="'V' + (getVersionsForDrawing(selectedDrawingIndex || 0).length - i)"
+            severity="secondary"
+          ></p-tag>
+          <p-tag
+            [value]="getVersionTypeLabel(version.version_type)"
+            [severity]="getVersionTypeSeverity(version.version_type)"
+          ></p-tag>
         </div>
-        <pre>{{ version.data | json }}</pre>
+        <div class="version-meta-group">
+          <span class="version-time">{{
+            version.created_at | date: 'dd/MM/yyyy HH:mm:ss'
+          }}</span>
+          <span *ngIf="version.created_by" class="version-actor">
+            {{ version.created_by }}
+          </span>
+        </div>
+      </div>
+
+      <div class="version-drawing-table-wrap">
+        <table class="version-drawing-table">
+          <thead>
+            <tr>
+              <th style="width: 50px;">STT</th>
+              <th style="width: 110px;">Mã bản vẽ</th>
+              <th style="width: 60px;">SL</th>
+              <th style="width: 120px;">Hình dạng</th>
+              <th style="width: 120px;">XLBM</th>
+              <th style="width: 90px;">HRC</th>
+              <th style="width: 140px;">Vật liệu</th>
+              <th style="width: 120px;">Kích thước</th>
+              <th style="width: 110px;">Mã QT</th>
+              <th style="width: 160px;">Ghi chú</th>
+              <th style="width: 140px;">Dung sai</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>{{ (selectedDrawingIndex || 0) + 1 }}</td>
+              <td [pTooltip]="getVersionDataString(version.data, 'ma_ban_ve')" tooltipPosition="top"><div class="cell-truncate">{{ version.data['ma_ban_ve'] || '—' }}</div></td>
+              <td class="cell-right" [pTooltip]="getVersionDataString(version.data, 'so_luong')" tooltipPosition="top"><div class="cell-truncate">{{ version.data['so_luong'] || '—' }}</div></td>
+              <td [pTooltip]="getVersionDataString(version.data, 'hinh_dang')" tooltipPosition="top"><div class="cell-truncate">{{ version.data['hinh_dang'] || '—' }}</div></td>
+              <td [pTooltip]="getVersionDataString(version.data, 'xu_ly_be_mat')" tooltipPosition="top"><div class="cell-truncate">{{ version.data['xu_ly_be_mat'] || '—' }}</div></td>
+              <td [pTooltip]="getVersionDataString(version.data, 'xu_ly_nhiet')" tooltipPosition="top"><div class="cell-truncate">{{ version.data['xu_ly_nhiet'] || '—' }}</div></td>
+              <td [pTooltip]="getVersionDataString(version.data, 'vat_lieu')" tooltipPosition="top"><div class="cell-truncate">{{ version.data['vat_lieu'] || '—' }}</div></td>
+              <td [pTooltip]="getVersionDataString(version.data, 'kich_thuoc')" tooltipPosition="top"><div class="cell-truncate">{{ version.data['kich_thuoc'] || '—' }}</div></td>
+              <td [pTooltip]="getVersionDataString(version.data, 'ma_quy_trinh')" tooltipPosition="top"><div class="cell-truncate">{{ version.data['ma_quy_trinh'] || '—' }}</div></td>
+              <td [pTooltip]="getVersionDataString(version.data, 'note')" tooltipPosition="top"><div class="cell-truncate">{{ version.data['note'] || '—' }}</div></td>
+              <td [pTooltip]="getVersionDataString(version.data, 'dung_sai_chung')" tooltipPosition="top"><div class="cell-truncate">{{ version.data['dung_sai_chung'] || '—' }}</div></td>
+            </tr>
+          </tbody>
+        </table>
       </div>
     </div>
+
     <div
       *ngIf="getVersionsForDrawing(selectedDrawingIndex || 0).length === 0"
-      style="text-align: center; padding: 40px; color: var(--color-text-tertiary);"
+      class="version-empty"
     >
       Chưa có lịch sử thay đổi
     </div>
   </div>
-</div>
+</p-dialog>

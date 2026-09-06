@@ -21,7 +21,7 @@
             <i class="pi pi-file-edit"></i>
           </div>
           <span class="nav-label">{{ prompt.name }}</span>
-          <span class="nav-version" [class.active]="prompt.active">{{
+          <span class="nav-version" [class.active]="prompt.version !== '—'">{{
             prompt.version
           }}</span>
         </div>
@@ -124,7 +124,12 @@
                 severity="success"
               ></p-tag>
               <p-tag
-                *ngIf="!prompt.active"
+                *ngIf="!prompt.active && prompt.version !== '—'"
+                [value]="prompt.version"
+                severity="success"
+              ></p-tag>
+              <p-tag
+                *ngIf="!prompt.active && prompt.version === '—'"
                 value="tệp"
                 severity="warning"
               ></p-tag>
@@ -134,7 +139,7 @@
                 v
               }}</span>
             </td>
-            <td>{{ prompt.active ? "CSDL" : "mặc định" }}</td>
+            <td>{{ prompt.version !== '—' ? "CSDL" : "mặc định" }}</td>
             <td>
               <p-button
                 label="Sửa"

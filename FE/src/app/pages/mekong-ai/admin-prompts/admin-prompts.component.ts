@@ -103,6 +103,7 @@ export class AdminPromptsComponent implements OnInit {
 
   // PrimeNG options
   aiModelOptions = [
+    { label: 'Xiaomi MIMO v2.5 Pro', value: 'xiaomi/mimo-v2.5-pro' },
     { label: 'Gemini 3 Flash', value: 'gemini-3-flash-preview' },
     { label: 'Claude Opus 4.7', value: 'claude-opus-4-7' },
     { label: 'Claude Sonnet 4.6', value: 'claude-sonnet-4-6' },
@@ -115,6 +116,7 @@ export class AdminPromptsComponent implements OnInit {
   promptLabelsVi: { [key: string]: string } = {
     'email-classify': 'Phân loại email — Prompt',
     'gemini-drawing': 'Phân tích bản vẽ (Gemini) — Prompt',
+    'vnt-features-doc': 'CNC Features Classification — Document',
   };
 
   knowledgeLabelsVi: { [key: string]: string } = {
@@ -129,6 +131,7 @@ export class AdminPromptsComponent implements OnInit {
   promptDescVi: { [key: string]: string } = {
     'email-classify': 'Prompt phân loại email đến (Haiku)',
     'gemini-drawing': 'Prompt phân tích bản vẽ dự phòng bằng Gemini 2.5',
+    'vnt-features-doc': 'Bảng phân loại 12 loại CNC features (lỗ, vát, rãnh...) - Document cho AI',
   };
 
   knowledgeDescVi: { [key: string]: string } = {
@@ -210,15 +213,25 @@ export class AdminPromptsComponent implements OnInit {
         this.mekongAiService.getAiProviderConfig(),
       ]);
 
-      this.prompts = templates.map((template) => ({
-        id: template.key,
-        name: this.labelVi(template.key, template.name),
-        version: template.active_version ? `v${template.active_version}` : '—',
-        active: !!template.active_version,
-        variables: template.variables || [],
-        description: this.descVi(template.key, template.description || ''),
-        active_version: template.active_version,
-      }));
+      this.prompts = templates.map((template) => {
+        // For prompts without active version but with versions in DB, show v1
+        let versionLabel = '—';
+        if (template.active_version) {
+          versionLabel = `v${template.active_version}`;
+        } else if (template.total_versions && template.total_versions > 0) {
+          versionLabel = 'v1';
+        }
+
+        return {
+          id: template.key,
+          name: this.labelVi(template.key, template.name),
+          version: versionLabel,
+          active: !!template.active_version,
+          variables: template.variables || [],
+          description: this.descVi(template.key, template.description || ''),
+          active_version: template.active_version,
+        };
+      });
 
       this.knowledgeItems = knowledgeList.map((knowledgeItem) => ({
         id: knowledgeItem.key,
