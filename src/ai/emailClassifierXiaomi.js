@@ -29,11 +29,16 @@ export async function classifyEmailXiaomi(emailData) {
 
   try {
     const promptText = await getPrompt("email-classify", {
-      SUBJECT: emailData.subject || "",
-      BODY: emailData.body || "",
-      FROM: emailData.from || "",
-      EMAIL: emailData.email || "",
+      emailFrom: emailData.from || "",
+      emailSubject: emailData.subject || "",
+      emailAttachments: emailData.attachments?.map(a => a.name).join(", ") || "none",
+      emailBody: emailData.body || "",
+      MARKET: "",
     });
+
+    console.log(`[XiaomiClassifier] Prompt loaded: ${promptText ? promptText.length : 0} chars`);
+    console.log(`[XiaomiClassifier] First 300 chars of prompt:`);
+    console.log(promptText?.slice(0, 300) || "(empty prompt)");
 
     const requestPayload = {
       model: modelName,
@@ -78,15 +83,23 @@ export async function classifyEmailXiaomi(emailData) {
     }
 
     const data = await response.json();
+
+    console.log(`[XiaomiClassifier] Full API response structure:`);
+    console.log(JSON.stringify(data, null, 2));
+
     const raw = data.choices?.[0]?.message?.content || "";
     const usage = data.usage || {};
 
     console.log(`[XiaomiClassifier] API success. Tokens: ${usage.total_tokens || 0}`);
+    console.log(`[XiaomiClassifier] Full raw response (${raw.length} chars):`);
+    console.log(raw);
 
     // Extract JSON from response
     const parsed = extractJson(raw);
 
     if (!parsed) {
+      console.error(`[XiaomiClassifier] Failed to parse JSON. Full raw response:`);
+      console.error(raw);
       return {
         success: false,
         error: "No valid JSON in response",
@@ -96,12 +109,14 @@ export async function classifyEmailXiaomi(emailData) {
       };
     }
 
+    // Return unwrapped data with metadata (matching Claude/Gemini classifier format)
     return {
-      success: true,
-      data: parsed,
-      raw,
-      usage,
-      request_payload: debugPayload,
+      ...parsed,
+      _model_used: modelName,
+      _model_from_api: "openrouter",
+      _body_len: emailData.body?.length || 0,
+      _body_sent: emailData.body?.length || 0,
+      _ai_request_payload: debugPayload,
     };
   } catch (error) {
     console.error(`[XiaomiClassifier] Error:`, error);

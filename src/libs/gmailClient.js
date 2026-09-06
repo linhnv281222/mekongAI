@@ -60,16 +60,20 @@ function hdr(headers, name) {
 }
 
 /**
- * Lấy danh sách email chưa đọc có đính kèm PDF trong 24h.
+ * Lấy danh sách email chưa đọc có đính kèm PDF trong 3 ngày gần đây.
  * @param {object} gmail — Gmail client
- * @param {number} hoursBack — số giờ để lấy (mặc định 24)
+ * @param {number} daysBack — số ngày để lấy (mặc định 3)
  * @returns {Array} mang message objects
  */
-export async function fetchUnread(gmail, hoursBack = 24) {
-  const since = Math.floor((Date.now() - hoursBack * 3600000) / 1000);
+export async function fetchUnread(gmail, daysBack = 3) {
+  // Gmail after: needs YYYY/MM/DD format, not Unix timestamp
+  const sinceDate = new Date(Date.now() - daysBack * 24 * 3600000);
+  const afterDate = `${sinceDate.getFullYear()}/${String(sinceDate.getMonth() + 1).padStart(2, '0')}/${String(sinceDate.getDate()).padStart(2, '0')}`;
+
   const res = await gmail.users.messages.list({
     userId: "me",
-    q: `is:unread has:attachment filename:pdf after:${since} to:${gmailCfg.user}`,
+    // Fixed: filename:.pdf (with dot) to match file extension, not just "pdf" in name
+    q: `is:unread has:attachment filename:.pdf after:${afterDate} to:${gmailCfg.user}`,
     maxResults: 30,
   });
   return res.data.messages || [];

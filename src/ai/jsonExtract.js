@@ -47,7 +47,7 @@ export function findBalancedBraces(text, openChar, closeChar) {
 export function extractJson(text) {
   const cleaned = String(text || "")
     .replace(/```json\s*/gi, "")
-    .replace(/```\s*$/gm, "")
+    .replace(/```\s*/g, "")
     .trim();
 
   try { return JSON.parse(cleaned); } catch {}

@@ -903,18 +903,20 @@
           icon="pi pi-print"
           styleClass="p-button-secondary"
         ></p-button>
-        <!-- <p-button
-          *ngIf="activeEmail?.jobId"
+        <p-button
+          *ngIf="activeEmail?.id"
           label="Push ERP"
           icon="pi pi-cloud-upload"
           styleClass="p-button-warning"
           (onClick)="pushErp()"
+          [loading]="pushingErp"
+          [disabled]="pushingErp || drawingLines.length === 0"
         ></p-button>
         <p-button
           label="Hủy"
           icon="pi pi-times"
           styleClass="p-button-secondary"
-        ></p-button> -->
+        ></p-button>
       </div>
     </ng-container>
   </div>

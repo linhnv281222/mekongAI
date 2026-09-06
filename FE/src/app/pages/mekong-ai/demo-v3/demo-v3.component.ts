@@ -80,6 +80,7 @@ export class DemoV3Component implements OnInit, OnDestroy, AfterViewChecked {
   previewLoading = false;
   previewPage = 1;
   saving = false;
+  pushingErp = false;
   ghiChu = '';
   hanBaoGia: Date | null = null;
   coVanChuyen: boolean | null = null;
@@ -684,16 +685,27 @@ export class DemoV3Component implements OnInit, OnDestroy, AfterViewChecked {
 
   async pushErp(): Promise<void> {
     if (!this.activeEmail?.id) return;
+    this.pushingErp = true;
+    this.cdr.markForCheck();
+
     try {
       await this.svc.pushToErp(this.activeEmail.id);
-      this.messageService.add({ severity: 'success', summary: 'Đã push ERP!' });
+      this.messageService.add({
+        severity: 'success',
+        summary: '✓ Đã push ERP!',
+        life: 3000
+      });
     } catch (err: unknown) {
       const error = err as Error;
       this.messageService.add({
         severity: 'error',
         summary: 'Push ERP thất bại',
         detail: error?.message,
+        life: 5000
       });
+    } finally {
+      this.pushingErp = false;
+      this.cdr.markForCheck();
     }
   }
 
