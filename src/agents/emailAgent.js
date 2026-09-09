@@ -224,11 +224,17 @@ async function processEmail(gmail, msgId) {
     const emailContext = buildEmailContext(emailData, classify);
     console.log(`[EmailContext] ${emailContext.slice(0, 120)}...`);
 
+    // Extract classify token usage
+    const classifyTokens = classify._tokens || classify.usage?.total_tokens || 0;
+    const classifyModel = classify._model_used || null;
+
     // Extract + strip internal debug fields
     const classifyAiPayload = classify._ai_request_payload || null;
     if (classify._ai_request_payload) {
       delete classify._ai_request_payload;
     }
+    if (classify._tokens) delete classify._tokens;
+    if (classify.usage) delete classify.usage;
 
     const rawMeta = {
       subject: emailData.subject,
@@ -438,6 +444,15 @@ async function processEmail(gmail, msgId) {
       .map((r) => r.request_payload)
       .filter(Boolean);
 
+    // Calculate total drawing tokens
+    const drawingTokens = allResults.reduce((sum, r) => {
+      return sum + (r.usage?.total_tokens || 0);
+    }, 0);
+    const drawingModel = allResults[0]?.model || null;
+    const totalTokens = classifyTokens + drawingTokens;
+
+    console.log(`[TokenUsage] classify=${classifyTokens} drawing=${drawingTokens} total=${totalTokens}`);
+
     const jobData = {
       id: jobId,
       gmail_id: msgId,
@@ -465,6 +480,11 @@ async function processEmail(gmail, msgId) {
       source: "email",
       classify_ai_payload: classifyAiPayload,
       drawing_ai_payload: drawingAiPayloads,
+      classify_tokens: classifyTokens,
+      drawing_tokens: drawingTokens,
+      total_tokens: totalTokens,
+      classify_model: classifyModel,
+      drawing_model: drawingModel,
     };
 
     await saveJob(jobData);

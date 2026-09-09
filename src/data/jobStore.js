@@ -25,6 +25,11 @@ export async function initJobDB() {
       { col: "source", type: "TEXT" },
       { col: "han_bao_gia", type: "TEXT" },
       { col: "email_body", type: "TEXT" },
+      { col: "classify_tokens", type: "INTEGER DEFAULT 0" },
+      { col: "drawing_tokens", type: "INTEGER DEFAULT 0" },
+      { col: "total_tokens", type: "INTEGER DEFAULT 0" },
+      { col: "classify_model", type: "TEXT" },
+      { col: "drawing_model", type: "TEXT" },
     ];
     for (const { col, type } of missing) {
       await pool.query(`
@@ -77,6 +82,11 @@ export function normalizeDbRow(row) {
     source: row.source || null,
     han_bao_gia: row.han_bao_gia || null,
     email_body: row.email_body || null,
+    classify_tokens: row.classify_tokens || 0,
+    drawing_tokens: row.drawing_tokens || 0,
+    total_tokens: row.total_tokens || 0,
+    classify_model: row.classify_model || null,
+    drawing_model: row.drawing_model || null,
   };
 }
 
@@ -112,8 +122,8 @@ export async function saveJob(jobData) {
          attachments, ten_cong_ty, ma_khach_hang, han_giao, hinh_thuc_giao,
          xu_ly_be_mat, vat_lieu_chung_nhan, co_van_chuyen, drawings,
          classify_output, classify_ai_payload, drawing_ai_payload, ghi_chu,
-         source, han_bao_gia, email_body)
-      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24,$25,$26,$27,$28,$29)
+         source, han_bao_gia, email_body, classify_tokens, drawing_tokens, total_tokens, classify_model, drawing_model)
+      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24,$25,$26,$27,$28,$29,$30,$31,$32,$33,$34)
       ON CONFLICT (gmail_id) DO UPDATE SET
         subject=EXCLUDED.subject,
         sender_email=EXCLUDED.sender_email,
@@ -143,6 +153,11 @@ export async function saveJob(jobData) {
         source=EXCLUDED.source,
         han_bao_gia=EXCLUDED.han_bao_gia,
         email_body=EXCLUDED.email_body,
+        classify_tokens=EXCLUDED.classify_tokens,
+        drawing_tokens=EXCLUDED.drawing_tokens,
+        total_tokens=EXCLUDED.total_tokens,
+        classify_model=EXCLUDED.classify_model,
+        drawing_model=EXCLUDED.drawing_model,
         updated_at=NOW()
       WHERE agent_jobs.status NOT IN ('pending_review', 'pushed')
     `,
@@ -176,6 +191,11 @@ export async function saveJob(jobData) {
         job.source || null,
         job.han_bao_gia || null,
         job.email_body || null,
+        job.classify_tokens || 0,
+        job.drawing_tokens || 0,
+        job.total_tokens || 0,
+        job.classify_model || null,
+        job.drawing_model || null,
       ]
     );
   } catch (e) {

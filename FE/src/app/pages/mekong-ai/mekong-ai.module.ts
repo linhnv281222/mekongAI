@@ -38,6 +38,7 @@ import { MessageService } from 'primeng/api';
 import { ConfirmationService } from 'primeng/api';
 import { MekongAiRoutingModule } from './mekong-ai-routing.module';
 import { AdminPromptsComponent } from './admin-prompts/admin-prompts.component';
+import { AdminTokenStatsComponent } from './admin-token-stats/admin-token-stats.component';
 import { SafeUrlPipe } from './pipes/safe-url.pipe';
 import { DemoV3Component } from './demo-v3/demo-v3.component';
 import { DemoV3Service } from './demo-v3/demo-v3.service';
@@ -48,6 +49,7 @@ import { AppPdfViewerComponent } from './pdf-viewer/pdf-viewer.component';
 @NgModule({
   declarations: [DemoV3Component, AdminPromptsComponent, SafeUrlPipe, ChatbotComponent, AppPdfViewerComponent],
   imports: [
+    AdminTokenStatsComponent,
     CommonModule,
     FormsModule,
     ReactiveFormsModule,

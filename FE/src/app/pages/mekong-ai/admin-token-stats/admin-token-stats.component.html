@@ -1,0 +1,113 @@
+<div class="page-container">
+  <header class="page-header">
+    <div class="header-content">
+      <mat-icon class="header-icon">bar_chart</mat-icon>
+      <div class="header-text">
+        <h1>Token Statistics</h1>
+        <p>Monitor AI token usage and cost</p>
+      </div>
+    </div>
+  </header>
+
+  <div class="page-body">
+    <div class="filter-bar">
+      <div class="filter-item">
+        <label>From</label>
+        <input type="date" [(ngModel)]="startDate" />
+      </div>
+      <div class="filter-item">
+        <label>To</label>
+        <input type="date" [(ngModel)]="endDate" />
+      </div>
+      <div class="filter-item">
+        <label>Model</label>
+        <select [(ngModel)]="modelFilter">
+          <option value="">All Models</option>
+          <option value="xiaomi">Xiaomi</option>
+          <option value="gemini">Gemini</option>
+          <option value="claude">Claude</option>
+        </select>
+      </div>
+      <button class="btn-primary" (click)="loadStats()">
+        <mat-icon>refresh</mat-icon>
+        Update
+      </button>
+    </div>
+
+    <div *ngIf="error" class="alert-error">
+      <mat-icon>error_outline</mat-icon>
+      <span>{{ error }}</span>
+    </div>
+
+    <div *ngIf="loading" class="loading-state">
+      <mat-icon class="spin">sync</mat-icon>
+      <span>Loading...</span>
+    </div>
+
+    <div *ngIf="!loading && stats" class="content">
+      <div class="metrics">
+        <div class="metric-card">
+          <div class="metric-label">Jobs</div>
+          <div class="metric-value">{{ formatNumber(stats.totals.total_jobs) }}</div>
+        </div>
+
+        <div class="metric-card">
+          <div class="metric-label">Total Tokens</div>
+          <div class="metric-value">{{ formatNumber(stats.totals.total_tokens) }}</div>
+          <div class="metric-detail">
+            {{ formatNumber(stats.totals.total_classify_tokens) }} classify ·
+            {{ formatNumber(stats.totals.total_drawing_tokens) }} drawing
+          </div>
+        </div>
+
+        <div class="metric-card">
+          <div class="metric-label">Avg per Job</div>
+          <div class="metric-value">{{ formatNumber(stats.totals.avg_tokens_per_job) }}</div>
+        </div>
+
+        <div class="metric-card">
+          <div class="metric-label">Est. Cost</div>
+          <div class="metric-value">{{ formatCost(estimateTotalCost()) }}</div>
+          <div class="metric-detail">{{ getCostPerJob() }} per job</div>
+        </div>
+      </div>
+
+      <div class="table-container">
+        <div class="table-header">
+          <h2>Daily Breakdown</h2>
+        </div>
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>Date</th>
+              <th>Jobs</th>
+              <th>Classify</th>
+              <th>Drawing</th>
+              <th>Total</th>
+              <th>Model</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let row of stats.daily">
+              <td>{{ row.date }}</td>
+              <td>{{ formatNumber(row.job_count) }}</td>
+              <td>{{ formatNumber(row.classify_tokens) }}</td>
+              <td>{{ formatNumber(row.drawing_tokens) }}</td>
+              <td><strong>{{ formatNumber(row.total_tokens) }}</strong></td>
+              <td>
+                <span *ngIf="row.classify_model" class="model-tag">{{ row.classify_model }}</span>
+                <span *ngIf="!row.classify_model" class="text-muted">—</span>
+              </td>
+            </tr>
+            <tr *ngIf="stats.daily.length === 0">
+              <td colspan="6" class="empty-state">
+                <mat-icon>inbox</mat-icon>
+                <span>No data available</span>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>

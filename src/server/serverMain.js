@@ -17,6 +17,7 @@ import jobController, {
 import promptController from "./promptController.js";
 import chatController from "./chatController.js";
 import versionController from "./versionController.js";
+import tokenStatsController from "./tokenStatsController.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const PROJECT_ROOT = path.resolve(__dirname, "../.."); // mekongAI/
@@ -79,6 +80,10 @@ app.use("/chat/jobs", (req, res) => {
 app.use("/jobs", jobController);
 app.use("/jobs", versionController); // Phase 1: version API
 app.use("/admin/prompts", promptController);
+
+// Token usage statistics API
+app.get("/api/token-stats", tokenStatsController.getTokenStats);
+app.get("/api/token-stats/jobs", tokenStatsController.getJobTokenDetails);
 
 app.get("/health", (req, res) => {
   res.json({ status: "ok", time: new Date().toISOString() });

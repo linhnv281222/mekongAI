@@ -116,6 +116,8 @@ export async function classifyEmailXiaomi(emailData) {
       _model_from_api: "openrouter",
       _body_len: emailData.body?.length || 0,
       _body_sent: emailData.body?.length || 0,
+      _tokens: usage.total_tokens || 0,
+      usage,
       _ai_request_payload: debugPayload,
     };
   } catch (error) {
