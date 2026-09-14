@@ -141,6 +141,13 @@ export function normalizeDrawingToFlat(raw) {
       co_gdt: false,
       ma_quy_trinh: "",
       ly_giai_qt: "",
+      quy_cach_nvl: null,
+      kieu_cach: "",
+      nvl_cho_bao_nhieu_sp: 1,
+      kich_thuoc_san_pham: null,
+      gia_tri_tinh_toan: null,
+      nguyen_cong_dac_biet: null,
+      bien_so_gia_cong: [],
     };
   }
 
@@ -187,6 +194,14 @@ export function normalizeDrawingToFlat(raw) {
       co_gdt: Boolean(raw.co_gdt),
       ma_quy_trinh: toStr(raw.ma_quy_trinh),
       ly_giai_qt: toStr(raw.ly_giai_qt),
+      quy_cach_nvl: raw.quy_cach_nvl || null,
+      kieu_cach: toStr(raw.kieu_cach),
+      nvl_cho_bao_nhieu_sp: Number(raw.nvl_cho_bao_nhieu_sp) || 1,
+      kich_thuoc_san_pham: raw.kich_thuoc_san_pham || null,
+      gia_tri_tinh_toan: raw.gia_tri_tinh_toan || null,
+      nguyen_cong_dac_biet: raw.nguyen_cong_dac_biet || null,
+      bien_so_gia_cong: Array.isArray(raw.bien_so_gia_cong) ? raw.bien_so_gia_cong : [],
+      features_cnc: Array.isArray(raw.features_cnc) ? raw.features_cnc : [],
     };
   }
 
@@ -215,6 +230,14 @@ export function normalizeDrawingToFlat(raw) {
     co_gdt: Boolean(raw.co_gdt),
     ma_quy_trinh: maQtFromLegacy(raw),
     ly_giai_qt: lyGiaiFromLegacy(raw) || toStr(raw.ly_giai_qt),
+    quy_cach_nvl: raw.quy_cach_nvl || null,
+    kieu_cach: toStr(raw.kieu_cach),
+    nvl_cho_bao_nhieu_sp: Number(raw.nvl_cho_bao_nhieu_sp) || 1,
+    kich_thuoc_san_pham: raw.kich_thuoc_san_pham || null,
+    gia_tri_tinh_toan: raw.gia_tri_tinh_toan || null,
+    nguyen_cong_dac_biet: raw.nguyen_cong_dac_biet || null,
+    bien_so_gia_cong: Array.isArray(raw.bien_so_gia_cong) ? raw.bien_so_gia_cong : [],
+    features_cnc: Array.isArray(raw.features_cnc) ? raw.features_cnc : [],
   };
 }
 

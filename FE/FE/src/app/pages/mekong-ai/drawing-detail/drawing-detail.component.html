@@ -1,0 +1,230 @@
+<div *ngIf="drawing" class="modal-backdrop" (click)="onBackdropClick($event)">
+  <div class="modal-content">
+    <!-- Header -->
+    <div class="modal-header">
+      <div>
+        <h2>Chi tiết bản vẽ</h2>
+        <div class="subtitle">{{ drawing.ma_ban_ve || 'Không có mã' }}</div>
+      </div>
+      <button class="close-btn" (click)="onClose()">×</button>
+    </div>
+
+    <!-- Body -->
+    <div class="modal-body">
+      <!-- Thông tin cơ bản -->
+      <div class="section">
+        <h3>Thông tin cơ bản</h3>
+        <div class="fields">
+          <div class="field">
+            <label>Mã bản vẽ</label>
+            <div class="value">{{ drawing.ma_ban_ve || '—' }}</div>
+          </div>
+          <div class="field">
+            <label>Vật liệu</label>
+            <div class="value highlight">{{ drawing.vat_lieu || '—' }}</div>
+          </div>
+          <div class="field">
+            <label>Số lượng</label>
+            <div class="value">{{ drawing.so_luong || '—' }}</div>
+          </div>
+          <div class="field">
+            <label>Kiểu cách</label>
+            <div class="value">{{ drawing.kieu_cach || '—' }}</div>
+          </div>
+          <div class="field">
+            <label>Hình dạng</label>
+            <div class="value">{{ drawing.hinh_dang || '—' }}</div>
+          </div>
+          <div class="field">
+            <label>Kích thước</label>
+            <div class="value mono">{{ drawing.kich_thuoc || '—' }}</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Quy cách nguyên vật liệu -->
+      <div class="section" *ngIf="drawing.quy_cach_nvl">
+        <h3>Quy cách nguyên vật liệu</h3>
+        <div class="fields">
+          <div class="field">
+            <label>Chất liệu</label>
+            <div class="value highlight">{{ drawing.quy_cach_nvl.chat_lieu || '—' }}</div>
+          </div>
+          <div class="field">
+            <label>Mã NVL</label>
+            <div class="value mono">{{ drawing.quy_cach_nvl.ma_nguyen_vat_lieu || '—' }}</div>
+          </div>
+          <div class="field">
+            <label>Tên NVL</label>
+            <div class="value">{{ drawing.quy_cach_nvl.ten_nguyen_vat_lieu || '—' }}</div>
+          </div>
+          <div class="field">
+            <label>Nhà cung cấp</label>
+            <div class="value">{{ drawing.quy_cach_nvl.nha_cung_cap || 'Không có' }}</div>
+          </div>
+          <div class="field">
+            <label>Khối lượng riêng</label>
+            <div class="value">
+              {{ drawing.quy_cach_nvl.khoi_luong_rieng ? drawing.quy_cach_nvl.khoi_luong_rieng + ' g/cm³' : '—' }}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Kích thước sản phẩm -->
+      <div class="section" *ngIf="drawing.kich_thuoc_san_pham">
+        <h3>Kích thước sản phẩm</h3>
+        <div class="fields grid-3">
+          <div class="field">
+            <label>Chiều dài (L)</label>
+            <div class="value mono">
+              {{ drawing.kich_thuoc_san_pham.chieu_dai ? drawing.kich_thuoc_san_pham.chieu_dai + ' mm' : '—' }}
+            </div>
+          </div>
+          <div class="field">
+            <label>Chiều rộng (W)</label>
+            <div class="value mono">
+              {{ drawing.kich_thuoc_san_pham.chieu_rong ? drawing.kich_thuoc_san_pham.chieu_rong + ' mm' : '—' }}
+            </div>
+          </div>
+          <div class="field">
+            <label>Chiều cao (H)</label>
+            <div class="value mono">
+              {{ drawing.kich_thuoc_san_pham.chieu_cao ? drawing.kich_thuoc_san_pham.chieu_cao + ' mm' : '—' }}
+            </div>
+          </div>
+        </div>
+        <div class="fields">
+          <div class="field">
+            <label>NVL cho bao nhiêu SP</label>
+            <div class="value">{{ drawing.nvl_cho_bao_nhieu_sp || 1 }}</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Giá trị tính toán -->
+      <div class="section" *ngIf="drawing.gia_tri_tinh_toan">
+        <h3>Giá trị tính toán</h3>
+        <div class="fields grid-2">
+          <div class="field">
+            <label>Khối lượng</label>
+            <div class="value highlight">
+              {{ drawing.gia_tri_tinh_toan.khoi_luong_kg ? drawing.gia_tri_tinh_toan.khoi_luong_kg + ' kg' : '—' }}
+            </div>
+          </div>
+          <div class="field">
+            <label>Số mặt cần GC MC</label>
+            <div class="value highlight">{{ drawing.gia_tri_tinh_toan.so_mat_can_gc_mc || '—' }}</div>
+          </div>
+          <div class="field">
+            <label>Kích thước C</label>
+            <div class="value">{{ drawing.gia_tri_tinh_toan.kich_thuoc_c || '—' }}</div>
+          </div>
+          <div class="field">
+            <label>Số lượng C</label>
+            <div class="value">{{ drawing.gia_tri_tinh_toan.so_luong_c || '—' }}</div>
+          </div>
+          <div class="field">
+            <label>Tỷ GC MC</label>
+            <div class="value">{{ drawing.gia_tri_tinh_toan.ty_gc_mc || '—' }}</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Nguyên công đặc biệt -->
+      <div class="section" *ngIf="drawing.nguyen_cong_dac_biet">
+        <h3>Nguyên công đặc biệt</h3>
+        <div class="badges">
+          <span class="badge" [class.active]="drawing.nguyen_cong_dac_biet.wc">WC</span>
+          <span class="badge" [class.active]="drawing.nguyen_cong_dac_biet.gf">GF</span>
+          <span class="badge" [class.active]="drawing.nguyen_cong_dac_biet.lf">LF</span>
+          <span class="badge" [class.active]="drawing.nguyen_cong_dac_biet.han">HÀN</span>
+          <span class="badge" [class.active]="drawing.nguyen_cong_dac_biet.cayren">CAYREN</span>
+          <span class="badge" [class.active]="drawing.nguyen_cong_dac_biet.dongpin">ĐÓNG PIN</span>
+          <span class="badge" [class.active]="drawing.nguyen_cong_dac_biet.tool">TOOL</span>
+        </div>
+      </div>
+
+      <!-- Biên số gia công -->
+      <div class="section" *ngIf="drawing.bien_so_gia_cong && drawing.bien_so_gia_cong.length > 0">
+        <h3>Biên số gia công</h3>
+        <div class="bien-so-list">
+          <div class="bien-so-item" *ngFor="let item of drawing.bien_so_gia_cong">
+            <div class="fields grid-3">
+              <div class="field small">
+                <label>Danh mục</label>
+                <div class="value">{{ item.danh_muc || '—' }}</div>
+              </div>
+              <div class="field small">
+                <label>Kích thước</label>
+                <div class="value">{{ item.kich_thuoc || '—' }}</div>
+              </div>
+              <div class="field small">
+                <label>Khối lượng</label>
+                <div class="value">{{ item.khoi_luong || '—' }}</div>
+              </div>
+              <div class="field small">
+                <label>Loại vật liệu</label>
+                <div class="value">{{ item.loai_vat_lieu || '—' }}</div>
+              </div>
+              <div class="field small">
+                <label>Nguyên công hàn</label>
+                <div class="value">{{ item.nguyen_cong_han || '—' }}</div>
+              </div>
+              <div class="field small">
+                <label>Độ khó dụng</label>
+                <div class="value highlight">{{ item.do_kho_dung || '—' }}</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Xử lý -->
+      <div class="section">
+        <h3>Xử lý</h3>
+        <div class="fields">
+          <div class="field">
+            <label>Xử lý bề mặt</label>
+            <div class="value">{{ drawing.xu_ly_be_mat || 'Không' }}</div>
+          </div>
+          <div class="field">
+            <label>Xử lý nhiệt</label>
+            <div class="value">{{ drawing.xu_ly_nhiet || 'Không' }}</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Quy trình -->
+      <div class="section">
+        <h3>Quy trình gia công</h3>
+        <div class="fields">
+          <div class="field">
+            <label>Mã quy trình</label>
+            <div class="value mono highlight">{{ drawing.ma_quy_trinh || '—' }}</div>
+          </div>
+          <div class="field">
+            <label>Số bề mặt CNC</label>
+            <div class="value">{{ drawing.so_be_mat_cnc || '—' }}</div>
+          </div>
+          <div class="field">
+            <label>Dung sai chung</label>
+            <div class="value mono">{{ drawing.dung_sai_chung || '—' }}</div>
+          </div>
+          <div class="field">
+            <label>Dung sai chặt nhất</label>
+            <div class="value mono">{{ drawing.dung_sai_chat_nhat || 'Không' }}</div>
+          </div>
+          <div class="field">
+            <label>Có GD&T</label>
+            <div class="value">{{ drawing.co_gdt ? 'Có' : 'Không' }}</div>
+          </div>
+        </div>
+        <div class="ly-giai" *ngIf="drawing.ly_giai_qt">
+          <label>Lý giải quy trình:</label>
+          <div class="ly-giai-content">{{ drawing.ly_giai_qt }}</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
