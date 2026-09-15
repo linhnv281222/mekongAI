@@ -613,7 +613,8 @@ function formatMaterialsByTypeForPrompt(materials, materialType) {
   const lines = [`# DANH SÁCH VẬT LIỆU ${materialType || 'TẤT CẢ'} (Materials từ ERP)`, ''];
 
   materials.forEach(m => {
-    lines.push(`## ${m.code} - ${m.name}`);
+    lines.push(`## ${m.name}`);
+    lines.push(`- Mã: ${m.code}`);
     if (m.type) {
       lines.push(`- Loại: ${m.type}`);
     }
