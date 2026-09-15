@@ -23,6 +23,7 @@ export interface DrawingLine {
   ly_giai_qt: string;
   dung_sai: string;
   note: string;
+  ghi_chu: string;
   danh_gia: 0 | 1 | 99;
   _raw: Record<string, unknown>;
 }
@@ -227,6 +228,7 @@ export function drawingToLine(r: RawDrawing, indexHint: number): DrawingLine {
     ly_giai_qt: d.ly_giai_qt,
     dung_sai: d.dung_sai_chung,
     note: d.note,
+    ghi_chu: d.note,
     danh_gia: ((r.data as Record<string, unknown>)?.['danh_gia'] as number) as 0 | 1 | 99 || 0,
     _raw: r.data || {},
   };
