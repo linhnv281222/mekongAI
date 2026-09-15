@@ -112,11 +112,30 @@ export async function analyzeDrawingGemini(pdfPath, model = null, emailContext =
     };
   } catch (e) {
     console.error('[GeminiAnalyzer] EXCEPTION:', e.message, e.stack?.split('\n')[1] ?? '');
+
+    // Check if this is a Gemini 503 error that should fallback to Claude
+    const is503 = /got status:\s*503\b|"status"\s*:\s*"UNAVAILABLE"|high demand|RESOURCE_EXHAUSTED/i.test(e.message);
+
+    if (is503) {
+      console.log('[GeminiAnalyzer] 503 detected → attempting Claude fallback...');
+      try {
+        const { analyzeDrawingClaude } = await import('./anthropicAnalyzer.js');
+        const claudeResult = await analyzeDrawingClaude(pdfPath, null, emailContext);
+        if (claudeResult.success) {
+          console.log('[GeminiAnalyzer] Claude fallback SUCCESS');
+          return claudeResult;
+        }
+        console.log('[GeminiAnalyzer] Claude fallback failed:', claudeResult.error);
+      } catch (fallbackErr) {
+        console.error('[GeminiAnalyzer] Claude fallback EXCEPTION:', fallbackErr.message);
+      }
+    }
+
     return {
       success: false,
       error: e.message,
       raw: "",
-      request_payload: debugPayload,
+      request_payload: null,
     };
   }
 }
