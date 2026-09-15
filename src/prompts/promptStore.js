@@ -3,6 +3,10 @@ import path from "path";
 import { fileURLToPath } from "url";
 import { pool } from "../data/drawRepository.js";
 import { dbCfg } from "../libs/config.js";
+import { createRequire } from "module";
+
+const require = createRequire(import.meta.url);
+const erpKnowledgeBuilder = require("../services/erpKnowledgeBuilder.cjs");
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const DEFAULTS_DIR = path.join(__dirname, "defaults");
@@ -70,6 +74,47 @@ export function render(template, variables) {
     out = out.replaceAll(`{{${key}}}`, value ?? "");
   }
   return out;
+}
+
+// ─── Enrich variables with ERP data ───────────────────────────────────────────
+/**
+ * Auto-inject ERP knowledge blocks into variables if they're undefined.
+ * This allows prompts to use {{MATERIAL}}, {{SHAPE}}, etc. without explicit passing.
+ */
+async function enrichVariablesWithERP(variables) {
+  const enriched = { ...variables };
+
+  // Map of variable names to ERP knowledge block keys
+  const erpVars = {
+    MATERIAL: 'MATERIAL',
+    SHAPE: 'SHAPE',
+    SURFACE: 'SURFACE',
+    VNT_KNOWLEDGE: 'VNT_KNOWLEDGE',
+    SUPPLIERS: 'SUPPLIERS',
+    CUSTOMERS: 'CUSTOMERS',
+    EXCHANGE_RATES: 'EXCHANGE_RATES',
+  };
+
+  // Only fetch ERP data if at least one ERP variable is undefined
+  const needsErp = Object.keys(erpVars).some(key => enriched[key] === undefined);
+
+  if (needsErp) {
+    try {
+      const erpBlocks = await erpKnowledgeBuilder.buildAllKnowledgeBlocks();
+
+      // Fill in missing ERP variables
+      for (const [varName, blockKey] of Object.entries(erpVars)) {
+        if (enriched[varName] === undefined && erpBlocks[blockKey]) {
+          enriched[varName] = erpBlocks[blockKey];
+        }
+      }
+    } catch (error) {
+      console.warn('[promptStore] Failed to fetch ERP data:', error.message);
+      // Continue with original variables on error
+    }
+  }
+
+  return enriched;
 }
 
 // ─── Detect variables used in a template ─────────────────────────────────────
@@ -155,7 +200,7 @@ export async function getPrompt(key, variables = {}) {
   // 1. Check in-memory cache
   const cached = _cache.get(key);
   if (cached && Date.now() - cached.ts < CACHE_TTL_MS) {
-    return render(cached.content, variables);
+    return render(cached.content, await enrichVariablesWithERP(variables));
   }
 
   // 2. Try DB
@@ -173,7 +218,7 @@ export async function getPrompt(key, variables = {}) {
       ? storedVars
       : detectVariables(content);
     _cache.set(key, { content, variables: vars, ts: Date.now() });
-    return render(content, variables);
+    return render(content, await enrichVariablesWithERP(variables));
   }
 
   // 3. Fallback to defaults
@@ -184,7 +229,7 @@ export async function getPrompt(key, variables = {}) {
       variables: def.variables,
       ts: Date.now(),
     });
-    return render(def.content, variables);
+    return render(def.content, await enrichVariablesWithERP(variables));
   }
 
   return null;
@@ -198,6 +243,25 @@ export async function getPrompt(key, variables = {}) {
  * @returns {string|null}
  */
 export async function getKnowledgeBlock(key) {
+  // Map knowledge block keys to ERP variables
+  const erpKeyMap = {
+    'vnt-materials': 'MATERIAL',
+    'vnt-shapes': 'SHAPE',
+    'vnt-surface': 'SURFACE',
+    'vnt-knowledge': 'VNT_KNOWLEDGE',
+  };
+
+  // If this is an ERP-backed knowledge block, fetch from ERP
+  if (erpKeyMap[key]) {
+    try {
+      const erpData = await erpKnowledgeBuilder.getKnowledgeBlock(erpKeyMap[key]);
+      if (erpData) return erpData;
+    } catch (error) {
+      console.warn(`[promptStore] Failed to fetch ERP data for ${key}:`, error.message);
+      // Fall through to database/default
+    }
+  }
+
   // Delegate to getKnowledgeTable and return content
   const table = await getKnowledgeTable(key);
   return table?.content ?? null;
