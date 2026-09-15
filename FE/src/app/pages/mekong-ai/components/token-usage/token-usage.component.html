@@ -1,0 +1,21 @@
+<div class="token-usage" *ngIf="totalTokens > 0" [class.compact]="compact">
+  <div class="token-stat">
+    <div class="token-label">Lần trước:</div>
+    <div class="token-value">{{ formatNumber(classifyTokens) }}</div>
+  </div>
+
+  <div class="token-stat">
+    <div class="token-label">Tổng:</div>
+    <div class="token-value">{{ formatNumber(totalTokens) }}</div>
+  </div>
+
+  <div class="token-stat">
+    <div class="token-label">Đã dùng:</div>
+    <div class="token-value">{{ formatCurrency(usedAmountUSD) }}</div>
+  </div>
+
+  <div class="token-stat">
+    <div class="token-label">Còn lại:</div>
+    <div class="token-value">{{ formatCurrency(estimatedCostUSD) }}</div>
+  </div>
+</div>

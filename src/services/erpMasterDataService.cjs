@@ -402,7 +402,15 @@ async function getCustomers() {
 async function getExchangeRates() {
   try {
     const response = await erpClient.get('/qs/api/exchange-rate');
-    return response.data || [];
+    const rawData = response.data || [];
+
+    // Check if the data is wrapped in {data: [...]}
+    if (rawData.data && Array.isArray(rawData.data)) {
+      return rawData.data;
+    }
+
+    // Otherwise return as-is
+    return Array.isArray(rawData) ? rawData : [];
   } catch (error) {
     console.error('[ERP] getExchangeRates error:', error.message);
     throw new Error(`Failed to fetch exchange rates: ${error.message}`);
@@ -444,7 +452,15 @@ async function getQuotaClassifications() {
     const response = await erpClient.get(
       '/mdm-v2/api/params/columns/mdm_quotation_sheet/quota_classify'
     );
-    return response.data || [];
+    const rawData = response.data || [];
+
+    // Check if the data is wrapped in {data: [...]}
+    if (rawData.data && Array.isArray(rawData.data)) {
+      return rawData.data;
+    }
+
+    // Otherwise return as-is
+    return Array.isArray(rawData) ? rawData : [];
   } catch (error) {
     console.error('[ERP] getQuotaClassifications error:', error.message);
     throw new Error(`Failed to fetch quota classifications: ${error.message}`);
@@ -568,9 +584,17 @@ function formatCustomersForPrompt(customers) {
 function formatExchangeRatesForPrompt(rates) {
   const lines = ['# TỶ GIÁ TIỀN TỆ (Exchange Rates từ ERP)', ''];
 
+  if (!rates || rates.length === 0) {
+    lines.push('_Không có dữ liệu tỷ giá_');
+    return lines.join('\n');
+  }
+
   if (Array.isArray(rates)) {
     rates.forEach(rate => {
-      lines.push(`- ${rate.currency || 'Unknown'}: ${rate.rate || rate.exchange_rate || 'N/A'}`);
+      const currency = rate.currencyCode || rate.currency || 'Unknown';
+      const value = rate.exchangeRate || rate.applicableRate || rate.rate || 'N/A';
+      const name = rate.currencyName ? ` (${rate.currencyName})` : '';
+      lines.push(`- ${currency}${name}: ${value}`);
     });
   } else if (typeof rates === 'object') {
     Object.keys(rates).forEach(key => {

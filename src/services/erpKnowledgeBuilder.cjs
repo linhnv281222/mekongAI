@@ -39,7 +39,8 @@ async function buildAllKnowledgeBlocks() {
       operations,
       customers,
       exchangeRates,
-      allMaterialsList
+      allMaterialsList,
+      classifications
     ] = await Promise.all([
       erpService.getMaterialTypes(),
       erpService.getSuppliers(),
@@ -48,11 +49,13 @@ async function buildAllKnowledgeBlocks() {
       erpService.getOperations(),
       erpService.getCustomers(),
       erpService.getExchangeRates(),
-      erpService.getAllMaterials()
+      erpService.getAllMaterials(),
+      erpService.getQuotaClassifications()
     ]);
 
     // Filter operations by group
-    const surfaceOps = erpService.filterMaterialsByType(operations, 'XLBM');
+    const surfaceOps = operations.filter(op => op.group === 'XLBM');
+    const heatTreatOps = operations.filter(op => op.group === 'HRC');
 
     // Build knowledge blocks
     const knowledgeBlocks = {
@@ -61,11 +64,16 @@ async function buildAllKnowledgeBlocks() {
       SHAPE: erpService.formatShapesForPrompt(shapes),
       VNT_KNOWLEDGE: buildVntKnowledge(processes, operations),
       SURFACE: erpService.formatOperationsForPrompt(
-        operations.filter(op => op.group === 'XLBM'),
-        'Xử lý bề mặt'
+        surfaceOps,
+        'Xử lý bề mặt (XLBM)'
+      ),
+      HEAT_TREAT: erpService.formatOperationsForPrompt(
+        heatTreatOps,
+        'Xử lý nhiệt (HRC)'
       ),
       CUSTOMERS: erpService.formatCustomersForPrompt(customers),
       EXCHANGE_RATES: erpService.formatExchangeRatesForPrompt(exchangeRates),
+      MARKET: formatClassificationsForPrompt(classifications),
 
       // Additional data (not used in old template but available)
       _RAW_DATA: {
@@ -76,7 +84,8 @@ async function buildAllKnowledgeBlocks() {
         operations,
         customers,
         exchangeRates,
-        allMaterialsList
+        allMaterialsList,
+        classifications
       }
     };
 
@@ -97,8 +106,10 @@ async function buildAllKnowledgeBlocks() {
       SHAPE: '<!-- ERP Error: Could not fetch shapes -->',
       VNT_KNOWLEDGE: '<!-- ERP Error: Could not fetch processes/operations -->',
       SURFACE: '<!-- ERP Error: Could not fetch surface treatments -->',
+      HEAT_TREAT: '<!-- ERP Error: Could not fetch heat treatments -->',
       CUSTOMERS: '<!-- ERP Error: Could not fetch customers -->',
       EXCHANGE_RATES: '<!-- ERP Error: Could not fetch exchange rates -->',
+      MARKET: '<!-- ERP Error: Could not fetch classifications -->',
       _RAW_DATA: null
     };
   }
@@ -147,6 +158,41 @@ function buildVntKnowledge(processes, operations) {
     lines.push('');
   });
 
+  return lines.join('\n');
+}
+
+/**
+ * Format classifications (quota_classify) for prompt
+ */
+function formatClassificationsForPrompt(classifications) {
+  const lines = ['# PHÂN LOẠI THỊ TRƯỜNG VÀ NGÀNH HÀNG (Market Classifications)', ''];
+
+  if (!classifications || (!Array.isArray(classifications) && typeof classifications !== 'object')) {
+    lines.push('_Không có dữ liệu phân loại_');
+    return lines.join('\n');
+  }
+
+  // Handle array response
+  if (Array.isArray(classifications)) {
+    classifications.forEach(item => {
+      if (typeof item === 'string') {
+        lines.push(`- ${item}`);
+      } else if (item.value) {
+        const desc = item.description && item.description !== item.value ? ` (${item.description})` : '';
+        lines.push(`- ${item.value}${desc}`);
+      } else {
+        lines.push(`- ${JSON.stringify(item)}`);
+      }
+    });
+  }
+  // Handle object response (key-value pairs)
+  else if (typeof classifications === 'object') {
+    Object.entries(classifications).forEach(([key, value]) => {
+      lines.push(`- ${key}: ${value}`);
+    });
+  }
+
+  lines.push('');
   return lines.join('\n');
 }
 

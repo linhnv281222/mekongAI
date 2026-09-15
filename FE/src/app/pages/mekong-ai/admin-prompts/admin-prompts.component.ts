@@ -103,8 +103,7 @@ export class AdminPromptsComponent implements OnInit {
 
   // PrimeNG options
   aiModelOptions = [
-    { label: 'Xiaomi MIMO v2.5 Pro', value: 'xiaomi/mimo-v2.5-pro' },
-    { label: 'Gemini 3 Flash', value: 'gemini-3-flash-preview' },
+    { label: 'Gemini 3.8 Flash', value: 'gemini-3.8-flash' },
     { label: 'Claude Opus 4.7', value: 'claude-opus-4-7' },
     { label: 'Claude Sonnet 4.6', value: 'claude-sonnet-4-6' },
     { label: 'Claude Haiku 4', value: 'claude-haiku-4-5' },
@@ -263,7 +262,7 @@ export class AdminPromptsComponent implements OnInit {
         if (config.model && config.model.trim()) {
           this.selectedModel = config.model.trim();
         } else {
-          this.selectedModel = config.provider === 'gemini' ? 'gemini-3-flash-preview' : 'claude-sonnet-4-7';
+          this.selectedModel = config.provider === 'gemini' ? 'gemini-3.8-flash' : 'claude-sonnet-4-7';
         }
       }
     } catch (e: any) {

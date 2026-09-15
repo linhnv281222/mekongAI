@@ -71,6 +71,16 @@
           Yêu cầu gần đây
           <span class="mb-cnt" *ngIf="unreadCount > 0">{{ unreadCount }}</span>
         </div>
+        <!-- Tree toggle button temporarily hidden
+        <button
+          type="button"
+          class="btn-tree-toggle"
+          (click)="toggleTreeView()"
+          [title]="useTreeView ? 'Chế độ danh sách' : 'Chế độ cây'"
+        >
+          <mat-icon>{{ useTreeView ? 'list' : 'account_tree' }}</mat-icon>
+        </button>
+        -->
       </div>
       <div class="mb-search">
         <input
@@ -84,7 +94,7 @@
       <div *ngIf="initialLoading" class="mb-loading">
         <p-progressSpinner strokeWidth="4"></p-progressSpinner>
       </div>
-      <div class="mb-list" *ngIf="!initialLoading">
+      <div class="mb-list" *ngIf="!initialLoading && !useTreeView">
         <div class="mb-list-simple">
           <div
             *ngFor="let emailItem of filteredEmails"
@@ -125,10 +135,45 @@
                 [value]="emailItem.attachments!.length + ' file'"
                 severity="info"
               ></p-tag>
+              <p-tag
+                *ngIf="(emailItem.total_tokens || 0) > 0"
+                [value]="formatTokenCount(emailItem.total_tokens!)"
+                severity="secondary"
+                styleClass="token-badge"
+                pTooltip="Token usage: {{ emailItem.total_tokens }}"
+                tooltipPosition="top"
+              ></p-tag>
             </div>
           </div>
         </div>
         <div *ngIf="filteredEmails.length === 0" class="mb-empty">
+          Chưa có yêu cầu nào
+        </div>
+      </div>
+
+      <!-- Tree View -->
+      <div class="mb-list mb-tree" *ngIf="!initialLoading && useTreeView">
+        <p-tree
+          [value]="emailTree"
+          selectionMode="single"
+          [(selection)]="selectedTreeNode"
+          (onNodeSelect)="onTreeNodeSelect($event)"
+          [styleClass]="'email-tree'"
+        >
+          <ng-template let-node pTemplate="default">
+            <div class="tree-node-content">
+              <span class="tree-node-icon">
+                <mat-icon *ngIf="node.type === 'year'">calendar_today</mat-icon>
+                <mat-icon *ngIf="node.type === 'month'">folder</mat-icon>
+                <mat-icon *ngIf="node.type === 'customer'">business</mat-icon>
+                <mat-icon *ngIf="node.type === 'email' && node.data?.unread">mail</mat-icon>
+                <mat-icon *ngIf="node.type === 'email' && !node.data?.unread">drafts</mat-icon>
+              </span>
+              <span class="tree-node-label">{{ node.label }}</span>
+            </div>
+          </ng-template>
+        </p-tree>
+        <div *ngIf="emailTree.length === 0" class="mb-empty">
           Chưa có yêu cầu nào
         </div>
       </div>
@@ -248,6 +293,9 @@
             value="Agent"
             severity="warning"
           ></p-tag>
+        </div>
+        <div class="e-actions">
+          <app-token-usage [data]="activeEmail" [compact]="true"></app-token-usage>
           <button type="button" class="btn-debug" (click)="toggleDebug()">
             Debug
           </button>

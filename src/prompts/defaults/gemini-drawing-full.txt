@@ -34,6 +34,10 @@ Vai trò: Bạn là chuyên gia Senior QC và Kỹ sư lập trình CAM với 20
 
 {{VNT_KNOWLEDGE}}
 
+{{CUSTOMERS}}
+
+{{EXCHANGE_RATES}}
+
 {{FEATURES}}
 
 {{MARKET}}

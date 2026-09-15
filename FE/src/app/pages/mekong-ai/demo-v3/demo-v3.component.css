@@ -203,6 +203,9 @@
 .mb-hd {
   padding: 12px 12px 8px;
   flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
 }
 
 .mb-title {
@@ -215,6 +218,31 @@
   align-items: center;
   gap: 6px;
 }
+
+.btn-tree-toggle {
+  background: transparent;
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  border-radius: 6px;
+  padding: 4px 6px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s;
+}
+
+.btn-tree-toggle:hover {
+  background: #f5f5f5;
+  border-color: rgba(0, 0, 0, 0.12);
+}
+
+.btn-tree-toggle mat-icon {
+  font-size: 18px;
+  width: 18px;
+  height: 18px;
+  color: #86868b;
+}
+
 
 .mb-cnt {
   display: inline-flex;
@@ -395,6 +423,84 @@
   gap: 4px;
 }
 
+::ng-deep .token-badge .p-tag {
+  background: rgba(56, 189, 248, 0.1) !important;
+  border: 1px solid rgba(56, 189, 248, 0.3);
+  color: #38BDF8 !important;
+  font-variant-numeric: tabular-nums;
+  font-size: 10px;
+}
+
+/* ── Tree View ──────────────────────────────────────────── */
+.mb-tree {
+  padding: 0 8px;
+}
+
+::ng-deep .email-tree {
+  border: none;
+  background: transparent;
+}
+
+::ng-deep .email-tree .p-tree-container {
+  background: transparent;
+  border: none;
+}
+
+::ng-deep .email-tree .p-treenode {
+  padding: 0;
+}
+
+::ng-deep .email-tree .p-treenode-content {
+  padding: 6px 8px;
+  border-radius: 6px;
+  border: none;
+  transition: all 0.15s;
+}
+
+::ng-deep .email-tree .p-treenode-content:hover {
+  background: #f5f5f5;
+}
+
+::ng-deep .email-tree .p-treenode-content.p-highlight {
+  background: #e3f2fd;
+  border: none;
+}
+
+.tree-node-content {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  color: #1d1d1f;
+}
+
+.tree-node-icon mat-icon {
+  font-size: 16px;
+  width: 16px;
+  height: 16px;
+  color: #86868b;
+}
+
+.tree-node-label {
+  flex: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+::ng-deep .email-tree .p-tree-toggler {
+  width: 20px;
+  height: 20px;
+  margin-right: 4px;
+  color: #86868b;
+}
+
+::ng-deep .email-tree .p-tree-toggler:hover {
+  background: rgba(0, 0, 0, 0.04);
+  border-radius: 4px;
+}
+
+
 /* ── Main Content ──────────────────────────────────────────── */
 .app-detail {
   flex: 1;
@@ -480,6 +586,9 @@
   border-bottom: 1px solid var(--v3-line);
   background: var(--v3-surface);
   flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
 }
 
 .e-subj {
@@ -499,7 +608,7 @@
   flex-wrap: wrap;
   align-items: center;
   gap: 4px;
-  margin-bottom: 6px;
+  margin-bottom: 0;
 }
 
 .e-meta-sep {
@@ -513,8 +622,15 @@
   gap: 4px;
 }
 
+.e-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding-top: 6px;
+  border-top: 1px solid var(--v3-line);
+}
+
 .btn-debug {
-  margin-left: auto;
   padding: 2px 8px;
   border: 1px solid var(--v3-line2, #cbd5e1);
   border-radius: 4px;

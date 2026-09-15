@@ -9,6 +9,7 @@ import {
 } from '@angular/core';
 import { ActivatedRoute } from '@angular/router';
 import { MessageService } from 'primeng/api';
+import { TreeNode } from 'primeng/api';
 
 import { MekongAiService } from '../mekong-ai.service';
 import { EmailRow } from '../models/email.model';
@@ -31,6 +32,7 @@ import {
   resolveClassifyValue,
   truthyClassify
 } from '../utils/email.util';
+import { buildEmailTree, filterEmailsByNode } from '../utils/tree.util';
 import { DemoV3Service } from './demo-v3.service';
 import { DrawingVersion, VersionService } from './version.service';
 
@@ -65,6 +67,11 @@ export class DemoV3Component implements OnInit, OnDestroy, AfterViewChecked {
   classifyUiSchema: UiSchema | null = null;
   debugModalOpen = false;
   initialLoading = true;
+
+  // Tree view state
+  emailTree: TreeNode[] = [];
+  selectedTreeNode: TreeNode | null = null;
+  useTreeView = false;
 
   // Market data from vnt-markets knowledge block (dynamic)
   marketRows: KnowledgeBlock['rows'] = [];
@@ -150,6 +157,7 @@ export class DemoV3Component implements OnInit, OnDestroy, AfterViewChecked {
     this.svc.startPolling(
       (agentEmails: EmailRow[]) => {
         this.emails = mergeAgentIntoInbox(agentEmails, this.emails);
+        this.rebuildTree();
         if (this.activeEmail?.id) {
           const refreshed = this.emails.find(
             (e) => e.id === this.activeEmail!.id
@@ -213,6 +221,7 @@ export class DemoV3Component implements OnInit, OnDestroy, AfterViewChecked {
       ngon_ngu: job.ngon_ngu || '',
       thi_truong: job.thi_truong || null,
       ten_kh: '',
+      ma_khach_hang: null,
       han_giao: null,
       hinh_thuc_giao: null,
       co_van_chuyen: null,
@@ -248,14 +257,24 @@ export class DemoV3Component implements OnInit, OnDestroy, AfterViewChecked {
   // ── Mailbox ───────────────────────────────────────────────
 
   get filteredEmails(): EmailRow[] {
-    if (!this.searchQuery) return this.emails;
-    const query = this.searchQuery.toLowerCase();
-    const filtered = this.emails.filter(
-      (emailItem) =>
-        emailItem.from.toLowerCase().includes(query) ||
-        (emailItem.subject || '').toLowerCase().includes(query)
-    );
-    return filtered;
+    let result = this.emails;
+
+    // Apply tree filter if node selected
+    if (this.useTreeView && this.selectedTreeNode) {
+      result = filterEmailsByNode(result, this.selectedTreeNode);
+    }
+
+    // Apply search filter
+    if (this.searchQuery) {
+      const query = this.searchQuery.toLowerCase();
+      result = result.filter(
+        (emailItem) =>
+          emailItem.from.toLowerCase().includes(query) ||
+          (emailItem.subject || '').toLowerCase().includes(query)
+      );
+    }
+
+    return result;
   }
 
   get unreadCount(): number {
@@ -1024,5 +1043,34 @@ export class DemoV3Component implements OnInit, OnDestroy, AfterViewChecked {
   getVersionDataString(data: Record<string, unknown>, key: string): string {
     const value = data[key];
     return value != null ? String(value) : '';
+  }
+
+  formatTokenCount(tokens: number): string {
+    if (tokens >= 1000) {
+      return `${(tokens / 1000).toFixed(1)}k`;
+    }
+    return tokens.toString();
+  }
+
+  // ── Tree view methods ─────────────────────────────────────
+
+  rebuildTree(): void {
+    this.emailTree = buildEmailTree(this.emails);
+  }
+
+  onTreeNodeSelect(event: any): void {
+    const node = event.node as TreeNode;
+    this.selectedTreeNode = node;
+    // Tree acts as filter - no need to auto-select email
+    this.cdr.markForCheck();
+  }
+
+  toggleTreeView(): void {
+    this.useTreeView = !this.useTreeView;
+    if (this.useTreeView) {
+      this.rebuildTree();
+    } else {
+      this.selectedTreeNode = null;
+    }
   }
 }

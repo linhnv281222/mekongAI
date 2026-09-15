@@ -81,7 +81,9 @@ const KNOWLEDGE_DEFAULTS = {
 export function render(template, variables) {
   let out = template;
   for (const [key, value] of Object.entries(variables)) {
-    out = out.replaceAll(`{{${key}}}`, value ?? "");
+    const placeholder = `{{${key}}}`;
+    const replacement = value ?? "";
+    out = out.replaceAll(placeholder, replacement);
   }
   return out;
 }
@@ -105,7 +107,10 @@ async function enrichVariablesWithERP(variables) {
     SURFACE: 'vnt-surface',         // Surface treatment operations
     HEAT_TREAT: 'vnt-heat-treat',  // Heat treatment operations
     VNT_KNOWLEDGE: 'vnt-knowledge', // Technology processes + operations
-    FEATURES: 'vnt-features'        // CNC feature classifications
+    FEATURES: 'vnt-features',       // CNC feature classifications
+    MARKET: 'vnt-market',           // Market/industry classifications
+    CUSTOMERS: 'vnt-customers',     // Customer list from ERP
+    EXCHANGE_RATES: 'vnt-exchange-rates' // Currency exchange rates
   };
 
   // Only fetch ERP data if at least one ERP variable is undefined
@@ -116,7 +121,7 @@ async function enrichVariablesWithERP(variables) {
     for (const [varName, erpKey] of Object.entries(erpVars)) {
       if (enriched[varName] === undefined) {
         try {
-          const content = await getKnowledgeBlock(erpKey);
+          const content = await getKnowledgeBlock(varName);
           if (content && !content.includes('<!-- ERP Error:')) {
             enriched[varName] = content;
           }
@@ -266,7 +271,8 @@ export async function getKnowledgeBlock(key) {
 
   // Fallback: Try live ERP API only if database is empty
   // Map uppercase keys to ERP API keys
-  if (key === 'MATERIAL' || key === 'SHAPE' || key === 'SURFACE' || key === 'VNT_KNOWLEDGE') {
+  const erpSupportedKeys = ['MATERIAL', 'SHAPE', 'SURFACE', 'HEAT_TREAT', 'VNT_KNOWLEDGE', 'CUSTOMERS', 'EXCHANGE_RATES', 'MARKET'];
+  if (erpSupportedKeys.includes(key)) {
     try {
       const erpData = await erpKnowledgeBuilder.getKnowledgeBlock(key);
       if (erpData && !erpData.includes('<!-- ERP Error:')) {

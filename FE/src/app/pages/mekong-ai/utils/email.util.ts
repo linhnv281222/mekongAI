@@ -121,6 +121,7 @@ export function mapJobRowToEmail(j: Job): EmailRow {
     ngon_ngu: j.ngon_ngu ?? '',
     thi_truong: j.thi_truong ?? null,
     ten_kh: j.ten_cong_ty || j.sender || '',
+    ma_khach_hang: j.ma_khach_hang ?? null,
     source: (j as any).source ?? undefined,
     han_giao: j.han_giao != null && j.han_giao !== '' ? j.han_giao : null,
     hinh_thuc_giao: j.hinh_thuc_giao || null,
@@ -135,6 +136,12 @@ export function mapJobRowToEmail(j: Job): EmailRow {
     // AI Debug payloads
     classify_ai_payload: j.classify_ai_payload ?? null,
     drawing_ai_payload: j.drawing_ai_payload ?? null,
+    // Token usage tracking
+    classify_tokens: j.classify_tokens ?? undefined,
+    drawing_tokens: j.drawing_tokens ?? undefined,
+    total_tokens: j.total_tokens ?? undefined,
+    classify_model: j.classify_model ?? undefined,
+    drawing_model: j.drawing_model ?? undefined,
   };
 }
 

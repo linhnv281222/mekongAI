@@ -107,6 +107,7 @@ const RFQ_FORM_FIELDS = [
   { key: "co_vat", label: "Có VAT không?", type: "select", options: ["Có", "Không"], required: true },
   { key: "xu_ly_be_mat", label: "Có xử lý bề mặt không?", type: "select", options: ["Có", "Không"], required: true },
   { key: "co_van_chuyen", label: "Có vận chuyển không?", type: "select", options: ["Có", "Không"], required: true },
+  { key: "noi_dung_email", label: "Nội dung email", type: "textarea", placeholder: "Nhập nội dung email từ khách hàng (số lượng, yêu cầu, deadline...)..." },
   { key: "ghi_chu_noi_bo", label: "Ghi chú nội bộ", type: "textarea", placeholder: "Ghi chú chỉ hiển thị trong hệ thống..." },
 ];
 
@@ -691,44 +692,37 @@ async function handleBaoGiaChat(message, files, jobId) {
 async function handleRfqFormSubmissionAsync(jobId, formData, files) {
   let allResults = [];
   let fileErrors = [];
+  let emailInfo = null;
   let ghiChuInfo = null;
 
   try {
     const parsed = typeof formData === "string" ? JSON.parse(formData) : formData;
+    const noiDungEmail = parsed.noi_dung_email || "";
     const ghiChuNoiBo = parsed.ghi_chu_noi_bo || "";
 
-    // Step 1: Analyze files
+    // Step 1: Classify nội dung email (dùng cho context bản vẽ)
+    if (noiDungEmail.trim()) {
+      console.log("[ChatRfqAsync] Phân tích nội dung email:", noiDungEmail.slice(0, 200));
+      emailInfo = await classifyGhiChuNoiBo(noiDungEmail);
+      console.log("[ChatRfqAsync] Email classify:", JSON.stringify(emailInfo));
+    }
+
+    // Step 2: Analyze files với context từ nội dung email
     if (files && files.length > 0) {
       console.log("[ChatRfqAsync] Phân tích " + files.length + " file...");
       emitSseEvent(jobId, "progress", { phase: "analyzing", current: 0, total: files.length, message: "Đang phân tích file đính kèm..." });
 
-      const analyzed = await analyzeFilesForJob(files, jobId, null, null);
+      const emailContext = emailInfo ? buildChatContextForAnalyzer(noiDungEmail, emailInfo) : null;
+      const analyzed = await analyzeFilesForJob(files, jobId, null, emailContext);
       allResults = analyzed.allResults;
       fileErrors = analyzed.fileErrors;
     }
 
-    // Step 2: Classify ghi chú nội bộ
+    // Step 3: Classify ghi chú nội bộ (chỉ để lưu metadata, KHÔNG dùng cho bản vẽ)
     if (ghiChuNoiBo.trim()) {
       emitSseEvent(jobId, "progress", { phase: "classifying", current: 0, total: 0, message: "Đang phân tích ghi chú..." });
       ghiChuInfo = await classifyGhiChuNoiBo(ghiChuNoiBo);
       console.log("[ChatRfqAsync] Ghi chu classify:", JSON.stringify(ghiChuInfo));
-
-      if (ghiChuInfo?.so_luong && ghiChuInfo.so_luong !== "unknown") {
-        for (const r of allResults) {
-          if (!r.data) continue;
-          const soLuong = ghiChuInfo.so_luong;
-          if (String(soLuong).includes(":")) {
-            for (const [ma, sl] of Object.entries(ghiChuInfo.so_luong_theo_ma || {})) {
-              if (r.data.ma_ban_ve?.toLowerCase().includes(ma.toLowerCase())) {
-                r.data.so_luong = Number(sl);
-                break;
-              }
-            }
-          } else {
-            r.data.so_luong = Number(String(soLuong).replace(/\s*\(áp dụng cho tất cả\)/, "").trim());
-          }
-        }
-      }
     }
 
     const tenCongTy = parsed.ten_cong_ty || "";
@@ -769,12 +763,14 @@ async function handleRfqFormSubmissionAsync(jobId, formData, files) {
         ngon_ngu: "vi",
         ten_cong_ty: tenCongTy,
         ly_do: "Chat bot báo giá (form)",
+        email_info: emailInfo || null,
         ghi_chu_noi_bo: ghiChuInfo || null,
       },
       xu_ly_be_mat: xuLyBeMat === "Có",
       vat_lieu_chung_nhan: coVat === "Có",
       ten_cong_ty: tenCongTy,
       ma_khach_hang: maKhachHang,
+      body: noiDungEmail || "",
       ghi_chu: ghiChuNoiBo || "",
       co_van_chuyen: coVanChuyen === "Có",
       attachments: (files || []).map((f) => ({ name: path.basename(f.path), source: "chat" })),

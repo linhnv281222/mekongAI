@@ -18,6 +18,7 @@ import promptController from "./promptController.js";
 import chatController from "./chatController.js";
 import versionController from "./versionController.js";
 import tokenStatsController from "./tokenStatsController.js";
+import masterDataController from "./masterDataController.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const PROJECT_ROOT = path.resolve(__dirname, "../.."); // mekongAI/
@@ -84,6 +85,18 @@ app.use("/admin/prompts", promptController);
 // Token usage statistics API
 app.get("/api/token-stats", tokenStatsController.getTokenStats);
 app.get("/api/token-stats/jobs", tokenStatsController.getJobTokenDetails);
+
+// Master Data API endpoints
+app.get("/api/master-data/transport-methods", masterDataController.getTransportMethods);
+app.get("/api/master-data/materials", masterDataController.getMaterials);
+app.get("/api/master-data/classifications", masterDataController.getClassifications);
+app.get("/api/master-data/customers", masterDataController.getCustomers);
+app.get("/api/master-data/technology-processes", masterDataController.getTechnologyProcesses);
+app.get("/api/master-data/exchange-rates", masterDataController.getExchangeRates);
+app.get("/api/master-data/vat-configs", masterDataController.getVatConfigs);
+app.get("/api/master-data/shapes", masterDataController.getShapes);
+app.get("/api/master-data/all", masterDataController.getAllMasterData);
+app.post("/api/master-data/clear-cache", masterDataController.clearCache);
 
 app.get("/health", (req, res) => {
   res.json({ status: "ok", time: new Date().toISOString() });

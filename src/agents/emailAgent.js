@@ -468,6 +468,7 @@ async function processEmail(gmail, msgId) {
       xu_ly_be_mat: classify.xu_ly_be_mat,
       vat_lieu_chung_nhan: classify.vat_lieu_chung_nhan,
       ten_cong_ty: classify.ten_cong_ty,
+      ma_khach_hang: classify.ma_khach_hang || null,
       ghi_chu: null,
       email_body: emailData.body || null,
       attachments: emailData.attachments.map((a) => ({

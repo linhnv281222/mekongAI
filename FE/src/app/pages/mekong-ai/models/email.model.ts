@@ -20,6 +20,7 @@ export interface EmailRow {
   ngon_ngu: string;
   thi_truong: string | null;
   ten_kh: string;
+  ma_khach_hang: string | null;
   han_giao: string | null;
   hinh_thuc_giao: string | null;
   co_van_chuyen: boolean | null;
@@ -35,4 +36,10 @@ export interface EmailRow {
   // AI Debug payloads from agent
   classify_ai_payload?: object | null;
   drawing_ai_payload?: Array<object | null> | null;
+  // Token usage tracking
+  classify_tokens?: number;
+  drawing_tokens?: number;
+  total_tokens?: number;
+  classify_model?: string;
+  drawing_model?: string;
 }

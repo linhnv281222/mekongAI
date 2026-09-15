@@ -408,6 +408,12 @@ router.get("/", async (req, res) => {
       // AI Debug payloads
       classify_ai_payload: j.classify_ai_payload ?? null,
       drawing_ai_payload: j.drawing_ai_payload ?? null,
+      // Token usage tracking
+      classify_tokens: j.classify_tokens || 0,
+      drawing_tokens: j.drawing_tokens || 0,
+      total_tokens: j.total_tokens || 0,
+      classify_model: j.classify_model || null,
+      drawing_model: j.drawing_model || null,
     };
   });
   res.json({ count: jobs.length, data: jobs });

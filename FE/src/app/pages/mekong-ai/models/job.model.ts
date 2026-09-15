@@ -33,6 +33,12 @@ export interface Job {
   // AI Debug payloads from agent
   classify_ai_payload?: object | null;
   drawing_ai_payload?: Array<object | null> | null;
+  // Token usage tracking
+  classify_tokens?: number;
+  drawing_tokens?: number;
+  total_tokens?: number;
+  classify_model?: string;
+  drawing_model?: string;
 }
 
 export interface ClassifyOutput {

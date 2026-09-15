@@ -33,6 +33,7 @@ import { InputMaskModule } from 'primeng/inputmask';
 import { SplitterModule } from 'primeng/splitter';
 import { InputSwitchModule } from 'primeng/inputswitch';
 import { VirtualScrollerModule } from 'primeng/virtualscroller';
+import { TreeModule } from 'primeng/tree';
 
 import { MessageService } from 'primeng/api';
 import { ConfirmationService } from 'primeng/api';
@@ -45,11 +46,13 @@ import { DemoV3Service } from './demo-v3/demo-v3.service';
 import { ChatbotComponent } from './chatbot/chatbot.component';
 import { SharedComponentsModule } from '../../shared/shared-components.module';
 import { AppPdfViewerComponent } from './pdf-viewer/pdf-viewer.component';
+import { TokenUsageComponent } from './components/token-usage/token-usage.component';
 
 @NgModule({
   declarations: [DemoV3Component, AdminPromptsComponent, SafeUrlPipe, ChatbotComponent, AppPdfViewerComponent],
   imports: [
     AdminTokenStatsComponent,
+    TokenUsageComponent,
     CommonModule,
     FormsModule,
     ReactiveFormsModule,
@@ -80,6 +83,7 @@ import { AppPdfViewerComponent } from './pdf-viewer/pdf-viewer.component';
     InputSwitchModule,
     SplitterModule,
     VirtualScrollerModule,
+    TreeModule,
     RouterModule,
     SharedComponentsModule,
     MekongAiRoutingModule,

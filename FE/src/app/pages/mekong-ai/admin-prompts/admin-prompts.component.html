@@ -28,26 +28,6 @@
       </div>
     </div>
 
-    <!-- Knowledge Section -->
-    <div class="sidebar-section">
-      <div class="sidebar-section-title">Kiến thức</div>
-      <div id="knowledgeNav">
-        <div
-          *ngFor="let item of knowledgeItems"
-          class="nav-item"
-          [class.active]="
-            currentView.type === 'knowledge' && currentPromptKey === item.id
-          "
-          (click)="showKnowledge(item.id)"
-        >
-          <div class="nav-icon">
-            <i class="pi pi-book"></i>
-          </div>
-          <span class="nav-label">{{ item.name }}</span>
-        </div>
-      </div>
-    </div>
-
     <!-- System Section -->
     <div class="sidebar-section">
       <div class="sidebar-section-title">Hệ thống</div>

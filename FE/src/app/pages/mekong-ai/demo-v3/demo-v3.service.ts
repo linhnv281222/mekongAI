@@ -90,6 +90,7 @@ export class DemoV3Service implements OnDestroy {
       co_van_chuyen: job.co_van_chuyen ?? null,
       xu_ly_be_mat: job.xu_ly_be_mat ?? null,
       vat_lieu_chung_nhan: job.vat_lieu_chung_nhan ?? null,
+      ma_khach_hang: job.ma_khach_hang ?? null,
       classify_output: normalizeClassifyOutputFromJob(job),
       thi_truong: job.thi_truong ?? null,
       source: job.source ?? partial.source ?? undefined,
@@ -99,6 +100,12 @@ export class DemoV3Service implements OnDestroy {
       // AI Debug payloads
       classify_ai_payload: job.classify_ai_payload ?? null,
       drawing_ai_payload: job.drawing_ai_payload ?? null,
+      // Token usage tracking
+      classify_tokens: job.classify_tokens ?? partial.classify_tokens ?? undefined,
+      drawing_tokens: job.drawing_tokens ?? partial.drawing_tokens ?? undefined,
+      total_tokens: job.total_tokens ?? partial.total_tokens ?? undefined,
+      classify_model: job.classify_model ?? partial.classify_model ?? undefined,
+      drawing_model: job.drawing_model ?? partial.drawing_model ?? undefined,
     };
   }
 

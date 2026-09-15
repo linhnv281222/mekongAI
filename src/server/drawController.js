@@ -47,9 +47,6 @@ function selectAnalyzer() {
   }
   return { fn: analyzeDrawingGemini, label: "gemini" };
 }
-  }
-  return { fn: analyzeDrawingGemini, label: "gemini" };
-}
 
 const router = express.Router();
 
