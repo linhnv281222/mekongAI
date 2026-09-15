@@ -767,6 +767,7 @@ async function handleRfqFormSubmissionAsync(jobId, formData, files) {
 
     // Calculate total tokens from all drawings
     const totalTokens = allResults.reduce((sum, r) => sum + (r.total_tokens || 0), 0);
+    const drawingTokens = totalTokens; // For chatbot, all tokens are from drawing analysis
 
     // Save job
     const jobData = {
@@ -791,7 +792,7 @@ async function handleRfqFormSubmissionAsync(jobId, formData, files) {
       vat_lieu_chung_nhan: coVat === "Có",
       ten_cong_ty: tenCongTy,
       ma_khach_hang: maKhachHang,
-      body: noiDungEmail || "",
+      email_body: noiDungEmail || "",
       ghi_chu: ghiChuNoiBo || "",
       co_van_chuyen: coVanChuyen === "Có",
       attachments: (files || []).map((f) => ({ name: path.basename(f.path), source: "chat" })),
@@ -799,7 +800,9 @@ async function handleRfqFormSubmissionAsync(jobId, formData, files) {
       status: "pending_review",
       created_at: Date.now(),
       source: "chat",
+      drawing_tokens: drawingTokens,
       total_tokens: totalTokens,
+      drawing_model: "gemini-1.5-flash",
       drawing_ai_payload: allResults.length > 0 ? allResults.map((r) => r.request_payload).filter(Boolean) : null,
     };
 
@@ -938,6 +941,10 @@ async function handleRfqFormSubmission(jobId, formData, files) {
     };
   }
 
+  // Calculate tokens
+  const totalTokens = allResults.reduce((sum, r) => sum + (r.total_tokens || 0), 0);
+  const drawingTokens = totalTokens; // For chatbot, all tokens are from drawing analysis
+
   // Tao job
   const jobData = {
     id: jobId,
@@ -963,7 +970,7 @@ async function handleRfqFormSubmission(jobId, formData, files) {
     vat_lieu_chung_nhan: coVat === "Có",
     ten_cong_ty: tenCongTy,
     ma_khach_hang: maKhachHang,
-    body: noiDungEmail || "",
+    email_body: noiDungEmail || "",
     ghi_chu: ghiChuNoiBo || "",
     co_van_chuyen: coVanChuyen === "Có",
     attachments: (files || []).map((f) => ({
@@ -976,6 +983,9 @@ async function handleRfqFormSubmission(jobId, formData, files) {
     status: "pending_review",
     created_at: Date.now(),
     source: "chat",
+    drawing_tokens: drawingTokens,
+    total_tokens: totalTokens,
+    drawing_model: "gemini-1.5-flash",
     drawing_ai_payload:
       allResults.length > 0
         ? allResults.map((r) => r.request_payload).filter(Boolean)

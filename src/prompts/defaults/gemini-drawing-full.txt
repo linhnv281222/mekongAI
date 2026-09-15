@@ -107,8 +107,8 @@ Khung tên thường nằm góc dưới-phải bản vẽ, chứa thông tin cơ
 
 **2. VẬT LIỆU (vat_lieu)** — CRITICAL, BẮT BUỘC
 - Đọc từ khung tên hoặc ghi chú "MATERIAL:" / "材料"
-- Match với bảng {{MATERIAL}}
-- Các ký hiệu phổ biến:
+- **QUAN TRỌNG**: Match với bảng {{MATERIAL}} và **trả về TÊN VẬT LIỆU** từ bảng (VD: "Nhôm hàng không", "Inox 304", "Thép carbon"), KHÔNG trả về mã (A7075, SUS304...)
+- Các ký hiệu phổ biến để nhận biết:
   - AL/Axxxx → Nhôm (A5052, AL6061, A2017...)
   - SUS → Inox (SUS304, SUS316, SUS303...)
   - Sxxx → Thép (S45C, S50C, SS400, SKD11, SKD61...)
@@ -565,7 +565,7 @@ Giải thích ngắn gọn từng bước chọn quy trình:
 ```json
 {
   "ma_ban_ve": "SHAFT-001",
-  "vat_lieu": "S45C",
+  "vat_lieu": "Thép carbon",
   "so_luong": 10,
   "xu_ly_be_mat": null,
   "xu_ly_nhiet": "HRC 50-55",
