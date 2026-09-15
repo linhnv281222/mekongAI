@@ -470,6 +470,30 @@
   box-sizing: border-box;
 }
 
+/* Token usage badge */
+.rfq-token-badge {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 10px;
+  background: rgba(56, 189, 248, 0.1);
+  border: 1px solid rgba(56, 189, 248, 0.3);
+  border-radius: 6px;
+  font-size: 11px;
+  color: #0369a1;
+  margin-bottom: 10px;
+}
+
+.rfq-token-badge svg {
+  flex-shrink: 0;
+  color: #38BDF8;
+}
+
+.rfq-token-badge strong {
+  font-weight: 700;
+  color: #0284c7;
+}
+
 /* Drawings summary */
 .rfq-drawings-summary {
   margin-bottom: 10px;

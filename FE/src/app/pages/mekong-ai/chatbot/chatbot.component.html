@@ -138,6 +138,15 @@
 
         <!-- ── RFQ Form trong chat ────────────────────────────────────── -->
         <div *ngIf="msg.rfqForm && msg.role === 'bot'" class="mekong-rfq-form">
+          <!-- Token usage badge -->
+          <div *ngIf="msg.jobId" class="rfq-token-badge">
+            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="12" cy="12" r="10"/>
+              <path d="M12 6v6l4 2"/>
+            </svg>
+            <span>Token đã sử dụng: <strong>{{ formatTokenCount(getTotalTokensForJob(msg.jobId)) }}</strong></span>
+          </div>
+
           <!-- Drawings summary -->
           <div
             *ngIf="msg.drawingsSummary && msg.drawingsSummary.length > 0"

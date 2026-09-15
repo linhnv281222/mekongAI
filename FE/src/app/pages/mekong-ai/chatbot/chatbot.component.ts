@@ -24,6 +24,8 @@ interface ChatMessage {
   isFormSubmit?: boolean;
   /** Hien thi nut goi y mo form */
   rfqPrompt?: boolean;
+  /** Original message to pre-fill into form */
+  originalMessage?: string;
 }
 
 interface RfqFormField {
@@ -97,8 +99,14 @@ const RFQ_FORM_FIELDS: RfqFormField[] = [
     required: true,
   },
   {
+    key: 'noi_dung_email',
+    label: 'Nội dung email',
+    type: 'textarea',
+    placeholder: 'Nhập nội dung email từ khách hàng (số lượng, yêu cầu, deadline...)...',
+  },
+  {
     key: 'ghi_chu_noi_bo',
-    label: 'Ghi chú',
+    label: 'Ghi chú nội bộ',
     type: 'textarea',
     placeholder: 'Ghi chú chỉ hiển thị trong hệ thống...',
   },
@@ -138,6 +146,9 @@ export class ChatbotComponent implements OnInit, OnDestroy {
   pendingJobId: string | null = null;
   pendingDrawingsSummary: DrawingSummary[] | null = null;
   rfqFormValues: RfqFormValue = {};
+
+  /** Track total tokens per job for display */
+  private jobTokens = new Map<string, number>();
 
   private pollSub?: Subscription;
   private lastSeenJobTime = Date.now();
@@ -200,7 +211,7 @@ export class ChatbotComponent implements OnInit, OnDestroy {
 
     es.addEventListener('done', (e: MessageEvent) => {
       console.log('[ChatBot] SSE done for job', jobId);
-      const { result } = JSON.parse(e.data) as {
+      const { result, drawings_count } = JSON.parse(e.data) as {
         result: {
           reply: string;
           step: string;
@@ -208,11 +219,19 @@ export class ChatbotComponent implements OnInit, OnDestroy {
           rfq_form?: RfqFormField[];
           drawings_summary?: DrawingSummary[];
           askClarify?: boolean;
+          original_message?: string;
         };
+        drawings_count?: number;
       };
       es.close();
       this.activeEventSource = null;
       this.typing = false;
+
+      // Track token usage from backend response
+      const jobData = JSON.parse(e.data) as any;
+      if (jobData.result?.job_id && jobData.total_tokens) {
+        this.jobTokens.set(jobData.result.job_id, jobData.total_tokens);
+      }
 
       // Step 1 complete: show RFQ form to fill
       if (result.step === '2' && result.rfq_form) {
@@ -221,8 +240,13 @@ export class ChatbotComponent implements OnInit, OnDestroy {
         this.pendingDrawingsSummary = result.drawings_summary || null;
         this.rfqFormValues = {};
         for (const field of result.rfq_form) {
-          this.rfqFormValues[field.key] =
-            field.type === 'select' && field.options?.length ? field.options[0] : '';
+          // Pre-fill noi_dung_email with original message
+          if (field.key === 'noi_dung_email' && result.original_message) {
+            this.rfqFormValues[field.key] = result.original_message;
+          } else {
+            this.rfqFormValues[field.key] =
+              field.type === 'select' && field.options?.length ? field.options[0] : '';
+          }
         }
       } else {
         // Step 2 complete (RFQ submitted, no form needed)
@@ -239,6 +263,10 @@ export class ChatbotComponent implements OnInit, OnDestroy {
           text: result.reply,
           time: new Date(),
           files: [],
+          rfqForm: result.rfq_form,
+          drawingsSummary: result.drawings_summary,
+          jobId: result.job_id,
+          originalMessage: result.original_message,
         },
       ];
       this.cdr.markForCheck();
@@ -654,9 +682,13 @@ export class ChatbotComponent implements OnInit, OnDestroy {
           this.pendingDrawingsSummary = drawingsSummary || null;
 
           // Khởi tạo default values
+          const originalMsg = d['original_message'] as string | undefined;
           this.rfqFormValues = {};
           for (const field of rfqForm) {
-            if (
+            // Pre-fill noi_dung_email with original message
+            if (field.key === 'noi_dung_email' && originalMsg) {
+              this.rfqFormValues[field.key] = originalMsg;
+            } else if (
               field.type === 'select' &&
               field.options &&
               field.options.length > 0
@@ -678,6 +710,7 @@ export class ChatbotComponent implements OnInit, OnDestroy {
               rfqForm,
               drawingsSummary,
               jobId,
+              originalMessage: originalMsg,
             },
           ];
           this.cdr.markForCheck();
@@ -783,6 +816,16 @@ export class ChatbotComponent implements OnInit, OnDestroy {
     return text
       .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
       .replace(/\n/g, '<br/>');
+  }
+
+  formatTokenCount(tokens: number): string {
+    if (!tokens || tokens === 0) return '0';
+    if (tokens < 1000) return tokens.toString();
+    return (tokens / 1000).toFixed(1) + 'K';
+  }
+
+  getTotalTokensForJob(jobId: string): number {
+    return this.jobTokens.get(jobId) || 0;
   }
 
   private startPolling(): void {

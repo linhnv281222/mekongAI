@@ -613,6 +613,8 @@ async function handleBaoGiaChatAsync(message, files, jobId) {
       chatInfo: chatInfo || null,
     });
 
+    const totalTokens = allResults.reduce((sum, r) => sum + (r.total_tokens || 0), 0);
+
     const result = {
       isBotReply: true,
       reply,
@@ -625,9 +627,10 @@ async function handleBaoGiaChatAsync(message, files, jobId) {
         page: r.page,
         data: r.data,
       })),
+      original_message: message || "",
     };
 
-    emitSseEvent(jobId, "done", { result, drawings_count: allResults.length, fileErrors });
+    emitSseEvent(jobId, "done", { result, drawings_count: allResults.length, fileErrors, total_tokens: totalTokens });
 
   } catch (e) {
     console.error("[handleBaoGiaChat] EXCEPTION:", e.message);
