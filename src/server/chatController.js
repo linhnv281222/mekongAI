@@ -337,7 +337,22 @@ async function processPage(pg, safeFileName, emailContext, chatInfoOverride, job
     }
 
     console.log("[ChatBaoGia] OK: " + flat.ma_ban_ve + " | " + flat.vat_lieu + " | SL:" + flat.so_luong);
-    return { _done: true, result: { ...result, data: flat, filename: safeFileName, page: pg.page, fileIndex: 0 } };
+
+    // Extract token usage from result
+    const usage = result.usage || {};
+    const total_tokens = usage.total_tokens || usage.input_tokens + usage.output_tokens || 0;
+
+    return {
+      _done: true,
+      result: {
+        ...result,
+        data: flat,
+        filename: safeFileName,
+        page: pg.page,
+        fileIndex: 0,
+        total_tokens
+      }
+    };
   } catch (e) {
     console.error('[analyzeFilesForJob] API error page=' + pg.page + ':', e.message);
     return { _done: true, _error: 'Trang ' + pg.page + ' (' + pg.name + '): ' + e.message };
@@ -747,6 +762,9 @@ async function handleRfqFormSubmissionAsync(jobId, formData, files) {
       return;
     }
 
+    // Calculate total tokens from all drawings
+    const totalTokens = allResults.reduce((sum, r) => sum + (r.total_tokens || 0), 0);
+
     // Save job
     const jobData = {
       id: jobId,
@@ -778,6 +796,7 @@ async function handleRfqFormSubmissionAsync(jobId, formData, files) {
       status: "pending_review",
       created_at: Date.now(),
       source: "chat",
+      total_tokens: totalTokens,
       drawing_ai_payload: allResults.length > 0 ? allResults.map((r) => r.request_payload).filter(Boolean) : null,
     };
 

@@ -103,11 +103,23 @@ export async function analyzeDrawingGemini(pdfPath, model = null, emailContext =
     const raw = response.text ?? "";
     const parsed = extractJson(raw);
 
+    // Extract token usage from Gemini response
+    const usage = response.usageMetadata || {};
+    const totalTokens = (usage.promptTokenCount || 0) + (usage.candidatesTokenCount || 0);
+    console.log(
+      `[GeminiAnalyzer] tokens=in:${usage.promptTokenCount || 0}|out:${usage.candidatesTokenCount || 0}|total:${totalTokens} ` +
+      `model=${modelName} file=${path.basename(pdfPath)}`
+    );
+
     return {
       success: true,
       data: parsed,
       raw,
-      usage: {},
+      usage: {
+        input_tokens: usage.promptTokenCount || 0,
+        output_tokens: usage.candidatesTokenCount || 0,
+        total_tokens: totalTokens,
+      },
       request_payload: debugPayload,
     };
   } catch (e) {
