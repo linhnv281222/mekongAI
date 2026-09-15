@@ -7,7 +7,7 @@ const axios = require('axios');
 
 const ERP_BASE_URL = process.env.ERP_BASE_URL || 'http://dev.apifcim.facenet.vn';
 const ERP_USERNAME = process.env.ERP_USERNAME || 'admin@vnt.vn';
-const ERP_PASSWORD = process.env.ERP_PASSWORD || '';
+const ERP_PASSWORD = process.env.ERP_PASSWORD || 'Facenet@123';
 const ERP_CLIENT_ID = process.env.ERP_CLIENT_ID || 'fcim_cloud';
 const ERP_LOGIN_URL = process.env.ERP_LOGIN_URL || 'https://sso.xfactory.vn/auth/realms/fcim_cloud/protocol/openid-connect/token';
 
