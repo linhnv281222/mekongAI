@@ -27,21 +27,8 @@ export async function analyzeDrawingClaude(pdfPath, emailContext = null) {
 
   const modelName = anthropicModel();
 
-  const [vntKnowledge, materials, heatTreat, surface, shapes] =
-    await Promise.all([
-      getKnowledgeBlock("vnt-knowledge"),
-      getKnowledgeBlock("vnt-materials"),
-      getKnowledgeBlock("vnt-heat-treat"),
-      getKnowledgeBlock("vnt-surface"),
-      getKnowledgeBlock("vnt-shapes"),
-    ]);
-
+  // Note: getPrompt now auto-fetches ERP data via enrichVariablesWithERP()
   const promptText = await getPrompt("gemini-drawing", {
-    VNT_KNOWLEDGE: vntKnowledge ?? "",
-    MATERIAL: materials ?? "",
-    HEAT_TREAT: heatTreat ?? "",
-    SURFACE: surface ?? "",
-    SHAPE: shapes ?? "",
     EMAIL_CONTEXT: emailContext ?? "",
   });
 

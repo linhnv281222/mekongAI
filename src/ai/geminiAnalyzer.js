@@ -48,21 +48,9 @@ export async function analyzeDrawingGemini(pdfPath, model = null, emailContext =
     const base64 = pdfBuffer.toString("base64");
     console.log('[GeminiAnalyzer] PDF loaded size=' + pdfBuffer.length + ' memMB=' + Math.round(process.memoryUsage().heapUsed / 1024 / 1024));
 
-    const [vntKnowledge, materials, heatTreat, surface, shapes] =
-      await Promise.all([
-        getKnowledgeBlock("vnt-knowledge"),
-        getKnowledgeBlock("vnt-materials"),
-        getKnowledgeBlock("vnt-heat-treat"),
-        getKnowledgeBlock("vnt-surface"),
-        getKnowledgeBlock("vnt-shapes"),
-      ]);
-
+    // Note: getPrompt now auto-fetches ERP data via enrichVariablesWithERP()
+    // We can pass empty object or only custom variables like EMAIL_CONTEXT
     const promptText = await getPrompt("gemini-drawing", {
-      VNT_KNOWLEDGE: vntKnowledge ?? "",
-      MATERIAL: materials ?? "",
-      HEAT_TREAT: heatTreat ?? "",
-      SURFACE: surface ?? "",
-      SHAPE: shapes ?? "",
       EMAIL_CONTEXT: emailContext ?? "",
     });
 
