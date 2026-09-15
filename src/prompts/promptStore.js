@@ -40,30 +40,40 @@ const PROMPT_DEFAULTS = {
 };
 
 const KNOWLEDGE_DEFAULTS = {
-  "vnt-materials": {
+  "MATERIAL": {
     name: "Nguyên vật liệu",
-    description: "Bảng lượng riêng và mã vật liệu VNT",
+    description: "Bảng lượng riêng và mã vật liệu VNT từ ERP",
     file: "vnt-materials.txt",
   },
-  "vnt-heat-treat": {
-    name: "Xử lý nhiệt",
-    description: "Bảng mã xử lý nhiệt VNT",
-    file: "vnt-heat-treat.txt",
-  },
-  "vnt-surface": {
+  "SURFACE": {
     name: "Xử lý bề mặt",
-    description: "Bảng mã xử lý bề mặt VNT",
+    description: "Bảng mã xử lý bề mặt VNT từ ERP",
     file: "vnt-surface.txt",
   },
-  "vnt-shapes": {
+  "SHAPE": {
     name: "Phân loại hình dạng",
-    description: "Bảng hình dạng và phương án gia công VNT",
+    description: "Bảng hình dạng và phương án gia công VNT từ ERP",
     file: "vnt-shapes.txt",
   },
-  "vnt-features": {
-    name: "CNC Features Classification",
-    description: "Bảng phân loại đặc điểm gia công CNC (lỗ, vát, rãnh...)",
-    file: "vnt-features.txt",
+  "VNT_KNOWLEDGE": {
+    name: "Kiến thức quy trình",
+    description: "Kiến thức về quy trình công nghệ và nguyên công từ ERP",
+    file: "vnt-knowledge.txt",
+  },
+  "SUPPLIERS": {
+    name: "Nhà cung cấp",
+    description: "Danh sách nhà cung cấp từ ERP",
+    file: "vnt-suppliers.txt",
+  },
+  "CUSTOMERS": {
+    name: "Khách hàng",
+    description: "Danh sách khách hàng từ ERP",
+    file: "vnt-customers.txt",
+  },
+  "EXCHANGE_RATES": {
+    name: "Tỷ giá",
+    description: "Tỷ giá tiền tệ từ ERP",
+    file: "vnt-exchange-rates.txt",
   },
 };
 
@@ -87,12 +97,15 @@ export function render(template, variables) {
 async function enrichVariablesWithERP(variables) {
   const enriched = { ...variables };
 
-  // Map of variable names to knowledge block keys (database keys)
+  // Map of prompt variable names to database knowledge block keys
+  // Database keys use kebab-case (vnt-materials), ERP API uses UPPERCASE
   const erpVars = {
-    MATERIAL: 'vnt-materials',
-    SHAPE: 'vnt-shapes',
-    SURFACE: 'vnt-surface',
-    VNT_KNOWLEDGE: 'vnt-knowledge',
+    MATERIAL: 'vnt-materials',      // Material types: material_type_code, material_type_name, density
+    SHAPE: 'vnt-shapes',            // Shape classifications: shape_name, formula, formula_note
+    SURFACE: 'vnt-surface',         // Surface treatment operations
+    HEAT_TREAT: 'vnt-heat-treat',  // Heat treatment operations
+    VNT_KNOWLEDGE: 'vnt-knowledge', // Technology processes + operations
+    FEATURES: 'vnt-features'        // CNC feature classifications
   };
 
   // Only fetch ERP data if at least one ERP variable is undefined
@@ -100,10 +113,10 @@ async function enrichVariablesWithERP(variables) {
 
   if (needsErp) {
     // Fetch each knowledge block individually from database (with ERP fallback)
-    for (const [varName, dbKey] of Object.entries(erpVars)) {
+    for (const [varName, erpKey] of Object.entries(erpVars)) {
       if (enriched[varName] === undefined) {
         try {
-          const content = await getKnowledgeBlock(dbKey);
+          const content = await getKnowledgeBlock(erpKey);
           if (content && !content.includes('<!-- ERP Error:')) {
             enriched[varName] = content;
           }
@@ -241,7 +254,7 @@ export async function getPrompt(key, variables = {}) {
  *
  * Priority: Database first (has cached ERP data), then ERP API fallback.
  *
- * @param {string} key — e.g. "vnt-knowledge"
+ * @param {string} key — e.g. "MATERIAL", "SHAPE", "SURFACE", "VNT_KNOWLEDGE"
  * @returns {string|null}
  */
 export async function getKnowledgeBlock(key) {
@@ -252,16 +265,10 @@ export async function getKnowledgeBlock(key) {
   }
 
   // Fallback: Try live ERP API only if database is empty
-  const erpKeyMap = {
-    'vnt-materials': 'MATERIAL',
-    'vnt-shapes': 'SHAPE',
-    'vnt-surface': 'SURFACE',
-    'vnt-knowledge': 'VNT_KNOWLEDGE',
-  };
-
-  if (erpKeyMap[key]) {
+  // Map uppercase keys to ERP API keys
+  if (key === 'MATERIAL' || key === 'SHAPE' || key === 'SURFACE' || key === 'VNT_KNOWLEDGE') {
     try {
-      const erpData = await erpKnowledgeBuilder.getKnowledgeBlock(erpKeyMap[key]);
+      const erpData = await erpKnowledgeBuilder.getKnowledgeBlock(key);
       if (erpData && !erpData.includes('<!-- ERP Error:')) {
         return erpData;
       }

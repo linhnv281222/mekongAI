@@ -2,7 +2,7 @@ import { pool } from "../data/jobStore.js";
 
 /**
  * Token usage statistics API
- * GET /api/token-stats?start=YYYY-MM-DD&end=YYYY-MM-DD&model=xiaomi
+ * GET /api/token-stats?start=YYYY-MM-DD&end=YYYY-MM-DD&model=gemini
  */
 
 export async function getTokenStats(req, res) {

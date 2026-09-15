@@ -25,7 +25,7 @@ function loadAiConfig() {
 function geminiModel() {
   const { model } = loadAiConfig();
   if (model && model.trim()) return model.trim();
-  return aiCfg.geminiModel || "gemini-2.0-flash";
+  return aiCfg.geminiModel || "gemini-3.8-flash";
 }
 
 /**

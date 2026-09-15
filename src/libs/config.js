@@ -41,10 +41,8 @@ export const aiCfg = {
   anthropicKey: process.env.ANTHROPIC_API_KEY || "",
   anthropicModel: process.env.ANTHROPIC_MODEL || "claude-sonnet-4-6",
   geminiKey: process.env.GEMINI_API_KEY || "",
-  geminiModel: process.env.GEMINI_MODEL || "gemini-3-flash-preview",
+  geminiModel: process.env.GEMINI_MODEL || "gemini-3.8-flash",
   geminiFlashModel: process.env.GEMINI_FLASH_MODEL || "gemini-2.0-flash",
-  openrouterKey: process.env.OPENROUTER_API_KEY || "",
-  xiaomiModel: process.env.XIAOMI_MODEL || "xiaomi/mimo-v2.5-pro",
 };
 
 // ─── DATABASE CONFIG ────────────────────────────────────────────────────────

@@ -10,15 +10,10 @@ export function getAiProvider() {
 
 /**
  * Phân loại email = rfq / repeat_order / hoi_tham / khieu_nai / spam.
- * Sử dụng provider từ config (gemini / claude / xiaomi).
+ * Sử dụng provider từ config (gemini / claude).
  */
 export async function classifyEmail(emailData) {
   const { provider } = loadAiConfig();
-
-  if (provider === "xiaomi") {
-    const { classifyEmailXiaomi } = await import("./emailClassifierXiaomi.js");
-    return classifyEmailXiaomi(emailData);
-  }
 
   if (provider === "gemini") {
     const { classifyEmailGemini } = await import("./emailClassifierGemini.js");
