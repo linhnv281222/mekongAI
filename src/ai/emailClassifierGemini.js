@@ -3,7 +3,7 @@ import fs from "fs";
 import path from "path";
 import { fileURLToPath } from "url";
 import { aiCfg } from "../libs/config.js";
-import { getPrompt, getKnowledgeBlock } from "../prompts/promptStore.js";
+import { getPrompt } from "../prompts/promptStore.js";
 import { generateContentWithRetry } from "../libs/geminiGenerateRetry.js";
 import { extractJson } from "./jsonExtract.js";
 

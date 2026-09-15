@@ -4,7 +4,7 @@ import path from "path";
 import { fileURLToPath } from "url";
 import { aiCfg } from "../libs/config.js";
 import { generateContentWithRetry } from "../libs/geminiGenerateRetry.js";
-import { getKnowledgeBlock, getPrompt } from "../prompts/promptStore.js";
+import { getPrompt } from "../prompts/promptStore.js";
 import { extractJson } from "./jsonExtract.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));

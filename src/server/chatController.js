@@ -13,7 +13,7 @@ import {
 import { agentCfg, aiCfg } from "../libs/config.js";
 import { GoogleGenAI } from "@google/genai";
 import { generateContentWithRetry } from "../libs/geminiGenerateRetry.js";
-import { getPrompt, getKnowledgeBlock } from "../prompts/promptStore.js";
+import { getPrompt } from "../prompts/promptStore.js";
 import { saveJob } from "../data/jobStore.js";
 import { chatAssistantReply } from "../ai/chatExtract.js";
 import { loadAiConfig } from "../ai/aiConfig.js";

@@ -1,7 +1,7 @@
 import fs from "fs";
 import path from "path";
 import { aiCfg } from "../libs/config.js";
-import { getKnowledgeBlock, getPrompt } from "../prompts/promptStore.js";
+import { getPrompt } from "../prompts/promptStore.js";
 import { extractJson } from "./jsonExtract.js";
 
 /**

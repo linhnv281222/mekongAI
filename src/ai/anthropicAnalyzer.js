@@ -2,7 +2,7 @@ import fs from "fs";
 import path from "path";
 import { fileURLToPath } from "url";
 import { aiCfg } from "../libs/config.js";
-import { getKnowledgeBlock, getPrompt } from "../prompts/promptStore.js";
+import { getPrompt } from "../prompts/promptStore.js";
 import { loadAiConfig } from "./aiConfig.js";
 import { callClaudeWithRetry } from "./claudeRetry.js";
 import { extractJson } from "./jsonExtract.js";

@@ -1,7 +1,7 @@
 import fetch from "node-fetch";
 import { GoogleGenAI } from "@google/genai";
 import { aiCfg } from "../libs/config.js";
-import { getPrompt, getKnowledgeBlock } from "../prompts/promptStore.js";
+import { getPrompt } from "../prompts/promptStore.js";
 import { generateContentWithRetry } from "../libs/geminiGenerateRetry.js";
 import { loadAiConfig } from "./aiConfig.js";
 import { callClaudeWithRetry } from "./claudeRetry.js";

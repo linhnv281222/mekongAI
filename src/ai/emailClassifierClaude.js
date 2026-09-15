@@ -1,5 +1,5 @@
 import { aiCfg } from "../libs/config.js";
-import { getPrompt, getKnowledgeBlock } from "../prompts/promptStore.js";
+import { getPrompt } from "../prompts/promptStore.js";
 import { callClaudeWithRetry } from "./claudeRetry.js";
 import { loadAiConfig } from "./aiConfig.js";
 import { extractJson } from "./jsonExtract.js";
