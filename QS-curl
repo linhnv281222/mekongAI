@@ -1,0 +1,1768 @@
+{
+  "info": {
+    "_postman_id": "5c337ca2-420a-4bec-9058-83d7ed23246e",
+    "name": "QS-curl",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "_exporter_id": "26540132",
+    "_collection_link": "https://go.postman.co/collection/26540132-5c337ca2-420a-4bec-9058-83d7ed23246e?source=collection_link"
+  },
+  "item": [
+    {
+      "name": "QS",
+      "item": [
+        {
+          "name": "Lấy dữ liệu công ty",
+          "protocolProfileBehavior": {
+            "disableBodyPruning": true
+          },
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\r\n       \"id\": null,\r\n       \"index\": null,\r\n       \"quota_code\": null,\r\n       \"is_active\": true,\r\n       \"sign_status\": \"0\",\r\n       \"status\": \"0\",\r\n       \"vat\": true,\r\n       \"type\": \"Gia công\",\r\n       \"quoting_status\": \"Mới tạo\",\r\n       \"format\": \"Kinh tế\",\r\n       \"language\": \"Tiếng Việt\",\r\n       \"lot_number\": 1,\r\n       \"quantity_for_min_price\": 10,\r\n       \"quota_classify\": \"Lặp lại\",\r\n       \"creator\": \"admin@vnt.vn\",\r\n       \"created_date\": \"2026-08-24T08:34:25.497Z\",\r\n       \"request_time\": \"2026-08-24T08:34:25.497Z\",\r\n       \"quote_deadline\": \"2026-08-24T08:34:25.497Z\",\r\n       \"exchange_rate\": 160.21,\r\n       \"quotation_currency\": \"JPY\",\r\n       \"vat_value\": 8,\r\n       \"transport_method\": 368,\r\n       \"has_transport\": true,\r\n       \"surface_treatment\": true,\r\n       \"material\": 5,\r\n       \"discount\": null,\r\n       \"company_code\": 1,\r\n       \"customer_code\": 64,\r\n       \"unit\": \"PCS\",\r\n       \"customer_note\": \"test\",\r\n       \"internal_note\": \"test\",\r\n       \"term\": \"[{\\\"languageId\\\":\\\"vi\\\",\\\"terms\\\":[]},{\\\"languageId\\\":\\\"en\\\",\\\"terms\\\":[]},{\\\"languageId\\\":\\\"jp\\\",\\\"terms\\\":[]}]\",\r\n       \"assignment\": null\r\n}\r\n",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "http://dev.apifcim.facenet.vn/mdm-v2/api/columns/customer",
+              "protocol": "http",
+              "host": [
+                "dev",
+                "apifcim",
+                "facenet",
+                "vn"
+              ],
+              "path": [
+                "mdm-v2",
+                "api",
+                "columns",
+                "customer"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Lấy dữ liệu cấu hình báo giá",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\r\n  \"common\": \"\",\r\n  \"filter\": {\r\n    \"config_code\": {\r\n      \"value\": \"VAT_QUOTATION\",\r\n      \"operator\": \"=\"\r\n    }\r\n  },\r\n  \"pageNumber\": 0,\r\n  \"pageSize\": 0,\r\n  \"searchOptions\": [],\r\n  \"sortOrder\": \"DESC\",\r\n  \"sortProperty\": \"index\"\r\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "http://dev.apifcim.facenet.vn/mdm-v2/api/v2/dynamic-tables/config/search",
+              "protocol": "http",
+              "host": [
+                "dev",
+                "apifcim",
+                "facenet",
+                "vn"
+              ],
+              "path": [
+                "mdm-v2",
+                "api",
+                "v2",
+                "dynamic-tables",
+                "config",
+                "search"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Lấy dữ liệu tỷ giá tiền tệ",
+          "protocolProfileBehavior": {
+            "disableBodyPruning": true
+          },
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\r\n       \"id\": null,\r\n       \"index\": null,\r\n       \"quota_code\": null,\r\n       \"is_active\": true,\r\n       \"sign_status\": \"0\",\r\n       \"status\": \"0\",\r\n       \"vat\": true,\r\n       \"type\": \"Gia công\",\r\n       \"quoting_status\": \"Mới tạo\",\r\n       \"format\": \"Kinh tế\",\r\n       \"language\": \"Tiếng Việt\",\r\n       \"lot_number\": 1,\r\n       \"quantity_for_min_price\": 10,\r\n       \"quota_classify\": \"Lặp lại\",\r\n       \"creator\": \"admin@vnt.vn\",\r\n       \"created_date\": \"2026-08-24T08:34:25.497Z\",\r\n       \"request_time\": \"2026-08-24T08:34:25.497Z\",\r\n       \"quote_deadline\": \"2026-08-24T08:34:25.497Z\",\r\n       \"exchange_rate\": 160.21,\r\n       \"quotation_currency\": \"JPY\",\r\n       \"vat_value\": 8,\r\n       \"transport_method\": 368,\r\n       \"has_transport\": true,\r\n       \"surface_treatment\": true,\r\n       \"material\": 5,\r\n       \"discount\": null,\r\n       \"company_code\": 1,\r\n       \"customer_code\": 64,\r\n       \"unit\": \"PCS\",\r\n       \"customer_note\": \"test\",\r\n       \"internal_note\": \"test\",\r\n       \"term\": \"[{\\\"languageId\\\":\\\"vi\\\",\\\"terms\\\":[]},{\\\"languageId\\\":\\\"en\\\",\\\"terms\\\":[]},{\\\"languageId\\\":\\\"jp\\\",\\\"terms\\\":[]}]\",\r\n       \"assignment\": null\r\n}\r\n",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "http://dev.apifcim.facenet.vn/qs/api/exchange-rate",
+              "protocol": "http",
+              "host": [
+                "dev",
+                "apifcim",
+                "facenet",
+                "vn"
+              ],
+              "path": [
+                "qs",
+                "api",
+                "exchange-rate"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Lấy danh sách phương thức vận chuyển",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\r\n  \"common\": \"\",\r\n  \"filter\": {\r\n    \"operation_group\": \"VC\"\r\n  },\r\n  \"pageNumber\": 0,\r\n  \"pageSize\": 0,\r\n  \"searchOptions\": [],\r\n  \"sortOrder\": \"DESC\",\r\n  \"sortProperty\": \"index\"\r\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "http://dev.apifcim.facenet.vn/mdm-v2/api/dynamic-tables/operation/search",
+              "protocol": "http",
+              "host": [
+                "dev",
+                "apifcim",
+                "facenet",
+                "vn"
+              ],
+              "path": [
+                "mdm-v2",
+                "api",
+                "dynamic-tables",
+                "operation",
+                "search"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Lấy danh sách nguyên vật liệu",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\r\n  \"common\": \"\",\r\n  \"filter\": {\r\n  },\r\n  \"pageNumber\": 0,\r\n  \"pageSize\": 0,\r\n  \"searchOptions\": [],\r\n  \"sortOrder\": \"DESC\",\r\n  \"sortProperty\": \"index\"\r\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "http://dev.apifcim.facenet.vn/mdm-v2/api/dynamic-tables/material_type/search",
+              "protocol": "http",
+              "host": [
+                "dev",
+                "apifcim",
+                "facenet",
+                "vn"
+              ],
+              "path": [
+                "mdm-v2",
+                "api",
+                "dynamic-tables",
+                "material_type",
+                "search"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Lấy danh sách phân loại",
+          "protocolProfileBehavior": {
+            "disableBodyPruning": true
+          },
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "http://dev.apifcim.facenet.vn/mdm-v2/api/params/columns/mdm_quotation_sheet/quota_classify",
+              "protocol": "http",
+              "host": [
+                "dev",
+                "apifcim",
+                "facenet",
+                "vn"
+              ],
+              "path": [
+                "mdm-v2",
+                "api",
+                "params",
+                "columns",
+                "mdm_quotation_sheet",
+                "quota_classify"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Lấy danh sách khách hàng",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\r\n  \"common\": \"\",\r\n  \"filter\": {\r\n  },\r\n  \"pageNumber\": 0,\r\n  \"pageSize\": 0,\r\n  \"searchOptions\": [],\r\n  \"sortOrder\": \"DESC\",\r\n  \"sortProperty\": \"index\"\r\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "http://dev.apifcim.facenet.vn/mdm-v2/api/dynamic-tables/customer/search",
+              "protocol": "http",
+              "host": [
+                "dev",
+                "apifcim",
+                "facenet",
+                "vn"
+              ],
+              "path": [
+                "mdm-v2",
+                "api",
+                "dynamic-tables",
+                "customer",
+                "search"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Lấy kì hạn theo loại ngôn ngữ",
+          "protocolProfileBehavior": {
+            "disableBodyPruning": true
+          },
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "http://dev.apifcim.facenet.vn/qs/api/terms/get-all-by-language-id?languageId=en",
+              "protocol": "http",
+              "host": [
+                "dev",
+                "apifcim",
+                "facenet",
+                "vn"
+              ],
+              "path": [
+                "qs",
+                "api",
+                "terms",
+                "get-all-by-language-id"
+              ],
+              "query": [
+                {
+                  "key": "languageId",
+                  "value": "en"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Lấy danh sách quy trình công nghệ",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\r\n  \"common\": \"\",\r\n  \"filter\": {\r\n  },\r\n  \"pageNumber\": 0,\r\n  \"pageSize\": 0,\r\n  \"searchOptions\": [],\r\n  \"sortOrder\": \"DESC\",\r\n  \"sortProperty\": \"index\"\r\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "http://dev.apifcim.facenet.vn/mdm-v2/api/dynamic-tables/technology_process/search",
+              "protocol": "http",
+              "host": [
+                "dev",
+                "apifcim",
+                "facenet",
+                "vn"
+              ],
+              "path": [
+                "mdm-v2",
+                "api",
+                "dynamic-tables",
+                "technology_process",
+                "search"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Lấy danh sách công đoạn của quy trình công nghệ cụ thể",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\r\n  \"common\": \"\",\r\n  \"filter\": {\r\n  },\r\n  \"pageNumber\": 0,\r\n  \"pageSize\": 0,\r\n  \"searchOptions\": [],\r\n  \"sortOrder\": \"DESC\",\r\n  \"sortProperty\": \"index\"\r\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "http://dev.apifcim.facenet.vn/mdm-v2/api/dynamic-tables/technology_process/search",
+              "protocol": "http",
+              "host": [
+                "dev",
+                "apifcim",
+                "facenet",
+                "vn"
+              ],
+              "path": [
+                "mdm-v2",
+                "api",
+                "dynamic-tables",
+                "technology_process",
+                "search"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Thêm thông tin báo giá báo giá",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\r\n    \"id\": null,\r\n    \"index\": null,\r\n    \"quota_code\": null,\r\n    \"is_active\": true,\r\n    \"sign_status\": \"0\",\r\n    \"status\": \"0\",\r\n    \"vat\": null,\r\n    \"type\": \"Gia công\",\r\n    \"quoting_status\": \"Mới tạo\",\r\n    \"format\": \"Kinh tế\",\r\n    \"language\": \"Tiếng Nhật\",\r\n    \"lot_number\": 1,\r\n    \"quantity_for_min_price\": 10,\r\n    \"quota_classify\": \"Tạo mới\",\r\n    \"creator\": \"admin@vnt.vn\",\r\n    \"created_date\": \"2026-08-25T07:11:19.122Z\",\r\n    \"request_time\": \"2026-08-25T07:11:19.122Z\",\r\n    \"quote_deadline\": \"2026-08-25T07:11:19.122Z\",\r\n    \"exchange_rate\": 160.28,\r\n    \"quotation_currency\": \"JPY\",\r\n    \"vat_value\": 8,\r\n    \"transport_method\": {\r\n        \"index\": 362,\r\n        \"id\": 367,\r\n        \"active\": null,\r\n        \"created_at\": \"2026-06-01T04:12:26.843Z\",\r\n        \"created_by\": \"sales1@vnt.vn\",\r\n        \"updated_at\": \"2026-06-01T04:12:57.673Z\",\r\n        \"updated_by\": \"sales1@vnt.vn\",\r\n        \"operation_group\": \"VC\",\r\n        \"image\": null,\r\n        \"note\": null,\r\n        \"machining_time_u\": \"Phút\",\r\n        \"operation_type\": null,\r\n        \"group_name\": null,\r\n        \"part\": \"GIAO NHẬN\",\r\n        \"price_u\": \"VNĐ\",\r\n        \"shift\": \"Ca HC\",\r\n        \"description\": \"Vận chuyển OCS\",\r\n        \"operation_code\": \"OCS>100 ƯU ĐÃI\",\r\n        \"use_in_planning\": false,\r\n        \"test_time_u\": \"Phút\",\r\n        \"variation\": null,\r\n        \"operation_name\": \"OCS Từ 100 Kg trở lên\",\r\n        \"unit_in_charge\": null,\r\n        \"test_time\": 0,\r\n        \"min_price\": null,\r\n        \"price\": 125000,\r\n        \"employee_group\": null,\r\n        \"count_unit\": \"kg\",\r\n        \"use_in_pricing\": true,\r\n        \"machining_time\": 0,\r\n        \"min_price_u\": null\r\n    },\r\n    \"material\": {\r\n        \"index\": 8,\r\n        \"id\": 8,\r\n        \"active\": null,\r\n        \"created_at\": \"2025-04-28T06:22:52.847Z\",\r\n        \"created_by\": \"sales1@vnt.vn\",\r\n        \"updated_at\": \"2025-04-28T06:22:52.847Z\",\r\n        \"updated_by\": \"sales1@vnt.vn\",\r\n        \"material_type_code\": \"TITAN\",\r\n        \"density\": 4.51,\r\n        \"description\": \"TITAN-Gr2\",\r\n        \"is_xlbm\": false,\r\n        \"material_type_name\": \"TITAN\",\r\n        \"operation_code\": null\r\n    },\r\n    \"company_code\": 1,\r\n    \"customer_code\": 64,\r\n    \"unit\": \"PCS\",\r\n    \"term\": \"[{\\\"languageId\\\":\\\"vi\\\",\\\"terms\\\":[]},{\\\"languageId\\\":\\\"en\\\",\\\"terms\\\":[]},{\\\"languageId\\\":\\\"jp\\\",\\\"terms\\\":[]}]\",\r\n    \"assignment\": null\r\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "http://dev.apifcim.facenet.vn/qs/api/quotation-sheets/create",
+              "protocol": "http",
+              "host": [
+                "dev",
+                "apifcim",
+                "facenet",
+                "vn"
+              ],
+              "path": [
+                "qs",
+                "api",
+                "quotation-sheets",
+                "create"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Import file(F1)",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "files",
+                  "type": "file",
+                  "uuid": "74956408-53b1-41af-9971-b2130a40de1b",
+                  "src": "/E:/01-01432wfs.pdf"
+                }
+              ]
+            },
+            "url": {
+              "raw": "http://dev.apifcim.facenet.vn/qs/api/split-pdf-multiple/cache",
+              "protocol": "http",
+              "host": [
+                "dev",
+                "apifcim",
+                "facenet",
+                "vn"
+              ],
+              "path": [
+                "qs",
+                "api",
+                "split-pdf-multiple",
+                "cache"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Tạo mã hàng(F1)",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "[\r\n    {\r\n        \"id\": 0,\r\n        \"fileNameOld\": \"01-01432wfs_0\",\r\n        \"fileNameNew\": null,\r\n        \"filePath\": null,\r\n        \"totalFiles\": 1\r\n    }\r\n]",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "http://dev.apifcim.facenet.vn/qs/api/quotation-items/insert-pdf/cache?quotaCode=VNTTEST0826009",
+              "protocol": "http",
+              "host": [
+                "dev",
+                "apifcim",
+                "facenet",
+                "vn"
+              ],
+              "path": [
+                "qs",
+                "api",
+                "quotation-items",
+                "insert-pdf",
+                "cache"
+              ],
+              "query": [
+                {
+                  "key": "quotaCode",
+                  "value": "VNTTEST0826009"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Lấy thông tin các mã hàng đã tạo",
+          "protocolProfileBehavior": {
+            "disableBodyPruning": true
+          },
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "http://dev.apifcim.facenet.vn/qs/api/quotation-items/quota-code/AWT0926001",
+              "protocol": "http",
+              "host": [
+                "dev",
+                "apifcim",
+                "facenet",
+                "vn"
+              ],
+              "path": [
+                "qs",
+                "api",
+                "quotation-items",
+                "quota-code",
+                "AWT0926001"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Phân tích kỹ thuật(F1)",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "PUT",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "[ \r\n    {\r\n        \"id\": 134400,\r\n        \"status\": 1\r\n    },\r\n    {\r\n        \"id\": 134401,\r\n        \"status\": 1\r\n    },\r\n    {\r\n        \"id\": 134402,\r\n        \"status\": 1\r\n    }\r\n]\r\n",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "http://dev.apifcim.facenet.vn/qs/api/quotation-sheets/batch/VNTTEST0826009",
+              "protocol": "http",
+              "host": [
+                "dev",
+                "apifcim",
+                "facenet",
+                "vn"
+              ],
+              "path": [
+                "qs",
+                "api",
+                "quotation-sheets",
+                "batch",
+                "VNTTEST0826009"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Cập nhật mã bản vẽ(F1)",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "[\r\n    {\r\n        \"index\": 130049,\r\n        \"id\": 134403,\r\n        \"active\": null,\r\n        \"created_at\": \"2026-08-24T14:49:17.808Z\",\r\n        \"created_by\": \"admin@vnt.vn\",\r\n        \"updated_at\": \"2026-08-24T14:49:17.808Z\",\r\n        \"updated_by\": \"admin@vnt.vn\",\r\n        \"vnt_code\": \"ARF0826001\",\r\n        \"quotation_form\": null,\r\n        \"xlbm\": null,\r\n        \"checked_by\": null,\r\n        \"evidence_image\": null,\r\n        \"jpy_discount\": null,\r\n        \"blueprint_path\": \"vntvn/quotation/blueprint/ARF0826003/01-01432wfs_0.pdf\",\r\n        \"product_quantity_per_bar\": null,\r\n        \"usd_discount\": null,\r\n        \"origin_blueprint_path\": null,\r\n        \"usd_rate\": 25930,\r\n        \"supplier\": null,\r\n        \"quote_evidence\": null,\r\n        \"customer_code\": \"ARF\",\r\n        \"material_unit\": null,\r\n        \"jpy_total_amount\": null,\r\n        \"shipping_price\": null,\r\n        \"checked_at\": null,\r\n        \"price_per_kg\": null,\r\n        \"quotation_exchange_rate\": 1,\r\n        \"product_quantity_of_material\": null,\r\n        \"quotation_currency_rate\": null,\r\n        \"applicable_amount\": null,\r\n        \"vnd_total_amount\": 0,\r\n        \"product_name\": null,\r\n        \"approved_by\": null,\r\n        \"tech_note\": null,\r\n        \"analyzed_by\": null,\r\n        \"status\": 1,\r\n        \"no_quotation\": null,\r\n        \"blueprint_code\": \"01-01432wfs_0\",\r\n        \"note\": null,\r\n        \"quota_code\": \"ARF0826003\",\r\n        \"mass\": null,\r\n        \"usd_total_amount\": null,\r\n        \"jpy_rate\": 160.2100067138672,\r\n        \"manufacturing_price\": null,\r\n        \"cross_section\": null,\r\n        \"percent\": null,\r\n        \"blueprint_unit\": \"PCS\",\r\n        \"approved_at\": null,\r\n        \"analyzed_at\": null,\r\n        \"currency\": \"VND\",\r\n        \"percent_discount\": 0,\r\n        \"calculate_material_code\": null,\r\n        \"material_name\": null,\r\n        \"profit\": 35,\r\n        \"quantity\": 1,\r\n        \"total_price\": null,\r\n        \"xlhrc\": null,\r\n        \"vnd_discount\": null,\r\n        \"price_per_pcs\": null,\r\n        \"internal_code\": \"ARF0826001\",\r\n        \"quotation_vat\": true,\r\n        \"sent_to_manager\": null,\r\n        \"profit_u\": null,\r\n        \"applicable_volume\": null,\r\n        \"final_amount\": null,\r\n        \"evidence_image_2\": null,\r\n        \"vi_total_amount\": null,\r\n        \"is_interest_rate\": null,\r\n        \"material_code\": null,\r\n        \"isDuplicate\": false,\r\n        \"total_weight\": null\r\n    }\r\n]",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "http://dev.apifcim.facenet.vn/qs/api/quotation-items/update-blueprint-code",
+              "protocol": "http",
+              "host": [
+                "dev",
+                "apifcim",
+                "facenet",
+                "vn"
+              ],
+              "path": [
+                "qs",
+                "api",
+                "quotation-items",
+                "update-blueprint-code"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Cập nhật báo giá bản vẽ(F1)",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "[\r\n    {\r\n        \"index\": 130049,\r\n        \"id\": 134403,\r\n        \"active\": null,\r\n        \"created_at\": \"2026-08-24T14:49:17.808Z\",\r\n        \"created_by\": \"admin@vnt.vn\",\r\n        \"updated_at\": \"2026-08-24T14:49:17.808Z\",\r\n        \"updated_by\": \"admin@vnt.vn\",\r\n        \"vnt_code\": \"ARF0826001\",\r\n        \"quotation_form\": null,\r\n        \"xlbm\": null,\r\n        \"checked_by\": null,\r\n        \"evidence_image\": null,\r\n        \"jpy_discount\": null,\r\n        \"blueprint_path\": \"vntvn/quotation/blueprint/ARF0826003/01-01432wfs_0.pdf\",\r\n        \"product_quantity_per_bar\": null,\r\n        \"usd_discount\": null,\r\n        \"origin_blueprint_path\": null,\r\n        \"usd_rate\": 25930,\r\n        \"supplier\": null,\r\n        \"quote_evidence\": null,\r\n        \"customer_code\": \"ARF\",\r\n        \"material_unit\": null,\r\n        \"jpy_total_amount\": null,\r\n        \"shipping_price\": null,\r\n        \"checked_at\": null,\r\n        \"price_per_kg\": null,\r\n        \"quotation_exchange_rate\": 1,\r\n        \"product_quantity_of_material\": null,\r\n        \"quotation_currency_rate\": null,\r\n        \"applicable_amount\": null,\r\n        \"vnd_total_amount\": 0,\r\n        \"product_name\": null,\r\n        \"approved_by\": null,\r\n        \"tech_note\": null,\r\n        \"analyzed_by\": null,\r\n        \"status\": 1,\r\n        \"no_quotation\": null,\r\n        \"blueprint_code\": \"01-01432wfs_0\",\r\n        \"note\": null,\r\n        \"quota_code\": \"ARF0826003\",\r\n        \"mass\": null,\r\n        \"usd_total_amount\": null,\r\n        \"jpy_rate\": 160.2100067138672,\r\n        \"manufacturing_price\": null,\r\n        \"cross_section\": null,\r\n        \"percent\": null,\r\n        \"blueprint_unit\": \"PCS\",\r\n        \"approved_at\": null,\r\n        \"analyzed_at\": null,\r\n        \"currency\": \"VND\",\r\n        \"percent_discount\": 0,\r\n        \"calculate_material_code\": null,\r\n        \"material_name\": null,\r\n        \"profit\": 35,\r\n        \"quantity\": 1,\r\n        \"total_price\": null,\r\n        \"xlhrc\": null,\r\n        \"vnd_discount\": null,\r\n        \"price_per_pcs\": null,\r\n        \"internal_code\": \"ARF0826001\",\r\n        \"quotation_vat\": true,\r\n        \"sent_to_manager\": null,\r\n        \"profit_u\": null,\r\n        \"applicable_volume\": null,\r\n        \"final_amount\": null,\r\n        \"evidence_image_2\": null,\r\n        \"vi_total_amount\": null,\r\n        \"is_interest_rate\": null,\r\n        \"material_code\": null,\r\n        \"isDuplicate\": false,\r\n        \"total_weight\": null\r\n    }\r\n]\r\n",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "http://dev.apifcim.facenet.vn/qs/api/quotation-items/save-quotation-blueprint",
+              "protocol": "http",
+              "host": [
+                "dev",
+                "apifcim",
+                "facenet",
+                "vn"
+              ],
+              "path": [
+                "qs",
+                "api",
+                "quotation-items",
+                "save-quotation-blueprint"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Lấy thông tin chung báo giá",
+          "protocolProfileBehavior": {
+            "disableBodyPruning": true
+          },
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "[\r\n    {\r\n        \"index\": 130049,\r\n        \"id\": 134403,\r\n        \"active\": null,\r\n        \"created_at\": \"2026-08-24T14:49:17.808Z\",\r\n        \"created_by\": \"admin@vnt.vn\",\r\n        \"updated_at\": \"2026-08-24T14:49:17.808Z\",\r\n        \"updated_by\": \"admin@vnt.vn\",\r\n        \"vnt_code\": \"ARF0826001\",\r\n        \"quotation_form\": null,\r\n        \"xlbm\": null,\r\n        \"checked_by\": null,\r\n        \"evidence_image\": null,\r\n        \"jpy_discount\": null,\r\n        \"blueprint_path\": \"vntvn/quotation/blueprint/ARF0826003/01-01432wfs_0.pdf\",\r\n        \"product_quantity_per_bar\": null,\r\n        \"usd_discount\": null,\r\n        \"origin_blueprint_path\": null,\r\n        \"usd_rate\": 25930,\r\n        \"supplier\": null,\r\n        \"quote_evidence\": null,\r\n        \"customer_code\": \"ARF\",\r\n        \"material_unit\": null,\r\n        \"jpy_total_amount\": null,\r\n        \"shipping_price\": null,\r\n        \"checked_at\": null,\r\n        \"price_per_kg\": null,\r\n        \"quotation_exchange_rate\": 1,\r\n        \"product_quantity_of_material\": null,\r\n        \"quotation_currency_rate\": null,\r\n        \"applicable_amount\": null,\r\n        \"vnd_total_amount\": 0,\r\n        \"product_name\": null,\r\n        \"approved_by\": null,\r\n        \"tech_note\": null,\r\n        \"analyzed_by\": null,\r\n        \"status\": 1,\r\n        \"no_quotation\": null,\r\n        \"blueprint_code\": \"01-01432wfs_0\",\r\n        \"note\": null,\r\n        \"quota_code\": \"ARF0826003\",\r\n        \"mass\": null,\r\n        \"usd_total_amount\": null,\r\n        \"jpy_rate\": 160.2100067138672,\r\n        \"manufacturing_price\": null,\r\n        \"cross_section\": null,\r\n        \"percent\": null,\r\n        \"blueprint_unit\": \"PCS\",\r\n        \"approved_at\": null,\r\n        \"analyzed_at\": null,\r\n        \"currency\": \"VND\",\r\n        \"percent_discount\": 0,\r\n        \"calculate_material_code\": null,\r\n        \"material_name\": null,\r\n        \"profit\": 35,\r\n        \"quantity\": 1,\r\n        \"total_price\": null,\r\n        \"xlhrc\": null,\r\n        \"vnd_discount\": null,\r\n        \"price_per_pcs\": null,\r\n        \"internal_code\": \"ARF0826001\",\r\n        \"quotation_vat\": true,\r\n        \"sent_to_manager\": null,\r\n        \"profit_u\": null,\r\n        \"applicable_volume\": null,\r\n        \"final_amount\": null,\r\n        \"evidence_image_2\": null,\r\n        \"vi_total_amount\": null,\r\n        \"is_interest_rate\": null,\r\n        \"material_code\": null,\r\n        \"isDuplicate\": false,\r\n        \"total_weight\": null\r\n    }\r\n]\r\n",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "http://dev.apifcim.facenet.vn/qs/api/quotation-sheets/AWT0926001",
+              "protocol": "http",
+              "host": [
+                "dev",
+                "apifcim",
+                "facenet",
+                "vn"
+              ],
+              "path": [
+                "qs",
+                "api",
+                "quotation-sheets",
+                "AWT0926001"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Lấy thông tin danh sách chất liệu",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\r\n  \"common\": \"\",\r\n  \"filter\": {\r\n  },\r\n  \"pageNumber\": 0,\r\n  \"pageSize\": 0,\r\n  \"searchOptions\": [],\r\n  \"sortOrder\": \"DESC\",\r\n  \"sortProperty\": \"index\"\r\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "http://dev.apifcim.facenet.vn/mdm-v2/api/dynamic-tables/material_type/search",
+              "protocol": "http",
+              "host": [
+                "dev",
+                "apifcim",
+                "facenet",
+                "vn"
+              ],
+              "path": [
+                "mdm-v2",
+                "api",
+                "dynamic-tables",
+                "material_type",
+                "search"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Lấy thông tin danh sách NVl theo chất liệu",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\r\n  \"common\": \"\",\r\n  \"filter\": {\r\n  },\r\n  \"pageNumber\": 0,\r\n  \"pageSize\": 0,\r\n  \"searchOptions\": [],\r\n  \"sortOrder\": \"DESC\",\r\n  \"sortProperty\": \"index\"\r\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "http://dev.apifcim.facenet.vn/mdm-v2/api/dynamic-tables/material_type/search",
+              "protocol": "http",
+              "host": [
+                "dev",
+                "apifcim",
+                "facenet",
+                "vn"
+              ],
+              "path": [
+                "mdm-v2",
+                "api",
+                "dynamic-tables",
+                "material_type",
+                "search"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Lấy thông tin danh sách nhà cung cấp",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\r\n  \"common\": \"\",\r\n  \"filter\": {\r\n  },\r\n  \"pageNumber\": 0,\r\n  \"pageSize\": 0,\r\n  \"searchOptions\": [],\r\n  \"sortOrder\": \"DESC\",\r\n  \"sortProperty\": \"index\"\r\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "http://dev.apifcim.facenet.vn/mdm-v2/api/dynamic-tables/supplier/search",
+              "protocol": "http",
+              "host": [
+                "dev",
+                "apifcim",
+                "facenet",
+                "vn"
+              ],
+              "path": [
+                "mdm-v2",
+                "api",
+                "dynamic-tables",
+                "supplier",
+                "search"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Lấy thông tin danh sách kiểu cách của vật liệu",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\r\n  \"common\": \"\",\r\n  \"filter\": {\r\n  },\r\n  \"pageNumber\": 0,\r\n  \"pageSize\": 0,\r\n  \"searchOptions\": [],\r\n  \"sortOrder\": \"DESC\",\r\n  \"sortProperty\": \"index\"\r\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "http://dev.apifcim.facenet.vn/mdm-v2/api/dynamic-tables/shape/search",
+              "protocol": "http",
+              "host": [
+                "dev",
+                "apifcim",
+                "facenet",
+                "vn"
+              ],
+              "path": [
+                "mdm-v2",
+                "api",
+                "dynamic-tables",
+                "shape",
+                "search"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Phân tích quy trình NVL(F3)",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\r\n    \"material_code\": \"SUS304-CN\",\r\n    \"shape\": \"Hình tấm\",\r\n    \"length\": 50,\r\n    \"machining_machine\": 1,\r\n    \"milling_surface\": 1\r\n}\r\n",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "http://dev.apifcim.facenet.vn/qs/api/quotation-analysis/tech-process",
+              "protocol": "http",
+              "host": [
+                "dev",
+                "apifcim",
+                "facenet",
+                "vn"
+              ],
+              "path": [
+                "qs",
+                "api",
+                "quotation-analysis",
+                "tech-process"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Thêm mới hoặc cập nhật NVL(F3)",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\r\n    \"quotation_material\": {\r\n        \"toDeleteIds\": [],\r\n        \"toUpdateEntities\": [],\r\n        \"toCreateEntities\": [\r\n            {\r\n                \"c_size\": 1,\r\n                \"c_number\": 1,\r\n                \"machining_machine\": 1,\r\n                \"milling_surface\": 1,\r\n                \"material_group\": \"{\\\"index\\\":5,\\\"id\\\":5,\\\"active\\\":null,\\\"created_at\\\":\\\"2024-02-10T02:22:37.304Z\\\",\\\"created_by\\\":\\\"admin@vnt.vn\\\",\\\"updated_at\\\":\\\"2024-04-19T08:25:48.405Z\\\",\\\"updated_by\\\":\\\"admin@vnt.vn\\\",\\\"material_type_code\\\":\\\"SUS\\\",\\\"density\\\":8,\\\"description\\\":null,\\\"is_xlbm\\\":false,\\\"material_type_name\\\":\\\"INOX\\\",\\\"operation_code\\\":null}\",\r\n                \"density\": 8,\r\n                \"material_code\": \"{\\\"index\\\":213,\\\"id\\\":213,\\\"active\\\":null,\\\"created_at\\\":\\\"2025-10-13T09:08:46.143Z\\\",\\\"created_by\\\":\\\"sales3@vnt.vn\\\",\\\"updated_at\\\":\\\"2025-10-13T09:12:35.803Z\\\",\\\"updated_by\\\":\\\"sales3@vnt.vn\\\",\\\"material_type\\\":\\\"INOX\\\",\\\"unit\\\":\\\"KG\\\",\\\"min_price\\\":5000,\\\"price\\\":90000,\\\"price_u\\\":\\\"VNĐ\\\",\\\"description\\\":null,\\\"weight\\\":null,\\\"material_name\\\":\\\"SUS304-CN\\\",\\\"min_price_u\\\":\\\"VNĐ\\\",\\\"material_image\\\":null,\\\"material_code\\\":\\\"SUS304-CN\\\"}\",\r\n                \"material_name\": \"{\\\"index\\\":213,\\\"id\\\":213,\\\"active\\\":null,\\\"created_at\\\":\\\"2025-10-13T09:08:46.143Z\\\",\\\"created_by\\\":\\\"sales3@vnt.vn\\\",\\\"updated_at\\\":\\\"2025-10-13T09:12:35.803Z\\\",\\\"updated_by\\\":\\\"sales3@vnt.vn\\\",\\\"material_type\\\":\\\"INOX\\\",\\\"unit\\\":\\\"KG\\\",\\\"min_price\\\":5000,\\\"price\\\":90000,\\\"price_u\\\":\\\"VNĐ\\\",\\\"description\\\":null,\\\"weight\\\":null,\\\"material_name\\\":\\\"SUS304-CN\\\",\\\"min_price_u\\\":\\\"VNĐ\\\",\\\"material_image\\\":null,\\\"material_code\\\":\\\"SUS304-CN\\\"}\",\r\n                \"material_price\": 90000,\r\n                \"unit_price_min\": 5000,\r\n                \"supplier\": \"{\\\"index\\\":378,\\\"id\\\":378,\\\"active\\\":null,\\\"created_at\\\":\\\"2026-08-03T06:24:32.599Z\\\",\\\"created_by\\\":\\\"ketoan.nb@vnt.vn\\\",\\\"updated_at\\\":\\\"2026-08-03T06:24:32.599Z\\\",\\\"updated_by\\\":\\\"ketoan.nb@vnt.vn\\\",\\\"account_number\\\":null,\\\"bank_branch\\\":null,\\\"note\\\":null,\\\"address_1\\\":\\\"274 Ấp Bình Thạnh, Xã Vàm Cỏ, Tỉnh Tây Ninh\\\",\\\"address_2\\\":\\\"123/66 Phan Văn Hớn, P. Tân Thới Nhất, Q12\\\",\\\"supplier_type\\\":\\\"VĂN PHÒNG PHẨM \\\",\\\"authorized_representative\\\":null,\\\"stamp\\\":null,\\\"representative_phone\\\":null,\\\"authorization_position\\\":null,\\\"authorization_date\\\":null,\\\"tax_number\\\":\\\"1102134558\\\",\\\"delivery_method\\\":null,\\\"bank_name\\\":null,\\\"currency\\\":\\\"VND\\\",\\\"time_for_payment_account\\\":null,\\\"supplier_name\\\":\\\"CÔNG TY TNHH TM DV VĂN PHÒNG PHẨM PHÁT THỊNH\\\",\\\"representative\\\":null,\\\"email\\\":\\\"vanphongpham478@gmail.com\\\",\\\"payment_method\\\":null,\\\"time_for_payment\\\":null,\\\"image\\\":null,\\\"website\\\":null,\\\"authorization_phone\\\":null,\\\"debt_closing_date_month\\\":null,\\\"fax_number\\\":null,\\\"payments_object_type\\\":\\\"Công ty\\\",\\\"phone_number\\\":\\\"0328225198\\\",\\\"position\\\":null,\\\"supplier_code\\\":\\\"THINH\\\"}\",\r\n                \"shape\": \"{\\\"index\\\":1,\\\"id\\\":3,\\\"active\\\":null,\\\"created_at\\\":\\\"2024-03-28T05:01:42.652Z\\\",\\\"created_by\\\":\\\"admin@vnt.vn\\\",\\\"updated_at\\\":\\\"2025-04-25T06:42:46.206Z\\\",\\\"updated_by\\\":\\\"dev.admin@vnt.vn\\\",\\\"formula_note\\\":\\\"1\\\",\\\"shape_name\\\":\\\"Hình tấm\\\",\\\"formula\\\":\\\"(L * W * H * D) / 1,000,000\\\"}\",\r\n                \"formula\": \"(L * W * H * D) / 1,000,000\",\r\n                \"calculate\": 0.6,\r\n                \"total_price\": \"54000.00\",\r\n                \"radius_max\": 0,\r\n                \"product_radius_max\": 0,\r\n                \"radius_min\": 0,\r\n                \"product_radius_min\": 0,\r\n                \"length\": 50,\r\n                \"product_length\": 47,\r\n                \"width\": 30,\r\n                \"product_width\": 27,\r\n                \"height\": 50,\r\n                \"product_height\": 48,\r\n                \"apply\": 0.6,\r\n                \"total_apply\": 54000,\r\n                \"isNew\": true,\r\n                \"internal_code\": \"VNTTEST0826024\",\r\n                \"blueprint_code\": \"test\"\r\n            }\r\n        ]\r\n    },\r\n    \"quotation_blueprint_addition\": {\r\n        \"toDeleteIds\": [],\r\n        \"toUpdateEntities\": [],\r\n        \"toCreateEntities\": [\r\n            {\r\n                \"wc\": false,\r\n                \"gf\": false,\r\n                \"lf\": false,\r\n                \"han\": false,\r\n                \"cayren\": false,\r\n                \"dongpin\": false,\r\n                \"tool\": false,\r\n                \"size_type\": \"Nhỏ 1\",\r\n                \"size_coefficient\": 1,\r\n                \"mass_type\": \"Nhẹ 1\",\r\n                \"mass_coefficient\": 1,\r\n                \"material_type\": \"Inox thường\",\r\n                \"material_coefficient\": 1.4,\r\n                \"welding_type\": \"Không\",\r\n                \"welding_coefficient\": 1,\r\n                \"tolerance_type\": \"Cấp 5\",\r\n                \"tolerance_coefficient\": 1,\r\n                \"shape_type\": \"Rất dễ\",\r\n                \"shape_coefficient\": 1,\r\n                \"length_draw\": 0,\r\n                \"length_input\": 0,\r\n                \"proposed_process\": \"QT611\",\r\n                \"internal_code\": \"VNTTEST0826024\"\r\n            }\r\n        ]\r\n    }\r\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "http://dev.apifcim.facenet.vn/mdm-v2/api/dynamic-tables/multi-batch-v2",
+              "protocol": "http",
+              "host": [
+                "dev",
+                "apifcim",
+                "facenet",
+                "vn"
+              ],
+              "path": [
+                "mdm-v2",
+                "api",
+                "dynamic-tables",
+                "multi-batch-v2"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Cập nhật bản vẽ báo giá(F3)",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "PUT",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\r\n    \"material_code\": \"SUS310S-JP\",\r\n    \"material_name\": null,\r\n    \"price_per_kg\": null,\r\n    \"applicable_amount\": 1000,\r\n    \"applicable_volume\": 0.6,\r\n    \"material_unit\": \"KG\",\r\n    \"note\": null,\r\n    \"product_quantity_of_material\": \"1\",\r\n    \"product_quantity_per_bar\": \"\",\r\n    \"total_price\": 166800\r\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "http://dev.apifcim.facenet.vn/qs/api/quotation-items/update-data/134403?tableName=quotation_blueprint",
+              "protocol": "http",
+              "host": [
+                "dev",
+                "apifcim",
+                "facenet",
+                "vn"
+              ],
+              "path": [
+                "qs",
+                "api",
+                "quotation-items",
+                "update-data",
+                "134403"
+              ],
+              "query": [
+                {
+                  "key": "tableName",
+                  "value": "quotation_blueprint"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Lấy thông tin bản vẽ bổ sung",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\r\n  \"pageNumber\": 0,\r\n  \"pageSize\": 0,\r\n  \"filter\": {\r\n    \"internal_code\": \"AWT0926001\"\r\n  }\r\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "http://dev.apifcim.facenet.vn/mdm-v2/api/dynamic-tables/quotation_blueprint_addition/search-equal",
+              "protocol": "http",
+              "host": [
+                "dev",
+                "apifcim",
+                "facenet",
+                "vn"
+              ],
+              "path": [
+                "mdm-v2",
+                "api",
+                "dynamic-tables",
+                "quotation_blueprint_addition",
+                "search-equal"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Lấy thông tin tính toán giá nguyên vật liệu",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\r\n  \"pageNumber\": 0,\r\n  \"pageSize\": 0,\r\n  \"filter\": {\r\n    \"internal_code\": \"AWT0926001\"\r\n  }\r\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "http://dev.apifcim.facenet.vn/mdm-v2/api/dynamic-tables/quotation_blueprint_addition/search-equal",
+              "protocol": "http",
+              "host": [
+                "dev",
+                "apifcim",
+                "facenet",
+                "vn"
+              ],
+              "path": [
+                "mdm-v2",
+                "api",
+                "dynamic-tables",
+                "quotation_blueprint_addition",
+                "search-equal"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Lấy thông tin mã hàng",
+          "protocolProfileBehavior": {
+            "disableBodyPruning": true
+          },
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "http://dev.apifcim.facenet.vn/qs/api/quotation-items/quota-code/AWT0926001",
+              "protocol": "http",
+              "host": [
+                "dev",
+                "apifcim",
+                "facenet",
+                "vn"
+              ],
+              "path": [
+                "qs",
+                "api",
+                "quotation-items",
+                "quota-code",
+                "AWT0926001"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Tạo mới hoặc cập nhật khối lượng sản phẩm(F4)",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "PUT",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\r\n    \"toDeleteIds\": [],\r\n    \"toUpdateEntities\": [\r\n        {\r\n            \"index\": 619441,\r\n            \"id\": 629722,\r\n            \"active\": null,\r\n            \"created_at\": \"2026-08-24T15:08:14.148Z\",\r\n            \"created_by\": \"admin@vnt.vn\",\r\n            \"updated_at\": \"2026-08-24T15:08:14.148Z\",\r\n            \"updated_by\": \"admin@vnt.vn\",\r\n            \"note\": null,\r\n            \"volume_child\": 0,\r\n            \"shape\": \"Hình tấm\",\r\n            \"internal_code\": \"ARF0826001\",\r\n            \"length\": 0,\r\n            \"width\": 0,\r\n            \"radius_max\": 0,\r\n            \"radius_min\": 0,\r\n            \"quotation_formula_type\": \"Decrease Volume\",\r\n            \"interface\": null,\r\n            \"height\": 0,\r\n            \"isNew\": false,\r\n            \"blueprint_code\": \"01-01432wfs_0\"\r\n        },\r\n        {\r\n            \"index\": 619442,\r\n            \"id\": 629723,\r\n            \"active\": null,\r\n            \"created_at\": \"2026-08-24T15:08:14.148Z\",\r\n            \"created_by\": \"admin@vnt.vn\",\r\n            \"updated_at\": \"2026-08-24T15:08:14.148Z\",\r\n            \"updated_by\": \"admin@vnt.vn\",\r\n            \"note\": null,\r\n            \"volume_child\": 0,\r\n            \"shape\": \"Hình tấm\",\r\n            \"internal_code\": \"ARF0826001\",\r\n            \"length\": 0,\r\n            \"width\": 0,\r\n            \"radius_max\": 0,\r\n            \"radius_min\": 0,\r\n            \"quotation_formula_type\": \"Increase Volume\",\r\n            \"interface\": null,\r\n            \"height\": 0,\r\n            \"isNew\": false,\r\n            \"blueprint_code\": \"01-01432wfs_0\"\r\n        },\r\n        {\r\n            \"index\": 619443,\r\n            \"id\": 629724,\r\n            \"active\": null,\r\n            \"created_at\": \"2026-08-24T15:08:14.148Z\",\r\n            \"created_by\": \"admin@vnt.vn\",\r\n            \"updated_at\": \"2026-08-24T15:08:14.148Z\",\r\n            \"updated_by\": \"admin@vnt.vn\",\r\n            \"note\": null,\r\n            \"volume_child\": 0,\r\n            \"shape\": \"Hình tấm\",\r\n            \"internal_code\": \"ARF0826001\",\r\n            \"length\": 0,\r\n            \"width\": 0,\r\n            \"radius_max\": 0,\r\n            \"radius_min\": 0,\r\n            \"quotation_formula_type\": \"Decrease Interface\",\r\n            \"interface\": null,\r\n            \"height\": 0,\r\n            \"isNew\": false,\r\n            \"blueprint_code\": \"01-01432wfs_0\"\r\n        },\r\n        {\r\n            \"index\": 619444,\r\n            \"id\": 629725,\r\n            \"active\": null,\r\n            \"created_at\": \"2026-08-24T15:08:14.148Z\",\r\n            \"created_by\": \"admin@vnt.vn\",\r\n            \"updated_at\": \"2026-08-24T15:08:14.148Z\",\r\n            \"updated_by\": \"admin@vnt.vn\",\r\n            \"note\": null,\r\n            \"volume_child\": 0,\r\n            \"shape\": \"Hình tấm\",\r\n            \"internal_code\": \"ARF0826001\",\r\n            \"length\": 0,\r\n            \"width\": 0,\r\n            \"radius_max\": 0,\r\n            \"radius_min\": 0,\r\n            \"quotation_formula_type\": \"Increase Interface\",\r\n            \"interface\": null,\r\n            \"height\": 0,\r\n            \"isNew\": false,\r\n            \"blueprint_code\": \"01-01432wfs_0\"\r\n        },\r\n        {\r\n            \"index\": 619445,\r\n            \"id\": 629726,\r\n            \"active\": null,\r\n            \"created_at\": \"2026-08-24T15:08:14.148Z\",\r\n            \"created_by\": \"admin@vnt.vn\",\r\n            \"updated_at\": \"2026-08-25T04:41:59.023Z\",\r\n            \"updated_by\": \"admin@vnt.vn\",\r\n            \"note\": null,\r\n            \"volume_child\": null,\r\n            \"shape\": \"Hình tấm\",\r\n            \"internal_code\": \"ARF0826001\",\r\n            \"length\": 47,\r\n            \"width\": 27,\r\n            \"radius_max\": 0,\r\n            \"radius_min\": 0,\r\n            \"quotation_formula_type\": \"Product Weight\",\r\n            \"interface\": 0.49,\r\n            \"height\": 48,\r\n            \"isNew\": false,\r\n            \"blueprint_code\": \"01-01432wfs_0\"\r\n        },\r\n        {\r\n            \"index\": 619446,\r\n            \"id\": 629727,\r\n            \"active\": null,\r\n            \"created_at\": \"2026-08-24T15:08:14.148Z\",\r\n            \"created_by\": \"admin@vnt.vn\",\r\n            \"updated_at\": \"2026-08-25T04:41:59.004Z\",\r\n            \"updated_by\": \"admin@vnt.vn\",\r\n            \"note\": null,\r\n            \"volume_child\": null,\r\n            \"shape\": \"Hình tấm\",\r\n            \"internal_code\": \"ARF0826001\",\r\n            \"length\": 47,\r\n            \"width\": 27,\r\n            \"radius_max\": 0,\r\n            \"radius_min\": 0,\r\n            \"quotation_formula_type\": \"Cross Section\",\r\n            \"interface\": 0.96,\r\n            \"height\": 48,\r\n            \"isNew\": false,\r\n            \"blueprint_code\": \"01-01432wfs_0\"\r\n        }\r\n    ],\r\n    \"toCreateEntities\": []\r\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "http://dev.apifcim.facenet.vn/mdm-v2/api/dynamic-tables/quotation_volume/batch-v2",
+              "protocol": "http",
+              "host": [
+                "dev",
+                "apifcim",
+                "facenet",
+                "vn"
+              ],
+              "path": [
+                "mdm-v2",
+                "api",
+                "dynamic-tables",
+                "quotation_volume",
+                "batch-v2"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Cập nhật bản vẽ báo giá(F4)",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "PUT",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\r\n    \"mass\": 0.49,\r\n    \"cross_section\": 0.96,\r\n    \"note\": null\r\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "http://dev.apifcim.facenet.vn/qs/api/quotation-items/update-data/134403?tableName=quotation_blueprint",
+              "protocol": "http",
+              "host": [
+                "dev",
+                "apifcim",
+                "facenet",
+                "vn"
+              ],
+              "path": [
+                "qs",
+                "api",
+                "quotation-items",
+                "update-data",
+                "134403"
+              ],
+              "query": [
+                {
+                  "key": "tableName",
+                  "value": "quotation_blueprint"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Cập nhật quy trình công nghệ f4(F4)",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "PUT",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\r\n    \"mass\": 0.49,\r\n    \"cross_section\": 0.96,\r\n    \"note\": null\r\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "http://dev.apifcim.facenet.vn/qs/api/quotation-items/update-data/134403?tableName=quotation_blueprint",
+              "protocol": "http",
+              "host": [
+                "dev",
+                "apifcim",
+                "facenet",
+                "vn"
+              ],
+              "path": [
+                "qs",
+                "api",
+                "quotation-items",
+                "update-data",
+                "134403"
+              ],
+              "query": [
+                {
+                  "key": "tableName",
+                  "value": "quotation_blueprint"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Lấy danh sách quy trình công nghệ(F5)",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\r\n  \"common\": \"\",\r\n  \"filter\": {\r\n  },\r\n  \"pageNumber\": 0,\r\n  \"pageSize\": 0,\r\n  \"searchOptions\": [],\r\n  \"sortOrder\": \"DESC\",\r\n  \"sortProperty\": \"index\"\r\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "http://dev.apifcim.facenet.vn/mdm-v2/api/dynamic-tables/technology_process/search",
+              "protocol": "http",
+              "host": [
+                "dev",
+                "apifcim",
+                "facenet",
+                "vn"
+              ],
+              "path": [
+                "mdm-v2",
+                "api",
+                "dynamic-tables",
+                "technology_process",
+                "search"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Lấy danh sách công đoạn của quy trình công nghệ",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "\r\n{\"technology_process_code\": \"QT1320\"}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "http://dev.apifcim.facenet.vn/qs/api/quotation-sheets/get-data-by-dynamic-table?tableName=technology_process_operation",
+              "protocol": "http",
+              "host": [
+                "dev",
+                "apifcim",
+                "facenet",
+                "vn"
+              ],
+              "path": [
+                "qs",
+                "api",
+                "quotation-sheets",
+                "get-data-by-dynamic-table"
+              ],
+              "query": [
+                {
+                  "key": "tableName",
+                  "value": "technology_process_operation"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Lưu quy trình công nghệ(F5)",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "[\r\n    {\r\n        \"index\": 2070713,\r\n        \"id\": 2365932,\r\n        \"active\": null,\r\n        \"created_at\": \"2026-08-24T15:17:31.822Z\",\r\n        \"created_by\": \"admin@vnt.vn\",\r\n        \"updated_at\": \"2026-08-24T15:17:31.822Z\",\r\n        \"updated_by\": \"admin@vnt.vn\",\r\n        \"operation_order\": 1,\r\n        \"blueprint_code\": \"01-01432wfs_0\",\r\n        \"note\": null,\r\n        \"operation_total_price\": 0,\r\n        \"operation_value\": null,\r\n        \"operation_code\": \"MAL\",\r\n        \"operation_unit\": \"Phút\",\r\n        \"operation_price_min\": null,\r\n        \"operation_name\": \"Nguyên liệu\",\r\n        \"qc\": null,\r\n        \"operation_price\": null,\r\n        \"min_price\": null,\r\n        \"internal_code\": \"ARF0826001\",\r\n        \"xln\": null,\r\n        \"machining_time\": 6,\r\n        \"operation_unit_price\": 0,\r\n        \"isNew\": false,\r\n        \"operation_group\": \"GC\"\r\n    },\r\n    {\r\n        \"index\": 2070714,\r\n        \"id\": 2365933,\r\n        \"active\": null,\r\n        \"created_at\": \"2026-08-24T15:17:31.822Z\",\r\n        \"created_by\": \"admin@vnt.vn\",\r\n        \"updated_at\": \"2026-08-24T15:17:31.822Z\",\r\n        \"updated_by\": \"admin@vnt.vn\",\r\n        \"operation_order\": 2,\r\n        \"blueprint_code\": \"01-01432wfs_0\",\r\n        \"note\": null,\r\n        \"operation_total_price\": 35000,\r\n        \"operation_value\": null,\r\n        \"operation_code\": \"MI6\",\r\n        \"operation_unit\": \"Phút\",\r\n        \"operation_price_min\": null,\r\n        \"operation_name\": \"Phay cơ 6 mặt\",\r\n        \"qc\": null,\r\n        \"operation_price\": null,\r\n        \"min_price\": null,\r\n        \"internal_code\": \"ARF0826001\",\r\n        \"xln\": null,\r\n        \"machining_time\": 20,\r\n        \"operation_unit_price\": 1750,\r\n        \"isNew\": false,\r\n        \"operation_group\": \"GC\"\r\n    },\r\n    {\r\n        \"index\": 2070715,\r\n        \"id\": 2365934,\r\n        \"active\": null,\r\n        \"created_at\": \"2026-08-24T15:17:31.822Z\",\r\n        \"created_by\": \"admin@vnt.vn\",\r\n        \"updated_at\": \"2026-08-24T15:17:31.822Z\",\r\n        \"updated_by\": \"admin@vnt.vn\",\r\n        \"operation_order\": 3,\r\n        \"blueprint_code\": \"01-01432wfs_0\",\r\n        \"note\": null,\r\n        \"operation_total_price\": 56000,\r\n        \"operation_value\": null,\r\n        \"operation_code\": \"MC11\",\r\n        \"operation_unit\": \"Phút\",\r\n        \"operation_price_min\": null,\r\n        \"operation_name\": \"Phay CNC1 mặt 1\",\r\n        \"qc\": null,\r\n        \"operation_price\": null,\r\n        \"min_price\": null,\r\n        \"internal_code\": \"ARF0826001\",\r\n        \"xln\": null,\r\n        \"machining_time\": 15,\r\n        \"operation_unit_price\": 3700,\r\n        \"isNew\": false,\r\n        \"operation_group\": \"GC\"\r\n    },\r\n    {\r\n        \"index\": 2070716,\r\n        \"id\": 2365935,\r\n        \"active\": null,\r\n        \"created_at\": \"2026-08-24T15:17:31.822Z\",\r\n        \"created_by\": \"admin@vnt.vn\",\r\n        \"updated_at\": \"2026-08-24T15:17:31.822Z\",\r\n        \"updated_by\": \"admin@vnt.vn\",\r\n        \"operation_order\": 4,\r\n        \"blueprint_code\": \"01-01432wfs_0\",\r\n        \"note\": null,\r\n        \"operation_total_price\": 33000,\r\n        \"operation_value\": null,\r\n        \"operation_code\": \"XLN\",\r\n        \"operation_unit\": \"Phút\",\r\n        \"operation_price_min\": null,\r\n        \"operation_name\": \"Xử lý nguội\",\r\n        \"qc\": null,\r\n        \"operation_price\": null,\r\n        \"min_price\": null,\r\n        \"internal_code\": \"ARF0826001\",\r\n        \"xln\": null,\r\n        \"machining_time\": 15,\r\n        \"operation_unit_price\": 2200,\r\n        \"isNew\": false,\r\n        \"operation_group\": \"GC\"\r\n    },\r\n    {\r\n        \"index\": 2070717,\r\n        \"id\": 2365936,\r\n        \"active\": null,\r\n        \"created_at\": \"2026-08-24T15:17:31.822Z\",\r\n        \"created_by\": \"admin@vnt.vn\",\r\n        \"updated_at\": \"2026-08-24T15:17:31.822Z\",\r\n        \"updated_by\": \"admin@vnt.vn\",\r\n        \"operation_order\": 5,\r\n        \"blueprint_code\": \"01-01432wfs_0\",\r\n        \"note\": null,\r\n        \"operation_total_price\": 33000,\r\n        \"operation_value\": null,\r\n        \"operation_code\": \"QC\",\r\n        \"operation_unit\": \"Phút\",\r\n        \"operation_price_min\": null,\r\n        \"operation_name\": \"Kiểm tra\",\r\n        \"qc\": null,\r\n        \"operation_price\": null,\r\n        \"min_price\": null,\r\n        \"internal_code\": \"ARF0826001\",\r\n        \"xln\": null,\r\n        \"machining_time\": 15,\r\n        \"operation_unit_price\": 2200,\r\n        \"isNew\": false,\r\n        \"operation_group\": \"QC\"\r\n    },\r\n    {\r\n        \"index\": 2070718,\r\n        \"id\": 2365937,\r\n        \"active\": null,\r\n        \"created_at\": \"2026-08-24T15:17:31.822Z\",\r\n        \"created_by\": \"admin@vnt.vn\",\r\n        \"updated_at\": \"2026-08-24T15:17:31.822Z\",\r\n        \"updated_by\": \"admin@vnt.vn\",\r\n        \"operation_order\": 6,\r\n        \"blueprint_code\": \"01-01432wfs_0\",\r\n        \"note\": null,\r\n        \"operation_total_price\": 8800,\r\n        \"operation_value\": null,\r\n        \"operation_code\": \"DGTP\",\r\n        \"operation_unit\": null,\r\n        \"operation_price_min\": null,\r\n        \"operation_name\": \"Đóng gói TP\",\r\n        \"qc\": null,\r\n        \"operation_price\": null,\r\n        \"min_price\": null,\r\n        \"internal_code\": \"ARF0826001\",\r\n        \"xln\": null,\r\n        \"machining_time\": 4,\r\n        \"operation_unit_price\": 2200,\r\n        \"isNew\": false,\r\n        \"operation_group\": \"DG\"\r\n    }\r\n]",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "http://dev.apifcim.facenet.vn/mdm-v2/api/dynamic-tables/technology_process_blueprint/replace-batch?columnName=internal_code&columnValue=ARF0826001",
+              "protocol": "http",
+              "host": [
+                "dev",
+                "apifcim",
+                "facenet",
+                "vn"
+              ],
+              "path": [
+                "mdm-v2",
+                "api",
+                "dynamic-tables",
+                "technology_process_blueprint",
+                "replace-batch"
+              ],
+              "query": [
+                {
+                  "key": "columnName",
+                  "value": "internal_code"
+                },
+                {
+                  "key": "columnValue",
+                  "value": "ARF0826001"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Cập nhật thông tin báo giá bổ sung(F5)",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\r\n    \"quotation_blueprint_addition\": [\r\n        {\r\n            \"index\": 98515,\r\n            \"id\": 84288,\r\n            \"active\": null,\r\n            \"created_at\": \"2026-08-24T09:51:06.497Z\",\r\n            \"created_by\": \"admin@vnt.vn\",\r\n            \"updated_at\": \"2026-08-24T10:33:55.719Z\",\r\n            \"updated_by\": \"admin@vnt.vn\",\r\n            \"dongpin\": false,\r\n            \"wc\": false,\r\n            \"proposed_process\": \"QT111\",\r\n            \"material_coefficient\": 1.4,\r\n            \"tolerance_coefficient\": 1,\r\n            \"material_type\": \"Inox thường\",\r\n            \"han\": false,\r\n            \"size_coefficient\": 1,\r\n            \"length_draw\": 0,\r\n            \"json\": null,\r\n            \"length_input\": 0,\r\n            \"mass_coefficient\": 1,\r\n            \"locked\": true,\r\n            \"tolerance_type\": \"Cấp 5\",\r\n            \"gf\": false,\r\n            \"lenght_input\": null,\r\n            \"size_type\": \"Nhỏ 1\",\r\n            \"caytren\": null,\r\n            \"tool\": false,\r\n            \"welding_coefficient\": 1,\r\n            \"shape_coefficient\": 1,\r\n            \"mass_type\": \"Nhẹ 1\",\r\n            \"internal_code\": \"VNTTEST0826024\",\r\n            \"shape_type\": \"Rất dễ\",\r\n            \"lf\": false,\r\n            \"lenght_draw\": null,\r\n            \"welding_type\": \"Không\"\r\n        }\r\n    ]\r\n}\r\n",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "http://dev.apifcim.facenet.vn/mdm-v2/api/dynamic-tables/multi-batch",
+              "protocol": "http",
+              "host": [
+                "dev",
+                "apifcim",
+                "facenet",
+                "vn"
+              ],
+              "path": [
+                "mdm-v2",
+                "api",
+                "dynamic-tables",
+                "multi-batch"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Cập nhật thông tin báo giá(F5)",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "PUT",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\r\n    \"manufacturing_price\": 261200,\r\n    \"xlbm\": 0,\r\n    \"xlhrc\": 0,\r\n    \"shipping_price\": 0,\r\n    \"note\": null,\r\n    \"tech_note\": \"\",\r\n    \"evidence_image\": \"\",\r\n    \"evidence_image_2\": \"\",\r\n    \"total_price\": 262200\r\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "http://dev.apifcim.facenet.vn/qs/api/quotation-items/update-data/134403?tableName=quotation_blueprint",
+              "protocol": "http",
+              "host": [
+                "dev",
+                "apifcim",
+                "facenet",
+                "vn"
+              ],
+              "path": [
+                "qs",
+                "api",
+                "quotation-items",
+                "update-data",
+                "134403"
+              ],
+              "query": [
+                {
+                  "key": "tableName",
+                  "value": "quotation_blueprint"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Cập nhật thông tin quy trình công nghệ báo giá",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "PUT",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "[\r\n    {\r\n    \"index\": 780,\r\n    \"id\": 1424,\r\n    \"active\": null,\r\n    \"created_at\": \"2026-04-07T04:47:04.668Z\",\r\n    \"created_by\": \"admin@vnt.vn\",\r\n    \"updated_at\": \"2026-04-07T04:49:51.032Z\",\r\n    \"updated_by\": \"admin@vnt.vn\",\r\n    \"operation_name\": \"Xử lý nguội\",\r\n    \"operation_order\": 6,\r\n    \"operation_group\": \"GC\",\r\n    \"min_price\": null,\r\n    \"technology_process_code\": \"QT544\",\r\n    \"description\": \"Không ba via, cạnh sắc\",\r\n    \"count_unit\": \"Phút\",\r\n    \"operation_code\": \"XLN\",\r\n    \"machining_time\": 0,\r\n    \"is_opensource\": null,\r\n    \"operation_unit_price\": 2200,\r\n    \"variation\": null,\r\n    \"isNew\": true,\r\n    \"operation_unit\": \"Phút\",\r\n    \"operation_total_price\": 0,\r\n    \"internal_code\": \"VNTTEST0926001\",\r\n    \"blueprint_code\": \"01-01432wfs_0\"\r\n},\r\n{\r\n    \"index\": 781,\r\n    \"id\": 1425,\r\n    \"active\": null,\r\n    \"created_at\": \"2026-04-07T04:47:04.668Z\",\r\n    \"created_by\": \"admin@vnt.vn\",\r\n    \"updated_at\": \"2026-04-07T04:49:51.032Z\",\r\n    \"updated_by\": \"admin@vnt.vn\",\r\n    \"operation_name\": \"Kiểm tra\",\r\n    \"operation_order\": 7,\r\n    \"operation_group\": \"QC\",\r\n    \"min_price\": null,\r\n    \"technology_process_code\": \"QT544\",\r\n    \"description\": \"Kiểm tra 100% toàn bộ các kích thước, ngoại quang\",\r\n    \"count_unit\": \"Phút\",\r\n    \"operation_code\": \"QC\",\r\n    \"machining_time\": 0,\r\n    \"is_opensource\": null,\r\n    \"operation_unit_price\": 2200,\r\n    \"variation\": null,\r\n    \"isNew\": true,\r\n    \"operation_unit\": \"Phút\",\r\n    \"operation_total_price\": 0,\r\n    \"internal_code\": \"VNTTEST0926001\",\r\n    \"blueprint_code\": \"01-01432wfs_0\"\r\n},\r\n{\r\n    \"index\": 782,\r\n    \"id\": 1426,\r\n    \"active\": null,\r\n    \"created_at\": \"2026-04-07T04:47:04.668Z\",\r\n    \"created_by\": \"admin@vnt.vn\",\r\n    \"updated_at\": \"2026-04-07T04:49:51.032Z\",\r\n    \"updated_by\": \"admin@vnt.vn\",\r\n    \"operation_name\": \"Đóng gói TP\",\r\n    \"operation_order\": 8,\r\n    \"operation_group\": \"DG\",\r\n    \"min_price\": null,\r\n    \"technology_process_code\": \"QT544\",\r\n    \"description\": \"Đóng gói thành phẩm\",\r\n    \"count_unit\": \"PCS\",\r\n    \"operation_code\": \"DGTP\",\r\n    \"machining_time\": 0,\r\n    \"is_opensource\": null,\r\n    \"operation_unit_price\": 2200,\r\n    \"variation\": null,\r\n    \"isNew\": true,\r\n    \"operation_total_price\": 0,\r\n    \"internal_code\": \"VNTTEST0926001\",\r\n    \"blueprint_code\": \"01-01432wfs_0\"\r\n}\r\n]",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "http://dev.apifcim.facenet.vn/qs/api/quotation-items/update-quotation-items-from-technology?internalCode=VNTTEST0926001",
+              "protocol": "http",
+              "host": [
+                "dev",
+                "apifcim",
+                "facenet",
+                "vn"
+              ],
+              "path": [
+                "qs",
+                "api",
+                "quotation-items",
+                "update-quotation-items-from-technology"
+              ],
+              "query": [
+                {
+                  "key": "internalCode",
+                  "value": "VNTTEST0926001"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "keycloak token vnt Copy 3",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const jsonData = pm.response.json();\r",
+                  "const token = jsonData.access_token;\r",
+                  "pm.globals.set(\"token\", token);"
+                ],
+                "type": "text/javascript",
+                "packages": {},
+                "requests": {}
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "urlencoded",
+              "urlencoded": [
+                {
+                  "key": "username",
+                  "value": "admin@vnt.vn",
+                  "type": "text"
+                },
+                {
+                  "key": "password",
+                  "value": "Facenet@123",
+                  "type": "text"
+                },
+                {
+                  "key": "grant_type",
+                  "value": "password",
+                  "type": "text"
+                },
+                {
+                  "key": "client_id",
+                  "value": "fcim_cloud",
+                  "type": "text"
+                }
+              ]
+            },
+            "url": {
+              "raw": "https://sso.xfactory.vn/auth/realms/fcim_cloud/protocol/openid-connect/token",
+              "protocol": "https",
+              "host": [
+                "sso",
+                "xfactory",
+                "vn"
+              ],
+              "path": [
+                "auth",
+                "realms",
+                "fcim_cloud",
+                "protocol",
+                "openid-connect",
+                "token"
+              ]
+            }
+          },
+          "response": []
+        }
+      ]
+    }
+  ]
+}
