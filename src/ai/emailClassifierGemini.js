@@ -36,24 +36,18 @@ function geminiModel() {
  * @returns {object} { loai, ngon_ngu, ly_do, han_giao_hang, hinh_thuc_giao, ..., _ai_request_payload }
  */
 export async function classifyEmailGemini(emailData) {
-  const [promptText, marketData] = await Promise.all([
-    getPrompt("email-classify", {
-      emailFrom: emailData.from,
-      emailSubject: emailData.subject,
-      emailAttachments:
-        emailData.attachments.map((a) => a.name).join(", ") || "none",
-      // TRUNCATE: already 500 in prompt, further limit to 500 for consistency
-      // Classification needs subject + keyword signals, not full body
-      emailBody: emailData.body.slice(0, 500),
-    }),
-    getKnowledgeBlock("vnt-markets"),
-  ]);
+  const promptText = await getPrompt("email-classify", {
+    emailFrom: emailData.from,
+    emailSubject: emailData.subject,
+    emailAttachments:
+      emailData.attachments.map((a) => a.name).join(", ") || "none",
+    // TRUNCATE: already 500 in prompt, further limit to 500 for consistency
+    // Classification needs subject + keyword signals, not full body
+    emailBody: emailData.body.slice(0, 500),
+  });
 
-  // Inject MARKET variable — replace {{MARKET}} placeholder in rendered prompt
-  const finalPrompt = (promptText || "").replace(
-    "{{MARKET}}",
-    marketData || "[BẢNG THỊ TRƯỜNG KHÔNG CÓ]"
-  );
+  // Note: {{MARKET}} auto-injected via enrichVariablesWithERP() if needed
+  const finalPrompt = (promptText || "").trim();
 
   const modelName = geminiModel();
 

@@ -23,24 +23,18 @@ function classifyModel() {
 export async function classifyEmailClaude(emailData) {
   const CLASSIFY_MODEL = classifyModel();
 
-  const [promptText, marketData] = await Promise.all([
-    getPrompt("email-classify", {
-      emailFrom: emailData.from,
-      emailSubject: emailData.subject,
-      emailAttachments:
-        emailData.attachments.map((a) => a.name).join(", ") || "none",
-      // TRUNCATE: 5000 → 1000 chars. Most classification decisions
-      // are made from subject + first 1K chars of body.
-      emailBody: emailData.body.slice(0, 1000),
-    }),
-    getKnowledgeBlock("vnt-markets"),
-  ]);
+  const promptText = await getPrompt("email-classify", {
+    emailFrom: emailData.from,
+    emailSubject: emailData.subject,
+    emailAttachments:
+      emailData.attachments.map((a) => a.name).join(", ") || "none",
+    // TRUNCATE: 5000 → 1000 chars. Most classification decisions
+    // are made from subject + first 1K chars of body.
+    emailBody: emailData.body.slice(0, 1000),
+  });
 
-  // Inject MARKET variable — replace {{MARKET}} placeholder in rendered prompt
-  const finalPrompt = (promptText || "").replace(
-    "{{MARKET}}",
-    marketData || "[BẢNG THỊ TRƯỜNG KHÔNG CÓ]"
-  );
+  // Note: {{MARKET}} auto-injected via enrichVariablesWithERP() if needed
+  const finalPrompt = (promptText || "").trim();
 
   const requestPayload = {
     model: CLASSIFY_MODEL,

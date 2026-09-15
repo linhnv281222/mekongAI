@@ -33,18 +33,16 @@ export async function extractChatInfo(message) {
 }
 
 async function extractChatInfoGemini(message) {
-  const [promptText, marketData] = await Promise.all([
-    getPrompt("chat-classify", {
-      chatMessage: message || "",
-    }),
-    getKnowledgeBlock("vnt-markets"),
-  ]);
+  const promptText = await getPrompt("chat-classify", {
+    chatMessage: message || "",
+  });
 
+  // Note: {{MARKET}} is now auto-injected via enrichVariablesWithERP if needed
+  // Legacy {{MARKET_KB}} replaced with {{MARKET}} for consistency
   let finalPrompt = (promptText || "").replace(
     "{{MARKET_KB}}",
-    marketData || "[BẢNG THỊ TRƯỜNG KHÔNG CÓ]"
-  );
-  finalPrompt = finalPrompt.trim();
+    "{{MARKET}}"
+  ).trim();
 
   const response = await generateContentWithRetry(
     geminiAi,
@@ -64,23 +62,13 @@ async function extractChatInfoGemini(message) {
 }
 
 async function extractChatInfoClaude(message) {
-  const [promptText, marketData] = await Promise.all([
-    getPrompt("chat-classify", {
-      chatMessage: message || "",
-    }),
-    getKnowledgeBlock("vnt-markets"),
-  ]);
+  const promptText = await getPrompt("chat-classify", {
+    chatMessage: message || "",
+  });
 
-  // Strip unused knowledge placeholders — chat-classify only needs MARKET
-  let finalPrompt = (promptText || "").replace(
-    "{{MARKET}}",
-    marketData || "[BẢNG THỊ TRƯỜNG KHÔNG CÓ]"
-  );
-  finalPrompt = finalPrompt
-    .replace(/\{\{MATERIAL\}\}/g, "")
-    .replace(/\{\{HEAT_TREAT\}\}/g, "")
-    .replace(/\{\{SURFACE\}\}/g, "")
-    .trim();
+  // Note: ERP data auto-injected via enrichVariablesWithERP()
+  // No need to manually strip unused placeholders
+  const finalPrompt = (promptText || "").trim();
 
   const res = await callClaudeWithRetry({
     headers: {
@@ -123,22 +111,12 @@ export async function extractChatInfoWithPayload(message) {
 }
 
 async function extractChatInfoWithPayloadGemini(message) {
-  const [promptText, marketData] = await Promise.all([
-    getPrompt("chat-classify", {
-      chatMessage: message || "",
-    }),
-    getKnowledgeBlock("vnt-markets"),
-  ]);
+  const promptText = await getPrompt("chat-classify", {
+    chatMessage: message || "",
+  });
 
-  let finalPrompt = (promptText || "").replace(
-    "{{MARKET}}",
-    marketData || "[BẢNG THỊ TRƯỜNG KHÔNG CÓ]"
-  );
-  finalPrompt = finalPrompt
-    .replace(/\{\{MATERIAL\}\}/g, "")
-    .replace(/\{\{HEAT_TREAT\}\}/g, "")
-    .replace(/\{\{SURFACE\}\}/g, "")
-    .trim();
+  // Note: ERP data auto-injected via enrichVariablesWithERP()
+  const finalPrompt = (promptText || "").trim();
 
   const requestPayload = {
     model: chatModel(),
@@ -162,22 +140,12 @@ async function extractChatInfoWithPayloadGemini(message) {
 }
 
 async function extractChatInfoWithPayloadClaude(message) {
-  const [promptText, marketData] = await Promise.all([
-    getPrompt("chat-classify", {
-      chatMessage: message || "",
-    }),
-    getKnowledgeBlock("vnt-markets"),
-  ]);
+  const promptText = await getPrompt("chat-classify", {
+    chatMessage: message || "",
+  });
 
-  let finalPrompt = (promptText || "").replace(
-    "{{MARKET}}",
-    marketData || "[BẢNG THỊ TRƯỜNG KHÔNG CÓ]"
-  );
-  finalPrompt = finalPrompt
-    .replace(/\{\{MATERIAL\}\}/g, "")
-    .replace(/\{\{HEAT_TREAT\}\}/g, "")
-    .replace(/\{\{SURFACE\}\}/g, "")
-    .trim();
+  // Note: ERP data auto-injected via enrichVariablesWithERP()
+  const finalPrompt = (promptText || "").trim();
 
   const requestPayload = {
     model: claudeModel(),
