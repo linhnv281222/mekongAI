@@ -43,10 +43,14 @@ export const DEFAULT_COL_WIDTHS: Record<string, number> = {
   hinh_dang: 70,
   xlbm: 80,
   hrc: 70,
-  dung_sai: 55,
   vat_lieu: 75,
   kich_thuoc: 30,
+  dung_sai_chung: 90,
+  so_be_mat_cnc: 50,
+  dung_sai_chat_nhat: 90,
+  co_gdt: 50,
   ma_quy_trinh: 65,
+  ly_giai_qt: 200,
   ghi_chu: 105,
 };
 

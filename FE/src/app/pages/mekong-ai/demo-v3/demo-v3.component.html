@@ -713,13 +713,49 @@
                           Ghi chú
                         </th>
                         <th
-                          [style.width.px]="getColWidth('dung_sai')"
+                          [style.width.px]="getColWidth('dung_sai_chung')"
                           style="font-size: 12.8px"
                           pResizableColumn
-                          title="Dung sai"
-                          data-col-key="dung_sai"
+                          title="Dung sai chung"
+                          data-col-key="dung_sai_chung"
                         >
-                          Dung sai
+                          DS chung
+                        </th>
+                        <th
+                          [style.width.px]="getColWidth('so_be_mat_cnc')"
+                          style="font-size: 12.8px"
+                          pResizableColumn
+                          title="Số bề mặt CNC"
+                          data-col-key="so_be_mat_cnc"
+                        >
+                          Số BM CNC
+                        </th>
+                        <th
+                          [style.width.px]="getColWidth('dung_sai_chat_nhat')"
+                          style="font-size: 12.8px"
+                          pResizableColumn
+                          title="Dung sai chặt nhất"
+                          data-col-key="dung_sai_chat_nhat"
+                        >
+                          DS chặt nhất
+                        </th>
+                        <th
+                          [style.width.px]="getColWidth('co_gdt')"
+                          style="font-size: 12.8px"
+                          pResizableColumn
+                          title="Có GD&T"
+                          data-col-key="co_gdt"
+                        >
+                          GD&T
+                        </th>
+                        <th
+                          [style.width.px]="getColWidth('ly_giai_qt')"
+                          style="font-size: 12.8px"
+                          pResizableColumn
+                          title="Lý giải quy trình"
+                          data-col-key="ly_giai_qt"
+                        >
+                          Lý giải QT
                         </th>
                       </tr>
                     </ng-template>
@@ -850,16 +886,44 @@
                             "
                           />
                         </td>
-                        <td pTooltip="{{ drawingLine.dung_sai }}" tooltipPosition="top">
+                        <td pTooltip="{{ drawingLine.dung_sai_chung }}" tooltipPosition="top">
+                          <input
+                            type="text"
+                            class="bv-input bv-input--mono"
+                            [value]="drawingLine.dung_sai_chung"
+                            placeholder="—"
+                            (change)="
+                              onDrawingFieldChange(rowIndex, 'dung_sai_chung', $event)
+                            "
+                          />
+                        </td>
+                        <td class="cell-num" pTooltip="{{ drawingLine.so_be_mat_cnc }}" tooltipPosition="top">
+                          <p-inputNumber
+                            [inputId]="'sbm_' + rowIndex"
+                            [(ngModel)]="drawingLine.so_be_mat_cnc"
+                            [min]="0"
+                            [showButtons]="false"
+                            inputStyleClass="bv-input bv-input--num"
+                          ></p-inputNumber>
+                        </td>
+                        <td pTooltip="{{ drawingLine.dung_sai_chat_nhat }}" tooltipPosition="top">
                           <input
                             type="text"
                             class="bv-input bv-input--mono bv-input--amber"
-                            [value]="drawingLine.dung_sai"
+                            [value]="drawingLine.dung_sai_chat_nhat"
                             placeholder="—"
                             (change)="
-                              onDrawingFieldChange(rowIndex, 'dung_sai', $event)
+                              onDrawingFieldChange(rowIndex, 'dung_sai_chat_nhat', $event)
                             "
                           />
+                        </td>
+                        <td pTooltip="{{ drawingLine.co_gdt ? 'Có' : 'Không' }}" tooltipPosition="top">
+                          <span class="bv-badge" [class.bv-badge--green]="drawingLine.co_gdt">
+                            {{ drawingLine.co_gdt ? '✓' : '—' }}
+                          </span>
+                        </td>
+                        <td class="cell-ly-giai" pTooltip="{{ drawingLine.ly_giai_qt }}" tooltipPosition="top">
+                          {{ drawingLine.ly_giai_qt || "—" }}
                         </td>
                       </tr>
                     </ng-template>
