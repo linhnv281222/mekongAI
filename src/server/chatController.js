@@ -463,20 +463,12 @@ async function classifyChatMessageGemini(chatMessage) {
   if (!aiCfg.geminiKey) return null;
 
   try {
-    // chat-classify prompt uses {{MATERIAL}}, {{HEAT_TREAT}}, {{SURFACE}}, {{MARKET}}.
-    // MATERIAL/HEAT_TREAT/SURFACE are not reliably used in the actual prompt rules,
-    // so load only MARKET (which IS injected). This saves 3 knowledge block calls.
-    const marketData = await getKnowledgeBlock("vnt-markets");
-
+    // Note: ERP data auto-injected via enrichVariablesWithERP()
     const promptText = await getPrompt("chat-classify", {
       chatMessage: chatMessage.trim(),
     });
 
-    // Inject only MARKET — MATERIAL/HEAT_TREAT/SURFACE stay as empty (prompt handles them)
-    const finalPrompt = (promptText || "").replace(
-      "{{MARKET}}",
-      marketData || "[BẢNG THỊ TRƯỜNG KHÔNG CÓ]"
-    );
+    const finalPrompt = (promptText || "").trim();
 
     const response = await generateContentWithRetry(
       chatAi,
@@ -505,18 +497,12 @@ async function classifyChatMessageClaude(chatMessage) {
   if (!aiCfg.anthropicKey) return null;
 
   try {
-    // Load only MARKET — MATERIAL/HEAT_TREAT/SURFACE not used by chat-classify prompt
-    const marketData = await getKnowledgeBlock("vnt-markets");
-
+    // Note: ERP data auto-injected via enrichVariablesWithERP()
     const promptText = await getPrompt("chat-classify", {
       chatMessage: chatMessage.trim(),
     });
 
-    // Inject only MARKET — MATERIAL/HEAT_TREAT/SURFACE left empty
-    const finalPrompt = (promptText || "").replace(
-      "{{MARKET}}",
-      marketData || "[BẢNG THỊ TRƯỜNG KHÔNG CÓ]"
-    );
+    const finalPrompt = (promptText || "").trim();
 
     const { model } = loadAiConfig();
     const resolvedModel = (model && model.trim())
