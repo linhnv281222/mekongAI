@@ -863,17 +863,17 @@
                             "
                           />
                         </td>
-                        <td pTooltip="{{ drawingLine.note }}" tooltipPosition="top">
+                        <td pTooltip="{{ drawingLine.ghi_chu }}" tooltipPosition="top">
                           <input
                             type="text"
                             class="bv-input"
                             [class.bv-input--modified]="
-                              isDrawingFieldModified(rowIndex, 'note')
+                              isDrawingFieldModified(rowIndex, 'ghi_chu')
                             "
-                            [value]="drawingLine.note"
+                            [value]="drawingLine.ghi_chu"
                             placeholder="—"
                             (change)="
-                              onDrawingFieldChange(rowIndex, 'note', $event)
+                              onDrawingFieldChange(rowIndex, 'ghi_chu', $event)
                             "
                           />
                         </td>
@@ -912,30 +912,6 @@
                           <span class="bv-badge" [class.bv-badge--green]="drawingLine.co_gdt">
                             {{ drawingLine.co_gdt ? '✓' : '—' }}
                           </span>
-                        </td>
-                        <td class="cell-ma" pTooltip="{{ drawingLine.ma_quy_trinh }}" tooltipPosition="top">
-                          <input
-                            type="text"
-                            class="bv-input bv-input--mono"
-                            [value]="drawingLine.ma_quy_trinh"
-                            (change)="
-                              onDrawingFieldChange(
-                                rowIndex,
-                                'ma_quy_trinh',
-                                $event
-                              )
-                            "
-                          />
-                        </td>
-                        <td class="cell-note" pTooltip="{{ drawingLine.ghi_chu }}" tooltipPosition="top">
-                          <input
-                            type="text"
-                            class="bv-input bv-input--note"
-                            [value]="drawingLine.ghi_chu"
-                            (change)="
-                              onDrawingFieldChange(rowIndex, 'ghi_chu', $event)
-                            "
-                          />
                         </td>
                       </tr>
                     </ng-template>
