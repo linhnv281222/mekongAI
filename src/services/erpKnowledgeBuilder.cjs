@@ -59,7 +59,7 @@ async function buildAllKnowledgeBlocks() {
 
     // Build knowledge blocks
     const knowledgeBlocks = {
-      MATERIAL: erpService.formatMaterialsForPrompt(materials),
+      MATERIAL: erpService.formatMaterialsByTypeForPrompt(allMaterialsList),
       SUPPLIERS: erpService.formatSuppliersForPrompt(suppliers),
       SHAPE: erpService.formatShapesForPrompt(shapes),
       VNT_KNOWLEDGE: buildVntKnowledge(processes, operations),
