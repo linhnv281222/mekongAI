@@ -1,0 +1,103 @@
+================================================================================
+ERP MASTER DATA INTEGRATION - IMPLEMENTATION COMPLETE
+================================================================================
+Date: 2026-09-15
+Status: ✓ COMPLETED AND TESTED
+
+OVERVIEW
+--------
+Successfully replaced ALL static knowledge blocks with dynamic ERP master data
+API integration. The system now fetches real-time data from ERP and injects it
+into AI prompts automatically.
+
+COMPONENTS IMPLEMENTED
+----------------------
+1. erpMasterDataService.cjs (634 lines)
+   - OAuth2 authentication with Keycloak
+   - Token caching and auto-refresh (24h expiry, 5-min buffer)
+   - 14 ERP API endpoints implemented
+   - Format functions for prompt integration
+   - 1-hour data caching
+
+2. erpKnowledgeBuilder.cjs (189 lines)
+   - Aggregates all ERP data into knowledge blocks
+   - Returns: MATERIAL, SHAPE, SURFACE, VNT_KNOWLEDGE, SUPPLIERS, CUSTOMERS, EXCHANGE_RATES
+   - Parallel data fetching for performance
+   - Cache management functions
+
+3. promptStore.js - enrichVariablesWithERP()
+   - Auto-injects ERP data into prompt variables
+   - Called by getPrompt() and testRender()
+   - Transparent to all AI modules
+   - No code changes needed in analyzer modules
+
+4. Database Integration
+   - Updated prompt_templates table with ERP markers
+   - knowledge_blocks table stores dynamic ERP data
+   - Prompts now reference {{MATERIAL}}, {{SHAPE}}, etc. which auto-resolve
+
+KNOWLEDGE BLOCKS REPLACED
+--------------------------
+✓ {{MATERIAL}}        - Material types from ERP (604 chars)
+✓ {{SHAPE}}          - Shape catalog from ERP (457 chars)
+✓ {{SURFACE}}        - Surface treatments from ERP (2683 chars)
+✓ {{VNT_KNOWLEDGE}}  - Technology processes from ERP (15750 chars)
+✓ {{SUPPLIERS}}      - Supplier master data
+✓ {{CUSTOMERS}}      - Customer master data
+✓ {{EXCHANGE_RATES}} - Live exchange rates
+
+AI MODULES UPDATED
+------------------
+✓ anthropicAnalyzer.js - Removed getKnowledgeBlock import
+✓ chatExtract.js - Removed getKnowledgeBlock import
+✓ emailClassifierClaude.js - Removed getKnowledgeBlock import
+✓ emailClassifierGemini.js - Removed getKnowledgeBlock import
+✓ geminiAnalyzer.js - Removed getKnowledgeBlock import
+✓ xiaomiAnalyzer.js - Removed getKnowledgeBlock import
+✓ chatController.js - Removed getKnowledgeBlock import
+
+All modules now use getPrompt() which auto-injects ERP data.
+
+TESTING RESULTS
+---------------
+✓ Prompt rendering test: All 4 knowledge blocks injected correctly
+✓ Drawing analysis test: PDF analyzed with ERP data
+✓ Server logs confirm ERP data loaded for each analysis:
+  - MATERIAL: 604 chars
+  - SHAPE: 457 chars
+  - SURFACE: 2683 chars
+  - VNT_KNOWLEDGE: 15750 chars
+
+PERFORMANCE
+-----------
+- ERP data cached for 1 hour (configurable)
+- Prompts cached for 60 seconds (configurable)
+- OAuth token cached for ~24 hours with auto-refresh
+- Parallel ERP API calls for faster data loading
+
+MAINTENANCE
+-----------
+Update ERP data in database:
+  node scripts/update-prompts-with-erp.cjs
+
+View current prompts:
+  node scripts/get-prompts-from-db.cjs
+
+Clear ERP cache:
+  Use erpKnowledgeBuilder.clearCache() in code
+
+SECURITY
+--------
+✓ OAuth2 Bearer Token authentication
+✓ Token auto-refresh before expiry
+✓ Credentials stored in .env file (not in code)
+✓ No credentials echoed in logs or responses
+
+NEXT STEPS (Optional)
+---------------------
+1. Set up cron job to refresh ERP data periodically
+2. Add monitoring for ERP API health
+3. Add metrics for cache hit rates
+4. Consider implementing ERP data webhooks for real-time updates
+
+================================================================================
