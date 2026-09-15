@@ -713,7 +713,7 @@ async function handleRfqFormSubmissionAsync(jobId, formData, files) {
       emitSseEvent(jobId, "progress", { phase: "analyzing", current: 0, total: files.length, message: "Đang phân tích file đính kèm..." });
 
       const emailContext = emailInfo ? buildChatContextForAnalyzer(noiDungEmail, emailInfo) : null;
-      const analyzed = await analyzeFilesForJob(files, jobId, null, emailContext);
+      const analyzed = await analyzeFilesForJob(files, jobId, emailContext, emailInfo);
       allResults = analyzed.allResults;
       fileErrors = analyzed.fileErrors;
     }
@@ -839,7 +839,18 @@ async function handleRfqFormSubmission(jobId, formData, files) {
   } else if (files && files.length > 0) {
     // Không có pending nhưng có file -> phân tích ngay
     console.log("[ChatRfq] Không có pending, phân tích " + files.length + " file trực tiếp...");
-    const analyzed = await analyzeFilesForJob(files, jobId, message || null);
+
+    // Phân tích nội dung email trước để dùng làm context cho drawing analysis
+    const noiDungEmail = parsed.noi_dung_email || "";
+    let emailInfo = null;
+    if (noiDungEmail.trim()) {
+      console.log("[ChatRfq] Phân tích nội dung email:", noiDungEmail.slice(0, 200));
+      emailInfo = await classifyGhiChuNoiBo(noiDungEmail);
+      console.log("[ChatRfq] Email classify:", JSON.stringify(emailInfo));
+    }
+
+    const emailContext = emailInfo ? buildChatContextForAnalyzer(noiDungEmail, emailInfo) : (message || null);
+    const analyzed = await analyzeFilesForJob(files, jobId, emailContext, emailInfo);
     allResults = analyzed.allResults;
     fileErrors = analyzed.fileErrors;
   }
@@ -854,23 +865,24 @@ async function handleRfqFormSubmission(jobId, formData, files) {
   const coVat = parsed.co_vat || "Không";
   const xuLyBeMat = parsed.xu_ly_be_mat || "Không";
   const coVanChuyen = parsed.co_van_chuyen || "Không";
+  const noiDungEmail = parsed.noi_dung_email || "";
   const ghiChuNoiBo = parsed.ghi_chu_noi_bo || "";
 
-  // Phân tích ghi chú nội bộ để trích xuất so_luong
-  let ghiChuInfo = null;
-  if (ghiChuNoiBo.trim()) {
-    console.log("[ChatRfq] Phân tích ghi chú nội bộ:", ghiChuNoiBo.slice(0, 200));
-    ghiChuInfo = await classifyGhiChuNoiBo(ghiChuNoiBo);
-    console.log("[ChatRfq] Ghi chu classify:", JSON.stringify(ghiChuInfo));
+  // Phân tích NỘI DUNG EMAIL để override số lượng vào drawings (nếu có file mới cần phân tích)
+  let emailInfo = null;
+  if (!pending && files && files.length > 0 && noiDungEmail.trim()) {
+    console.log("[ChatRfq] Phân tích nội dung email:", noiDungEmail.slice(0, 200));
+    emailInfo = await classifyGhiChuNoiBo(noiDungEmail);
+    console.log("[ChatRfq] Email classify:", JSON.stringify(emailInfo));
 
-    // Override so_luong lên drawings
-    if (ghiChuInfo?.so_luong && ghiChuInfo.so_luong !== "unknown") {
+    // Override so_luong từ nội dung email lên drawings
+    if (emailInfo?.so_luong && emailInfo.so_luong !== "unknown") {
       for (const r of allResults) {
         if (!r.data) continue;
-        const soLuong = ghiChuInfo.so_luong;
+        const soLuong = emailInfo.so_luong;
         if (String(soLuong).includes(":")) {
           // dạng "MA1: 100, MA2: 50"
-          for (const [ma, sl] of Object.entries(ghiChuInfo.so_luong_theo_ma || {})) {
+          for (const [ma, sl] of Object.entries(emailInfo.so_luong_theo_ma || {})) {
             if (r.data.ma_ban_ve?.toLowerCase().includes(ma.toLowerCase())) {
               r.data.so_luong = Number(sl);
               break;
@@ -880,8 +892,16 @@ async function handleRfqFormSubmission(jobId, formData, files) {
           r.data.so_luong = Number(String(soLuong).replace(/\s*\(áp dụng cho tất cả\)/, "").trim());
         }
       }
-      console.log("[ChatRfq] Override so_luong từ ghi chú:", ghiChuInfo.so_luong);
+      console.log("[ChatRfq] Override so_luong từ nội dung email:", emailInfo.so_luong);
     }
+  }
+
+  // Phân tích ghi chú nội bộ (chỉ để lưu metadata, KHÔNG dùng cho override bản vẽ)
+  let ghiChuInfo = null;
+  if (ghiChuNoiBo.trim()) {
+    console.log("[ChatRfq] Phân tích ghi chú nội bộ:", ghiChuNoiBo.slice(0, 200));
+    ghiChuInfo = await classifyGhiChuNoiBo(ghiChuNoiBo);
+    console.log("[ChatRfq] Ghi chu classify:", JSON.stringify(ghiChuInfo));
   }
 
   // Validate
@@ -914,12 +934,14 @@ async function handleRfqFormSubmission(jobId, formData, files) {
       ngon_ngu: "vi",
       ten_cong_ty: tenCongTy,
       ly_do: "Chat bot báo giá (form)",
+      email_info: emailInfo || null,
       ghi_chu_noi_bo: ghiChuInfo || null,
     },
     xu_ly_be_mat: xuLyBeMat === "Có",
     vat_lieu_chung_nhan: coVat === "Có",
     ten_cong_ty: tenCongTy,
     ma_khach_hang: maKhachHang,
+    body: noiDungEmail || "",
     ghi_chu: ghiChuNoiBo || "",
     co_van_chuyen: coVanChuyen === "Có",
     attachments: (files || []).map((f) => ({
