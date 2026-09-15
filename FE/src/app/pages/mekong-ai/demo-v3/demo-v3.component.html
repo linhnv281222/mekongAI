@@ -748,15 +748,6 @@
                         >
                           GD&T
                         </th>
-                        <th
-                          [style.width.px]="getColWidth('ly_giai_qt')"
-                          style="font-size: 12.8px"
-                          pResizableColumn
-                          title="Lý giải quy trình"
-                          data-col-key="ly_giai_qt"
-                        >
-                          Lý giải QT
-                        </th>
                       </tr>
                     </ng-template>
                     <ng-template
@@ -922,8 +913,29 @@
                             {{ drawingLine.co_gdt ? '✓' : '—' }}
                           </span>
                         </td>
-                        <td class="cell-ly-giai" pTooltip="{{ drawingLine.ly_giai_qt }}" tooltipPosition="top">
-                          {{ drawingLine.ly_giai_qt || "—" }}
+                        <td class="cell-ma" pTooltip="{{ drawingLine.ma_quy_trinh }}" tooltipPosition="top">
+                          <input
+                            type="text"
+                            class="bv-input bv-input--mono"
+                            [value]="drawingLine.ma_quy_trinh"
+                            (change)="
+                              onDrawingFieldChange(
+                                rowIndex,
+                                'ma_quy_trinh',
+                                $event
+                              )
+                            "
+                          />
+                        </td>
+                        <td class="cell-note" pTooltip="{{ drawingLine.ghi_chu }}" tooltipPosition="top">
+                          <input
+                            type="text"
+                            class="bv-input bv-input--note"
+                            [value]="drawingLine.ghi_chu"
+                            (change)="
+                              onDrawingFieldChange(rowIndex, 'ghi_chu', $event)
+                            "
+                          />
                         </td>
                       </tr>
                     </ng-template>

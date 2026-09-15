@@ -50,7 +50,6 @@ export const DEFAULT_COL_WIDTHS: Record<string, number> = {
   dung_sai_chat_nhat: 90,
   co_gdt: 50,
   ma_quy_trinh: 65,
-  ly_giai_qt: 200,
   ghi_chu: 105,
 };
 
@@ -451,7 +450,6 @@ export class DemoV3Component implements OnInit, OnDestroy, AfterViewChecked {
         dung_sai_chat_nhat: drawingData.dung_sai_chat_nhat,
         co_gdt: drawingData.co_gdt,
         ma_quy_trinh: drawingData.ma_quy_trinh,
-        ly_giai_qt: drawingData.ly_giai_qt,
         note: drawingData.note,
       };
 
@@ -854,7 +852,6 @@ export class DemoV3Component implements OnInit, OnDestroy, AfterViewChecked {
         dung_sai_chat_nhat: dl.dung_sai_chat_nhat,
         co_gdt: dl.co_gdt,
         ma_quy_trinh: dl.ma_quy_trinh,
-        ly_giai_qt: dl.ly_giai_qt,
         note: dl.note,
       },
     }));

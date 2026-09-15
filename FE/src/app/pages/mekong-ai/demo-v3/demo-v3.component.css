@@ -1260,15 +1260,6 @@ textarea.form-input {
   font-family: var(--v3-mono, monospace);
 }
 
-.cell-ly-giai {
-  font-size: 11px;
-  color: var(--v3-ink);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  max-width: 200px;
-}
-
 .bv-badge {
   display: inline-block;
   padding: 2px 6px;
