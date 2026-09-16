@@ -106,16 +106,25 @@ Khung tên thường nằm góc dưới-phải bản vẽ, chứa thông tin cơ
 - VD: "4D-78360-01", "ABC-001"
 
 **2. VẬT LIỆU (vat_lieu)** — CRITICAL, BẮT BUỘC
-- Đọc từ khung tên hoặc ghi chú "MATERIAL:" / "材料"
-- **QUAN TRỌNG**: Match với bảng {{MATERIAL}} và **trả về TÊN VẬT LIỆU** từ bảng (VD: "Nhôm hàng không", "Inox 304", "Thép carbon"), KHÔNG trả về mã (A7075, SUS304...)
-- Các ký hiệu phổ biến để nhận biết:
-  - AL/Axxxx → Nhôm (A5052, AL6061, A2017...)
-  - SUS → Inox (SUS304, SUS316, SUS303...)
-  - Sxxx → Thép (S45C, S50C, SS400, SKD11, SKD61...)
-  - Cxxxx → Đồng (C3604, C3771, C2801...)
-  - POM/PA/PEEK → Nhựa
-- **Nếu không có trong khung tên** → kiểm tra `ly_giai_qt` hoặc ghi chú khác
-- **CHỈ ghi "Không ghi trên bản vẽ"** khi đã kiểm tra TOÀN BỘ mà vẫn không thấy
+
+⚠️ **QUY TRÌNH BẮT BUỘC:**
+1. **Bước 1**: Đọc MÃ vật liệu từ bản vẽ (khung tên hoặc ghi chú "MATERIAL:" / "材料")
+   - VD: "A7075", "SUS304", "S45C", "A5052-H32", "SKD61", "C3604"...
+
+2. **Bước 2**: Tìm mã này trong bảng {{MATERIAL}} từ ERP master data
+   - Bảng {{MATERIAL}} chứa: material_code | material_name | density
+   - VD: A7075 → "Nhôm hàng không 7075"
+   - VD: SUS304 → "Inox 304"
+   - VD: S45C → "Thép carbon C45"
+
+3. **Bước 3**: Trả về **TÊN vật liệu** (cột material_name), KHÔNG trả về mã
+   - ✓ ĐÚNG: "Nhôm hàng không 7075"
+   - ✗ SAI: "A7075", "A7075-CN"
+
+**Lưu ý quan trọng:**
+- **Nếu không tìm thấy mã trong bảng {{MATERIAL}}** → trả về "Không có trong master data"
+- **Nếu không đọc được mã từ bản vẽ** → kiểm tra ghi chú khác, nếu vẫn không có → "Không ghi trên bản vẽ"
+- **CHỈ trả về tên từ bảng master data**, KHÔNG tự suy luận hoặc đoán
 
 **3. SỐ LƯỢNG (so_luong)**
 - Tiếng Anh: Quantity / QTY
@@ -129,17 +138,27 @@ Khung tên thường nằm góc dưới-phải bản vẽ, chứa thông tin cơ
 **4. XỬ LÝ BỀ MẶT (xu_ly_be_mat)**
 - Tiếng Anh: Surface Treatment
 - Tiếng Nhật: 表面処理
-- Match với bảng {{SURFACE}}
-- VD: "陽極処理", "三価黒クロム", "DAC", "SW+"
+
+⚠️ **QUY TRÌNH:**
+1. Đọc mã/tên xử lý bề mặt từ bản vẽ
+2. Tìm trong bảng {{SURFACE}} từ ERP master data
+3. Trả về **TÊN** từ bảng, không phải mã gốc trên bản vẽ
+
+**Lưu ý:**
 - Ký hiệu 〃 = lặp lại mặt trước
-- Nếu không có → null
+- Nếu không có trong bảng {{SURFACE}} hoặc không đọc được → null
 
 **5. XỬ LÝ NHIỆT (xu_ly_nhiet)**
 - Tiếng Anh: Heat Treatment
 - Tiếng Nhật: 熱処理
-- Match với bảng {{HEAT_TREAT}}
-- VD: "HRC 50-55", "QT", "浸炭焼入れ", "高周波"
-- Nếu không có → null
+
+⚠️ **QUY TRÌNH:**
+1. Đọc mã/tên xử lý nhiệt từ bản vẽ
+2. Tìm trong bảng {{HEAT_TREAT}} từ ERP master data
+3. Trả về **TÊN** từ bảng, không phải mã gốc trên bản vẽ
+
+**Lưu ý:**
+- Nếu không có trong bảng {{HEAT_TREAT}} hoặc không đọc được → null
 
 **6. KÍCH THƯỚC BAO (kich_thuoc)** — CRITICAL
 
@@ -195,8 +214,14 @@ L x W x H
 - Nếu chỉ có dung sai chung → `dung_sai_chat_nhat = null`
 
 **9. HÌNH DẠNG (hinh_dang)**
-- Match với bảng {{SHAPE}}
-- VD: "Tròn xoay", "Hình tấm", "Khối", "Khối phức tạp"
+
+⚠️ **QUY TRÌNH:**
+1. Phân tích hình dạng sản phẩm từ bản vẽ
+2. Tìm trong bảng {{SHAPE}} từ ERP master data
+3. Trả về **TÊN hình dạng** từ bảng
+
+**Lưu ý:**
+- Nếu không có trong bảng {{SHAPE}} → trả về mô tả gần nhất
 
 **10. GD&T (co_gdt)**
 - `true` nếu có symbol: ⌖⊕⊥∥∠
@@ -523,7 +548,7 @@ Giải thích ngắn gọn từng bước chọn quy trình:
 3. **Đọc ghi chú kỹ thuật** → xu_ly_be_mat, xu_ly_nhiet, note
 4. **Nhận dạng FEATURES (quan trọng!):**
    - Đọc TẤT CẢ symbols trên bản vẽ
-   - Phân loại theo bảng {{FEATURES}}
+   - Phân loại các feature CNC (lỗ, vát, rãnh...)
    - Xác định diameter, depth, quantity cho mỗi feature
    - Gắn lan_ga (lần gá) cho mỗi feature
    - Thêm location (vị trí trên bản vẽ)
@@ -542,14 +567,15 @@ Giải thích ngắn gọn từng bước chọn quy trình:
 - Nhận dạng TẤT CẢ features CNC (lỗ, vát, rãnh...)
 - Trả về features_cnc[] đầy đủ và chi tiết
 - Gắn lan_ga (lần gá) cho mỗi feature
-- Match vật liệu/surface/heat treat với knowledge blocks
+- **Match mã vật liệu/xử lý bề mặt/xử lý nhiệt/hình dạng với ERP master data ({{MATERIAL}}, {{SURFACE}}, {{HEAT_TREAT}}, {{SHAPE}}) và trả về TÊN, không phải mã**
 - Ưu tiên thông tin từ email/chat nếu có conflict với bản vẽ
 
 ❌ **KHÔNG ĐƯỢC:**
 - Tự tính thời gian gia công hoặc giá thành
 - Bỏ qua features nhỏ (chamfer, fillet, Ra...)
 - Đoán mò nếu không đọc được → ghi "Không ghi trên bản vẽ"
-- Tạo ra mã code không có trong bảng {{FEATURES}}
+- **Trả về mã thay vì tên (VD: trả "A7075" thay vì "Nhôm hàng không 7075")**
+- **Tự suy luận tên vật liệu nếu không có trong master data**
 - Bỏ qua so_luong_chung hoặc so_luong_theo_ma từ email
 
 ⚠️ **ĐẶC BIỆT CHÚ Ý:**
