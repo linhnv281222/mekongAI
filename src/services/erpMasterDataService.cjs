@@ -610,26 +610,24 @@ function formatExchangeRatesForPrompt(rates) {
  * Format materials by type for prompt
  */
 function formatMaterialsByTypeForPrompt(materials, materialType) {
-  const lines = [`# DANH SÁCH VẬT LIỆU ${materialType || 'TẤT CẢ'} (Materials từ ERP)`, ''];
+  const lines = [
+    `# DANH SÁCH VẬT LIỆU ${materialType || 'TẤT CẢ'} (Materials từ ERP)`,
+    '',
+    '⚠️ **CÁCH SỬ DỤNG**: Đọc MÃ vật liệu từ bản vẽ → Tìm trong bảng dưới → Trả về **TÊN** (cột 2), KHÔNG trả về mã',
+    '',
+    'material_code | material_name | material_type',
+    '--- | --- | ---'
+  ];
 
   materials.forEach(m => {
-    lines.push(`## ${m.name}`);
-    lines.push(`- Mã: ${m.code}`);
-    if (m.type) {
-      lines.push(`- Loại: ${m.type}`);
-    }
-    if (m.price && m.price_unit) {
-      lines.push(`- Đơn giá: ${m.price} ${m.price_unit}`);
-    }
-    if (m.min_price && m.min_price_unit) {
-      lines.push(`- Giá tối thiểu: ${m.min_price} ${m.min_price_unit}`);
-    }
-    if (m.unit) {
-      lines.push(`- Đơn vị: ${m.unit}`);
-    }
-    lines.push('');
+    const code = m.code || 'N/A';
+    const name = m.name || 'Không có tên';
+    const type = m.type || '';
+
+    lines.push(`${code} | ${name} | ${type}`);
   });
 
+  lines.push('');
   return lines.join('\n');
 }
 
