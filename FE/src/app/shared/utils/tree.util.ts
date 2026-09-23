@@ -4,7 +4,7 @@
  */
 
 import { TreeNode } from 'primeng/api';
-import { EmailRow } from '../models/email.model';
+import { EmailRow } from '../../models/mekong-ai/email.model';
 
 interface CustomerGroup {
   [customerCode: string]: YearGroup;

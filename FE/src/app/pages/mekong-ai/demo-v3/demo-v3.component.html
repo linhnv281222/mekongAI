@@ -312,7 +312,7 @@
             [class.active]="currentTab === 0"
             (click)="setTab(0)"
           >
-            Thông tin chung
+            Thông tin báo giá
           </button>
           <button
             type="button"
@@ -321,15 +321,31 @@
             [class.active]="currentTab === 1"
             (click)="setTab(1)"
           >
-            Danh sách bản vẽ{{
-              drawingLines.length > 0 ? " (" + drawingLines.length + ")" : ""
-            }}
+            Nguyên vật liệu (F3)
+          </button>
+          <button
+            type="button"
+            role="tab"
+            class="tab"
+            [class.active]="currentTab === 2"
+            (click)="setTab(2)"
+          >
+            Khối lượng sản phẩm (F4)
+          </button>
+          <button
+            type="button"
+            role="tab"
+            class="tab"
+            [class.active]="currentTab === 3"
+            (click)="setTab(3)"
+          >
+            Quy trình gia công (F5)
           </button>
         </div>
 
-        <!-- ── TAB 0: THÔNG TIN CHUNG ─────────────────────── -->
+        <!-- ── TAB 0: THÔNG TIN BÁO GIÁ ─────────────────────── -->
         <div class="tab-content" *ngIf="currentTab === 0">
-          <div class="form-wrap" [attr.key]="activeEmailId">
+          <div class="form-wrap">
             <!-- Section 1: Thông tin chung -->
             <div class="section">
               <div class="sec-hd">
@@ -337,115 +353,278 @@
                 <span class="sec-title">Thông tin chung</span>
               </div>
               <div class="sec-body">
-                <div class="fg fg-2">
+                <div class="fg fg-3">
                   <div class="f">
-                    <label
-                      >Thời điểm nhận yêu cầu
-                      <span class="ai-mark">AI</span></label
-                    >
+                    <label>Loại hình <span class="ai-mark">AI</span></label>
                     <input
                       pInputText
                       type="text"
                       class="form-input ai"
-                      [value]="activeEmail.date"
-                      readonly
+                      [(ngModel)]="quotationData.general_info.type"
+                      placeholder="Nhập Loại hình"
                     />
                   </div>
                   <div class="f">
-                    <label
-                      >Thời hạn báo giá <span class="ai-mark">AI</span></label
-                    >
-                    <p-calendar
-                      [(ngModel)]="hanBaoGia"
-                      [showIcon]="true"
-                      [showButtonBar]="true"
-                      dateFormat="dd/mm/yy"
-                      [style]="{ width: '100%' }"
-                      styleClass="form-cal"
-                    ></p-calendar>
+                    <label>Trạng thái <span class="ai-mark">AI</span></label>
+                    <input
+                      pInputText
+                      type="text"
+                      class="form-input ai"
+                      [(ngModel)]="quotationData.general_info.quoting_status"
+                      placeholder="Nhập Trạng thái"
+                      [disabled]="true"
+                    />
+                  </div>
+                  <div class="f">
+                    <label>Hình thức <span class="ai-mark">AI</span></label>
+                    <input
+                      pInputText
+                      type="text"
+                      class="form-input ai"
+                      [(ngModel)]="quotationData.general_info.format"
+                      placeholder="Nhập Hình thức"
+                    />
                   </div>
                 </div>
                 <div class="fg fg-3">
                   <div class="f">
+                    <label>Ngôn ngữ <span class="ai-mark">AI</span></label>
+                    <input
+                      pInputText
+                      type="text"
+                      class="form-input ai"
+                      [(ngModel)]="quotationData.general_info.language"
+                      placeholder="Nhập Ngôn ngữ"
+                    />
+                  </div>
+                  <div class="f">
+                    <label>Ngày tạo <span class="ai-mark">AI</span></label>
+                    <p-calendar
+                      [(ngModel)]="quotationData.general_info.created_date"
+                      dateFormat="dd/mm/yy"
+                      [showTime]="true"
+                      [style]="{'width':'100%'}"
+                      [disabled]="true"
+                    ></p-calendar>
+                  </div>
+                  <div class="f">
+                    <label>Người tạo <span class="ai-mark">AI</span></label>
+                    <input
+                      pInputText
+                      type="text"
+                      class="form-input ai"
+                      [(ngModel)]="quotationData.general_info.creator"
+                      placeholder="Nhập Người tạo"
+                      [disabled]="true"
+                    />
+                  </div>
+                </div>
+                <div class="fg fg-3">
+                  <div class="f">
+                    <label>Thời điểm nhận yêu cầu <span class="ai-mark">AI</span></label>
+                    <p-calendar
+                      [(ngModel)]="quotationData.general_info.request_time"
+                      dateFormat="dd/mm/yy"
+                      [showTime]="true"
+                      [style]="{'width':'100%'}"
+                    ></p-calendar>
+                  </div>
+                  <div class="f">
+                    <label>Thời hạn báo giá <span class="ai-mark">AI</span></label>
+                    <p-calendar
+                      [(ngModel)]="quotationData.general_info.quote_deadline"
+                      dateFormat="dd/mm/yy"
+                      [showTime]="true"
+                      [style]="{'width':'100%'}"
+                    ></p-calendar>
+                  </div>
+                  <div class="f">
                     <label>Vận chuyển <span class="ai-mark">AI</span></label>
-                    <div class="radio-row">
-                      <label
-                        ><input
-                          type="radio"
-                          name="vc_main"
-                          [checked]="coVanChuyen === true"
-                          (change)="coVanChuyen = true"
-                        />
-                        Có</label
-                      >
-                      <label
-                        ><input
-                          type="radio"
-                          name="vc_main"
-                          [checked]="coVanChuyen === false"
-                          (change)="coVanChuyen = false"
-                        />
-                        Không</label
-                      >
+                    <div class="radio-group">
+                      <p-radioButton
+                        name="has_transport"
+                        [value]="true"
+                        [(ngModel)]="quotationData.general_info.has_transport"
+                        inputId="has_transport_yes"
+                      ></p-radioButton>
+                      <label for="has_transport_yes" class="radio-label">Có</label>
+                      <p-radioButton
+                        name="has_transport"
+                        [value]="false"
+                        [(ngModel)]="quotationData.general_info.has_transport"
+                        inputId="has_transport_no"
+                      ></p-radioButton>
+                      <label for="has_transport_no" class="radio-label">Không</label>
                     </div>
+                  </div>
+                </div>
+                <div class="fg fg-3">
+                  <div class="f">
+                    <label>Phương thức vận chuyển <span class="ai-mark">AI</span></label>
+                    <input
+                      pInputText
+                      type="text"
+                      class="form-input ai"
+                      [(ngModel)]="quotationData.general_info.transport_method"
+                      placeholder="Nhập Phương thức vận chuyển"
+                    />
                   </div>
                   <div class="f">
                     <label>Xử lý bề mặt <span class="ai-mark">AI</span></label>
-                    <div class="radio-row">
-                      <label
-                        ><input
-                          type="radio"
-                          name="xlbm_main"
-                          [checked]="xuLyBeMat === true"
-                          (change)="xuLyBeMat = true"
-                        />
-                        Có</label
-                      >
-                      <label
-                        ><input
-                          type="radio"
-                          name="xlbm_main"
-                          [checked]="xuLyBeMat === false"
-                          (change)="xuLyBeMat = false"
-                        />
-                        Không</label
-                      >
+                    <div class="radio-group">
+                      <p-radioButton
+                        name="surface_treatment"
+                        [value]="true"
+                        [(ngModel)]="quotationData.general_info.surface_treatment"
+                        inputId="surface_treatment_yes"
+                      ></p-radioButton>
+                      <label for="surface_treatment_yes" class="radio-label">Có</label>
+                      <p-radioButton
+                        name="surface_treatment"
+                        [value]="false"
+                        [(ngModel)]="quotationData.general_info.surface_treatment"
+                        inputId="surface_treatment_no"
+                      ></p-radioButton>
+                      <label for="surface_treatment_no" class="radio-label">Không</label>
                     </div>
                   </div>
                   <div class="f">
-                    <label>VAT</label>
-                    <div class="radio-row">
-                      <label
-                        ><input type="radio" name="vat_main" checked />
-                        Có</label
-                      >
-                      <label
-                        ><input type="radio" name="vat_main" /> Không</label
-                      >
+                    <label>Cấu hình chủng loại vật tư <span class="ai-mark">AI</span></label>
+                    <input
+                      pInputText
+                      type="number"
+                      class="form-input ai"
+                      [(ngModel)]="quotationData.general_info.material"
+                    />
+                  </div>
+                </div>
+                <div class="fg fg-3">
+                  <div class="f">
+                    <label>VAT <span class="ai-mark">AI</span></label>
+                    <div class="radio-group">
+                      <p-radioButton
+                        name="vat"
+                        [value]="true"
+                        [(ngModel)]="quotationData.general_info.vat"
+                        inputId="vat_yes"
+                      ></p-radioButton>
+                      <label for="vat_yes" class="radio-label">Có</label>
+                      <p-radioButton
+                        name="vat"
+                        [value]="false"
+                        [(ngModel)]="quotationData.general_info.vat"
+                        inputId="vat_no"
+                      ></p-radioButton>
+                      <label for="vat_no" class="radio-label">Không</label>
                     </div>
+                  </div>
+                  <div class="f">
+                    <label>Chiết khấu (%) <span class="ai-mark">AI</span></label>
+                    <input
+                      pInputText
+                      type="number"
+                      class="form-input ai"
+                      [(ngModel)]="quotationData.general_info.discount"
+                      placeholder="Nhập Chiết khấu (%)"
+                    />
+                  </div>
+                  <div class="f">
+                    <label>Giá trị VAT <span class="ai-mark">AI</span></label>
+                    <input
+                      pInputText
+                      type="number"
+                      class="form-input ai"
+                      [(ngModel)]="quotationData.general_info.vat_value"
+                      placeholder="Nhập Giá trị VAT"
+                    />
+                  </div>
+                </div>
+                <div class="fg fg-3">
+                  <div class="f">
+                    <label>Tiền tệ <span class="ai-mark">AI</span></label>
+                    <input
+                      pInputText
+                      type="text"
+                      class="form-input ai"
+                      [(ngModel)]="quotationData.general_info.quotation_currency"
+                      placeholder="JPY"
+                      [disabled]="true"
+                    />
+                  </div>
+                  <div class="f">
+                    <label>Tỷ giá <span class="ai-mark">AI</span></label>
+                    <input
+                      pInputText
+                      type="number"
+                      class="form-input ai"
+                      [(ngModel)]="quotationData.general_info.exchange_rate"
+                      [disabled]="true"
+                    />
+                  </div>
+                  <div class="f">
+                    <label>Số Lot <span class="ai-mark">AI</span></label>
+                    <input
+                      pInputText
+                      type="number"
+                      class="form-input ai"
+                      [(ngModel)]="quotationData.general_info.lot_number"
+                      placeholder="Nhập Số Lot"
+                    />
+                  </div>
+                </div>
+                <div class="fg fg-3">
+                  <div class="f">
+                    <label>SL áp dụng giá min <span class="ai-mark">AI</span></label>
+                    <input
+                      pInputText
+                      type="number"
+                      class="form-input ai"
+                      [(ngModel)]="quotationData.general_info.quantity_for_min_price"
+                      placeholder="Nhập SL áp dụng giá min"
+                    />
                   </div>
                 </div>
               </div>
             </div>
 
-            <!-- Section 2: Khách hàng -->
+            <!-- Section 2: Thông tin công ty -->
             <div class="section">
               <div class="sec-hd">
                 <span class="sec-num">2</span>
-                <span class="sec-title">Thông tin khách hàng</span>
+                <span class="sec-title">Thông tin công ty</span>
               </div>
               <div class="sec-body">
                 <div class="fg fg-2">
                   <div class="f">
-                    <label
-                      >Tên khách hàng <span class="ai-mark">AI</span></label
-                    >
+                    <label>Mã công ty <span class="ai-mark">AI</span></label>
                     <input
                       pInputText
                       type="text"
-                      class="ta-field ai"
-                      [value]="getKhachHang()"
-                      readonly
+                      class="form-input ai"
+                      [(ngModel)]="quotationData.general_info.company_code"
+                      placeholder="Nhập Mã công ty"
+                    />
+                  </div>
+                  <div class="f">
+                    <label>Tên công ty <span class="ai-mark">AI</span></label>
+                    <input
+                      pInputText
+                      type="text"
+                      class="form-input ai"
+                      [(ngModel)]="quotationData.general_info.company_name"
+                      placeholder="Nhập Tên công ty"
+                    />
+                  </div>
+                </div>
+                <div class="fg fg-3">
+                  <div class="f">
+                    <label>Mã số thuế <span class="ai-mark">AI</span></label>
+                    <input
+                      pInputText
+                      type="text"
+                      class="form-input ai"
+                      [(ngModel)]="quotationData.general_info.company_tax"
+                      placeholder="Nhập Mã số thuế"
                     />
                   </div>
                   <div class="f">
@@ -453,43 +632,225 @@
                     <input
                       pInputText
                       type="text"
-                      class="ta-field ai"
-                      [value]="getEmail()"
-                      readonly
+                      class="form-input ai"
+                      [(ngModel)]="quotationData.general_info.company_email"
+                      placeholder="Nhập Email"
+                    />
+                  </div>
+                  <div class="f">
+                    <label>Số Fax <span class="ai-mark">AI</span></label>
+                    <input
+                      pInputText
+                      type="text"
+                      class="form-input ai"
+                      [(ngModel)]="quotationData.general_info.company_fax"
+                      placeholder="Nhập Số Fax"
+                    />
+                  </div>
+                </div>
+                <div class="fg fg-3">
+                  <div class="f">
+                    <label>Người liên hệ <span class="ai-mark">AI</span></label>
+                    <input
+                      pInputText
+                      type="text"
+                      class="form-input ai"
+                      [(ngModel)]="quotationData.general_info.company_contact"
+                      placeholder="Nhập Người liên hệ"
+                    />
+                  </div>
+                  <div class="f">
+                    <label>Điện thoại <span class="ai-mark">AI</span></label>
+                    <input
+                      pInputText
+                      type="text"
+                      class="form-input ai"
+                      [(ngModel)]="quotationData.general_info.company_phone"
+                      placeholder="Nhập Điện thoại"
+                    />
+                  </div>
+                  <div class="f">
+                    <label>Ngôn ngữ <span class="ai-mark">AI</span></label>
+                    <input
+                      pInputText
+                      type="text"
+                      class="form-input ai"
+                      [(ngModel)]="quotationData.general_info.company_language"
+                      placeholder="Nhập Ngôn ngữ"
+                    />
+                  </div>
+                </div>
+                <div class="fg fg-1">
+                  <div class="f">
+                    <label>Địa chỉ <span class="ai-mark">AI</span></label>
+                    <input
+                      pInputText
+                      type="text"
+                      class="form-input ai"
+                      [(ngModel)]="quotationData.general_info.company_address"
+                      placeholder="Nhập Địa chỉ"
                     />
                   </div>
                 </div>
               </div>
             </div>
 
-            <!-- Section 3: Ghi chú -->
+            <!-- Section 3: Thông tin khách hàng -->
             <div class="section">
               <div class="sec-hd">
                 <span class="sec-num">3</span>
+                <span class="sec-title">Thông tin khách hàng</span>
+              </div>
+              <div class="sec-body">
+                <div class="fg fg-3">
+                  <div class="f">
+                    <label>Mã khách hàng <span class="ai-mark">AI</span></label>
+                    <input
+                      pInputText
+                      type="text"
+                      class="form-input ai"
+                      [(ngModel)]="quotationData.general_info.customer_code"
+                      placeholder="Nhập Mã khách hàng"
+                      [disabled]="true"
+                    />
+                  </div>
+                  <div class="f">
+                    <label>Tên KH <span class="ai-mark">AI</span></label>
+                    <input
+                      pInputText
+                      type="text"
+                      class="form-input ai"
+                      [(ngModel)]="quotationData.general_info.customer_name"
+                      placeholder="Nhập Tên KH"
+                    />
+                  </div>
+                  <div class="f">
+                    <label>Số điện thoại <span class="ai-mark">AI</span></label>
+                    <input
+                      pInputText
+                      type="text"
+                      class="form-input ai"
+                      [(ngModel)]="quotationData.general_info.phone_number"
+                      placeholder="Nhập Số điện thoại"
+                    />
+                  </div>
+                </div>
+                <div class="fg fg-3">
+                  <div class="f">
+                    <label>Số Fax <span class="ai-mark">AI</span></label>
+                    <input
+                      pInputText
+                      type="text"
+                      class="form-input ai"
+                      [(ngModel)]="quotationData.general_info.fax_number"
+                      placeholder="Nhập Số Fax"
+                    />
+                  </div>
+                  <div class="f">
+                    <label>Nhân viên phụ trách <span class="ai-mark">AI</span></label>
+                    <input
+                      pInputText
+                      type="text"
+                      class="form-input ai"
+                      [(ngModel)]="quotationData.general_info.staff_in_charge"
+                      placeholder="Nhập Nhân viên phụ trách"
+                    />
+                  </div>
+                  <div class="f">
+                    <label>Địa chỉ (VN) <span class="ai-mark">AI</span></label>
+                    <input
+                      pInputText
+                      type="text"
+                      class="form-input ai"
+                      [(ngModel)]="quotationData.general_info.vietnamese_address"
+                      placeholder="Nhập Địa chỉ (VN)"
+                    />
+                  </div>
+                </div>
+                <div class="fg fg-3">
+                  <div class="f">
+                    <label>Email <span class="ai-mark">AI</span></label>
+                    <input
+                      pInputText
+                      type="text"
+                      class="form-input ai"
+                      [(ngModel)]="quotationData.general_info.email"
+                      placeholder="Nhập Email"
+                    />
+                  </div>
+                  <div class="f">
+                    <label>Mã số thuế <span class="ai-mark">AI</span></label>
+                    <input
+                      pInputText
+                      type="text"
+                      class="form-input ai"
+                      [(ngModel)]="quotationData.general_info.tax_code"
+                      placeholder="Nhập Mã số thuế"
+                    />
+                  </div>
+                  <div class="f">
+                    <label>Người đại diện <span class="ai-mark">AI</span></label>
+                    <input
+                      pInputText
+                      type="text"
+                      class="form-input ai"
+                      [(ngModel)]="quotationData.general_info.representative"
+                      placeholder="Nhập Người đại diện"
+                    />
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Section 4: Ghi chú -->
+            <div class="section">
+              <div class="sec-hd">
+                <span class="sec-num">4</span>
                 <span class="sec-title">Ghi chú</span>
               </div>
               <div class="sec-body">
-                <div class="fg fg-2">
+                <div class="fg fg-3">
                   <div class="f">
-                    <label
-                      >Nội dung email <span class="ai-mark">AI</span></label
-                    >
+                    <label>Đơn vị tính <span class="ai-mark">AI</span></label>
+                    <input
+                      pInputText
+                      type="text"
+                      class="form-input ai"
+                      [(ngModel)]="quotationData.general_info.unit"
+                      placeholder="Nhập Đơn vị tính"
+                    />
+                  </div>
+                  <div class="f">
+                    <label>Ghi chú cho khách <span class="ai-mark">AI</span></label>
                     <textarea
                       pInputTextarea
-                      rows="10"
-                      class="ta-field ai"
-                      style="min-height: 200px"
-                      [value]="getEmailBody()"
+                      class="form-input ai"
+                      [(ngModel)]="quotationData.general_info.customer_note"
+                      rows="1"
+                      placeholder="Nhập Ghi chú cho khách"
                     ></textarea>
                   </div>
                   <div class="f">
-                    <label>Ghi chú nội bộ</label>
+                    <label>Ghi chú nội bộ <span class="ai-mark">AI</span></label>
                     <textarea
                       pInputTextarea
-                      rows="10"
-                      style="min-height: 200px"
-                      class="ta-field"
-                      [(ngModel)]="ghiChu"
+                      class="form-input ai"
+                      [(ngModel)]="quotationData.general_info.internal_note"
+                      rows="1"
+                      placeholder="Nhập Ghi chú nội bộ"
+                    ></textarea>
+                  </div>
+                </div>
+                <div class="fg fg-1">
+                  <div class="f">
+                    <label>Nội dung email <span class="ai-mark">AI</span></label>
+                    <textarea
+                      pInputTextarea
+                      class="form-input ai email-content-textarea"
+                      [(ngModel)]="quotationData.general_info.email_content"
+                      rows="15"
+                      placeholder="Nội dung email từ khách hàng"
+                      [disabled]="true"
                     ></textarea>
                   </div>
                 </div>
@@ -498,483 +859,1157 @@
           </div>
         </div>
 
-        <!-- ── TAB 1: BẢN VẼ ──────────────────────────────── -->
-        <div class="tab-content" *ngIf="currentTab === 1">
-          <div class="bv-toolbar">
-            <p-button
-              label="Upload PDF / ảnh bản vẽ"
-              icon="pi pi-upload"
-              styleClass="p-button-outlined p-button-secondary"
-              (onClick)="triggerFileUpload()"
-            ></p-button>
-            <span *ngIf="processing" class="processing-label">
-              <i
-                class="pi pi-spin pi-spinner"
-                style="font-size: 0.8rem; color: var(--v3-brand2)"
-              ></i>
-              AI đang đọc bản vẽ...
-            </span>
-            <div
-              style="margin-left: auto; font-size: 12px; color: var(--v3-muted)"
-            >
-              Mỗi trang PDF = 1 bản vẽ · AI tự động đọc
-            </div>
-          </div>
-
-          <div class="prog-wrap" *ngIf="processing">
-            <div class="prog-txt">
-              <i class="pi pi-spin pi-spinner" style="font-size: 0.8rem"></i>
-              Đang phân tích... {{ progress }}%
-            </div>
-            <p-progressBar
-              [value]="progress"
-              [showValue]="false"
-              styleClass="bv-progress"
-            ></p-progressBar>
-          </div>
-
-          <div class="sum-bar" *ngIf="drawingLines.length > 0">
-            <span
-              ><b>{{ drawingLines.length }}</b> bản vẽ</span
-            >
-            <span>·</span>
-            <span
-              >Tổng SL: <b>{{ totalQuantity | number }}</b> PCS</span
-            >
-            <ng-container *ngIf="drawingLines[0]?.ma_quy_trinh">
-              <span>·</span>
-              <span
-                >QT:
-                <b style="color: var(--v3-brand2)">{{
-                  drawingLines[0].ma_quy_trinh
-                }}</b></span
-              >
-            </ng-container>
-          </div>
-
-          <div class="bv-table-wrap">
-            <div
-              *ngIf="drawingLines.length === 0"
-              class="upload-zone"
-              (click)="triggerFileUpload()"
-            >
-              <div class="upload-zone-icon">
-                <mat-icon class="icon-xl">description</mat-icon>
+        <!-- ── TAB 1: NGUYÊN VẬT LIỆU (F3) ──────────────────────────────── -->
+        <div class="tab-content tab-f3" *ngIf="currentTab === 1">
+          <div class="f3-container">
+            <!-- Left Panel -->
+            <div class="f3-left">
+              <!-- Drawing Selector -->
+              <div class="f3-selector" *ngIf="drawingLines.length > 0">
+                <label class="f3-selector-label">CHỌN BẢN VẼ</label>
+                <select
+                  class="f3-select"
+                  [(ngModel)]="selectedDrawingForMaterial"
+                  (ngModelChange)="onDrawingSelectionChangeByIndex($event)"
+                >
+                  <option *ngFor="let drawing of drawingLines; let i = index" [value]="i">
+                    {{ drawing.ma_ban_ve || 'BV-' + (i + 1) }} - {{ drawing.vat_lieu }} • SL: {{ drawing.so_luong }}
+                  </option>
+                </select>
               </div>
-              <div class="upload-zone-title">Upload PDF / ảnh bản vẽ</div>
-              <div class="upload-zone-sub">
-                PDF nhiều trang — mỗi trang = 1 bản vẽ · ảnh xem trước bên phải
-              </div>
-              <div class="upload-zone-ai">
-                <mat-icon class="icon-sm">bolt</mat-icon>
-                AI tự động đọc và bóc tách dữ liệu
-              </div>
-            </div>
 
-            <p-splitter
-              *ngIf="drawingLines.length > 0"
-              [style]="{ height: 'calc(100vh - 315px)' }"
-              styleClass="bv-splitter"
-              [panelSizes]="splitterPanelSizes"
-            >
-              <ng-template pTemplate="panel" [style]="{ minWidth: '480px' }">
-                <div class="bv-split-main" (mouseup)="markResizeDirty()">
-                  <div class="bv-split-toolbar">
-                    <span class="bv-split-label"
-                      >Bản vẽ ({{ drawingLines.length }})</span
-                    >
-                    <button
-                      type="button"
-                      class="btn-version-history"
-                      (click)="loadVersionHistory(0)"
-                      *ngIf="drawingLines.length > 0"
-                      title="Xem lịch sử thay đổi"
-                    >
-                      <i class="pi pi-history"></i>
-                      Lịch sử
-                      <span class="version-badge" *ngIf="getVersionCountForDrawing(0) > 0">
-                        {{ getVersionCountForDrawing(0) }}
-                      </span>
-                    </button>
-                    <button
-                      type="button"
-                      class="bv-split-toggle"
-                      [class.active]="splitMode === 'fullLeft'"
-                      (click)="toggleSplitFull('left')"
-                      title="Full bản vẽ"
-                    >
-                      <i
-                        class="pi"
-                        [ngClass]="
-                          splitMode === 'fullLeft'
-                            ? 'pi-minus'
-                            : 'pi-window-maximize'
-                        "
-                      ></i>
-                    </button>
+              <!-- Thông tin bản vẽ -->
+              <div class="f3-section">
+                <p-panel [toggleable]="true" [collapsed]="false" styleClass="f4-info-section">
+                  <ng-template pTemplate="header">
+                    <div class="f3-panel-title">
+                      <i class="pi pi-file"></i>
+                      <span>Thông tin bản vẽ</span>
+                    </div>
+                  </ng-template>
+                  <div class="f3-form" *ngIf="drawingLines.length > 0 && drawingLines[selectedDrawingForMaterial]">
+                    <div class="f3-row">
+                      <div class="f3-field">
+                        <label>VNT ID</label>
+                        <input pInputText type="text" class="f3-input" [value]="drawingLines[selectedDrawingForMaterial].id" />
+                      </div>
+                      <div class="f3-field">
+                        <label>Tên sản phẩm</label>
+                        <input pInputText type="text" class="f3-input" [value]="drawingLines[selectedDrawingForMaterial].ma_ban_ve" />
+                      </div>
+                    </div>
+                    <div class="f3-row">
+                      <div class="f3-field">
+                        <label>Mã BV</label>
+                        <input pInputText type="text" class="f3-input" [(ngModel)]="drawingLines[selectedDrawingForMaterial].ma_ban_ve" />
+                      </div>
+                      <div class="f3-field">
+                        <label>Mã nội bộ</label>
+                        <input pInputText type="text" class="f3-input" placeholder="Nhập mã nội bộ" />
+                      </div>
+                    </div>
+                    <div class="f3-row">
+                      <div class="f3-field">
+                        <label>Mã NL</label>
+                        <input pInputText type="text" class="f3-input" [value]="getMaterialCode(drawingLines[selectedDrawingForMaterial])" />
+                      </div>
+                      <div class="f3-field">
+                        <label>Mô tả</label>
+                        <input pInputText type="text" class="f3-input" [(ngModel)]="drawingLines[selectedDrawingForMaterial].hinh_dang" />
+                      </div>
+                    </div>
+                    <div class="f3-row f3-row-full">
+                      <div class="f3-field">
+                        <label>Ghi chú</label>
+                        <textarea pInputTextarea class="f3-textarea" rows="2" [(ngModel)]="drawingLines[selectedDrawingForMaterial].note"></textarea>
+                      </div>
+                    </div>
                   </div>
-                  <p-table
-                    [value]="drawingLines"
-                    styleClass="bv-tbl p-datatable-sm"
-                    [resizableColumns]="true"
-                    (mouseup)="markResizeDirty()"
-                  >
+                </p-panel>
+              </div>
+
+              <!-- Quy cách nguyên vật liệu -->
+              <div class="f3-section">
+                <p-panel [toggleable]="true" [collapsed]="false" styleClass="f4-orange-section">
+                  <ng-template pTemplate="header">
+                    <div class="f3-panel-title">
+                      <i class="pi pi-box"></i>
+                      <span>Quy cách nguyên vật liệu</span>
+                    </div>
+                  </ng-template>
+                  <div class="f3-material-spec" *ngIf="drawingLines.length > 0 && drawingLines[selectedDrawingForMaterial]">
+                    <div class="f3-row f3-row-3">
+                      <div class="f3-field">
+                        <label>Chất liệu</label>
+                        <input pInputText type="text" class="f3-input" [value]="getMaterialType(drawingLines[selectedDrawingForMaterial])" />
+                      </div>
+                      <div class="f3-field">
+                        <label>Mã nguyên vật liệu</label>
+                        <input pInputText type="text" class="f3-input" [value]="getMaterialCode(drawingLines[selectedDrawingForMaterial])" />
+                      </div>
+                      <div class="f3-field">
+                        <label>Tên NL</label>
+                        <input pInputText type="text" class="f3-input" [(ngModel)]="drawingLines[selectedDrawingForMaterial].vat_lieu" />
+                      </div>
+                    </div>
+                    <div class="f3-row f3-row-3">
+                      <div class="f3-field">
+                        <label>Nhà cung cấp</label>
+                        <input pInputText type="text" class="f3-input" placeholder="Nhập nhà cung cấp" />
+                      </div>
+                      <div class="f3-field">
+                        <label>Đơn giá min pcs</label>
+                        <input pInputText type="number" class="f3-input f3-input-right" placeholder="Nhập đơn giá min pcs" />
+                      </div>
+                      <div class="f3-field">
+                        <label>Đơn giá/kg</label>
+                        <input pInputText type="number" class="f3-input f3-input-right" placeholder="Nhập đơn giá/kg" />
+                      </div>
+                    </div>
+                    <div class="f3-row f3-row-3">
+                      <div class="f3-field">
+                        <label>Khối lượng riêng</label>
+                        <input pInputText type="number" class="f3-input f3-input-right" placeholder="Nhập khối lượng riêng" />
+                      </div>
+                      <div class="f3-field">
+                        <label>Ảnh minh chứng</label>
+                        <input pInputText type="text" class="f3-input" placeholder="Nhập link ảnh" />
+                      </div>
+                      <div class="f3-field">
+                        <label>Xử lý bề mặt</label>
+                        <input pInputText type="text" class="f3-input" [(ngModel)]="drawingLines[selectedDrawingForMaterial].xu_ly_be_mat" />
+                      </div>
+                    </div>
+                    <div class="f3-row f3-row-full">
+                      <div class="f3-field">
+                        <label>Ghi chú nguyên vật liệu</label>
+                        <textarea pInputTextarea class="f3-textarea" rows="2" [(ngModel)]="drawingLines[selectedDrawingForMaterial].note"></textarea>
+                      </div>
+                    </div>
+                    <div class="f3-row f3-row-3">
+                      <div class="f3-field">
+                        <label>Kiểu cách</label>
+                        <input pInputText type="text" class="f3-input" [(ngModel)]="drawingLines[selectedDrawingForMaterial].hinh_dang" />
+                      </div>
+                      <div class="f3-field">
+                        <label>Chiều dài (mm)</label>
+                        <input pInputText type="number" class="f3-input f3-input-right" placeholder="Nhập chiều dài" />
+                      </div>
+                      <div class="f3-field">
+                        <label>Chiều rộng (mm)</label>
+                        <input pInputText type="number" class="f3-input f3-input-right" placeholder="Nhập chiều rộng" />
+                      </div>
+                    </div>
+                    <div class="f3-row f3-row-3">
+                      <div class="f3-field">
+                        <label>Chiều cao (mm)</label>
+                        <input pInputText type="number" class="f3-input f3-input-right" placeholder="Nhập chiều cao" />
+                      </div>
+                      <div class="f3-field">
+                        <label>NVL cho bao nhiêu SP</label>
+                        <input pInputText type="number" class="f3-input f3-input-right" placeholder="Nhập số lượng SP" />
+                      </div>
+                      <div class="f3-field">
+                        <label>Kích thước bao</label>
+                        <input pInputText type="text" class="f3-input" [(ngModel)]="drawingLines[selectedDrawingForMaterial].kich_thuoc" />
+                      </div>
+                    </div>
+
+                    <div class="f3-subsection-title">Kích thước sản phẩm</div>
+                    <div class="f3-row f3-row-3">
+                      <div class="f3-field">
+                        <label>Chiều dài (mm)</label>
+                        <input pInputText type="number" class="f3-input f3-input-right" placeholder="Nhập chiều dài" />
+                      </div>
+                      <div class="f3-field">
+                        <label>Chiều rộng (mm)</label>
+                        <input pInputText type="number" class="f3-input f3-input-right" placeholder="Nhập chiều rộng" />
+                      </div>
+                      <div class="f3-field">
+                        <label>Chiều cao (mm)</label>
+                        <input pInputText type="number" class="f3-input f3-input-right" placeholder="Nhập chiều cao" />
+                      </div>
+                    </div>
+
+                    <div class="f3-subsection-title">Giá trị tính toán</div>
+                    <div class="f3-calc-section">
+                      <div class="f3-row f3-row-3">
+                        <div class="f3-field">
+                          <label>Khối lượng (Kg)</label>
+                          <input pInputText type="number" class="f3-input f3-input-right" placeholder="Nhập khối lượng" />
+                        </div>
+                        <div class="f3-field">
+                          <label>Thành tiền</label>
+                          <input pInputText type="number" class="f3-input f3-input-right" placeholder="Nhập thành tiền" />
+                        </div>
+                        <div class="f3-field">
+                          <label>Kích thước C</label>
+                          <input pInputText type="number" class="f3-input f3-input-right" placeholder="Nhập kích thước C" />
+                        </div>
+                      </div>
+                      <div class="f3-row f3-row-3">
+                        <div class="f3-field">
+                          <label>Số lượng C</label>
+                          <input pInputText type="number" class="f3-input f3-input-right" placeholder="Nhập số lượng C" />
+                        </div>
+                        <div class="f3-field">
+                          <label>Tỉ GC MC</label>
+                          <input pInputText type="number" class="f3-input f3-input-right" placeholder="Nhập tỉ GC MC" />
+                        </div>
+                        <div class="f3-field">
+                          <label>Số mặt cần GC MC</label>
+                          <input pInputText type="number" class="f3-input f3-input-right" placeholder="Nhập số mặt" />
+                        </div>
+                      </div>
+                    </div>
+
+                    <div class="f3-row f3-row-3" style="margin-top: 16px;">
+                      <div class="f3-field">
+                        <label>Số lượng</label>
+                        <input pInputText type="number" class="f3-input f3-input-right" [(ngModel)]="drawingLines[selectedDrawingForMaterial].so_luong" />
+                      </div>
+                      <div class="f3-field">
+                        <label>Xử lý nhiệt</label>
+                        <input pInputText type="text" class="f3-input" [(ngModel)]="drawingLines[selectedDrawingForMaterial].xu_ly_nhiet" />
+                      </div>
+                      <div class="f3-field">
+                        <label>Dung sai chung</label>
+                        <input pInputText type="text" class="f3-input" [(ngModel)]="drawingLines[selectedDrawingForMaterial].dung_sai_chung" />
+                      </div>
+                    </div>
+                    <div class="f3-row f3-row-3">
+                      <div class="f3-field">
+                        <label>Số bề mặt CNC</label>
+                        <input pInputText type="number" class="f3-input f3-input-right" [(ngModel)]="drawingLines[selectedDrawingForMaterial].so_be_mat_cnc" />
+                      </div>
+                      <div class="f3-field">
+                        <label>Dung sai chặt nhất</label>
+                        <input pInputText type="text" class="f3-input" [(ngModel)]="drawingLines[selectedDrawingForMaterial].dung_sai_chat_nhat" />
+                      </div>
+                      <div class="f3-field">
+                        <label>Có GD&T</label>
+                        <p-checkbox [(ngModel)]="drawingLines[selectedDrawingForMaterial].co_gdt" [binary]="true" inputId="co_gdt"></p-checkbox>
+                      </div>
+                    </div>
+                    <div class="f3-row f3-row-3">
+                      <div class="f3-field">
+                        <label>Mã quy trình</label>
+                        <input pInputText type="text" class="f3-input" [(ngModel)]="drawingLines[selectedDrawingForMaterial].ma_quy_trinh" />
+                      </div>
+                    </div>
+
+                    <div class="f3-subsection-title" style="margin-top: 24px;">Biến số gia công</div>
+                    <div class="f3-table-wrap">
+                      <p-table [value]="[{}]" styleClass="p-datatable-sm">
+                        <ng-template pTemplate="header">
+                          <tr>
+                            <th style="width: 120px;">Kích thước</th>
+                            <th style="width: 120px;">Khối lượng</th>
+                            <th style="width: 140px;">Loại vật liệu</th>
+                            <th style="width: 150px;">Nguyên công hàn</th>
+                            <th style="width: 140px;">Độ khó dung sai</th>
+                            <th style="width: 120px;">Hình dạng</th>
+                          </tr>
+                        </ng-template>
+                        <ng-template pTemplate="body">
+                          <tr>
+                            <td>
+                              <input pInputText type="text" class="f3-input" placeholder="Nhập kích thước" style="width: 100%;" />
+                            </td>
+                            <td>
+                              <input pInputText type="text" class="f3-input" placeholder="Nhập khối lượng" style="width: 100%;" />
+                            </td>
+                            <td>
+                              <input pInputText type="text" class="f3-input" placeholder="Nhập loại vật liệu" style="width: 100%;" />
+                            </td>
+                            <td>
+                              <input pInputText type="text" class="f3-input" placeholder="Nhập nguyên công hàn" style="width: 100%;" />
+                            </td>
+                            <td>
+                              <input pInputText type="text" class="f3-input" placeholder="Nhập độ khó dung sai" style="width: 100%;" />
+                            </td>
+                            <td>
+                              <input pInputText type="text" class="f3-input" placeholder="Nhập hình dạng" style="width: 100%;" />
+                            </td>
+                          </tr>
+                          <tr>
+                            <td class="f3-td-center">1</td>
+                            <td class="f3-td-center">1</td>
+                            <td class="f3-td-center">1</td>
+                            <td class="f3-td-center">1</td>
+                            <td class="f3-td-center">1</td>
+                            <td class="f3-td-center">1</td>
+                          </tr>
+                        </ng-template>
+                      </p-table>
+                    </div>
+                  </div>
+                </p-panel>
+              </div>
+
+              <!-- Danh sách yêu cầu của mã -->
+              <div class="f3-section">
+                <p-panel [toggleable]="true" [collapsed]="false" styleClass="f4-green-section">
+                  <ng-template pTemplate="header">
+                    <div class="f3-panel-title">
+                      <i class="pi pi-list"></i>
+                      <span>Thông tin tổng hợp từ bản vẽ</span>
+                    </div>
+                  </ng-template>
+                  <div class="f3-table-wrap" *ngIf="drawingLines.length > 0 && drawingLines[selectedDrawingForMaterial]">
+                    <p-table [value]="[drawingLines[selectedDrawingForMaterial]]" styleClass="p-datatable-sm" [scrollable]="true" scrollHeight="200px">
+                      <ng-template pTemplate="header">
+                        <tr>
+                          <th style="width: 140px;">Mã bản vẽ</th>
+                          <th style="width: 100px;">Số lượng</th>
+                          <th style="width: 120px;">Hình dạng</th>
+                          <th style="width: 140px;">Vật liệu</th>
+                          <th style="width: 120px;">Kích thước</th>
+                          <th style="width: 120px;">XLBM</th>
+                          <th style="width: 90px;">XL Nhiệt</th>
+                          <th style="width: 110px;">Mã QT</th>
+                        </tr>
+                      </ng-template>
+                      <ng-template pTemplate="body" let-drawing>
+                        <tr>
+                          <td>{{ drawing.ma_ban_ve || '—' }}</td>
+                          <td class="f3-td-right">{{ drawing.so_luong }}</td>
+                          <td>{{ drawing.hinh_dang || '—' }}</td>
+                          <td>{{ drawing.vat_lieu || '—' }}</td>
+                          <td>{{ drawing.kich_thuoc || '—' }}</td>
+                          <td>{{ drawing.xu_ly_be_mat || '—' }}</td>
+                          <td>{{ drawing.xu_ly_nhiet || '—' }}</td>
+                          <td>{{ drawing.ma_quy_trinh || '—' }}</td>
+                        </tr>
+                      </ng-template>
+                      <ng-template pTemplate="emptymessage">
+                        <tr>
+                          <td colspan="8" class="f3-empty">Chưa có dữ liệu</td>
+                        </tr>
+                      </ng-template>
+                    </p-table>
+                  </div>
+                </p-panel>
+              </div>
+            </div>
+
+            <!-- Right Panel - PDF Preview -->
+            <div class="f3-right">
+              <div class="f3-pdf-container">
+                <div class="f3-pdf-header">
+                  <span class="f3-pdf-title">
+                    <i class="pi pi-file-pdf"></i>
+                    {{ previewName || 'Xem bản vẽ' }}
+                  </span>
+                </div>
+                <div class="f3-pdf-body">
+                  <ng-container *ngIf="previewData && previewName">
+                    <app-pdf-viewer
+                      [pdfData]="previewData"
+                      [currentPage]="previewPage"
+                      (pageChange)="onPageChange($event)"
+                    ></app-pdf-viewer>
+                  </ng-container>
+                  <div *ngIf="!previewData || !previewName" class="f3-pdf-empty">
+                    <i class="pi pi-file-pdf"></i>
+                    <p>Chọn file đính kèm để xem bản vẽ</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- ── TAB 2: KHỐI LƯỢNG SẢN PHẨM (F4) ──────────────────────────────── -->
+        <div class="tab-content tab-f3" *ngIf="currentTab === 2">
+          <div class="f3-container">
+            <!-- Left Panel -->
+            <div class="f3-left">
+              <!-- Drawing Selector -->
+              <div class="f3-selector" *ngIf="drawingLines.length > 0">
+                <label class="f3-selector-label">CHỌN BẢN VẼ</label>
+                <select
+                  class="f3-select"
+                  [(ngModel)]="selectedDrawingForMaterial"
+                  (ngModelChange)="onDrawingSelectionChangeByIndex($event)"
+                >
+                  <option *ngFor="let drawing of drawingLines; let i = index" [value]="i">
+                    {{ drawing.ma_ban_ve || 'BV-' + (i + 1) }} - {{ drawing.vat_lieu }} • SL: {{ drawing.so_luong }}
+                  </option>
+                </select>
+              </div>
+
+              <!-- Thông tin bản vẽ -->
+              <div class="f3-section">
+                <p-panel [toggleable]="true" [collapsed]="false" styleClass="f4-info-section">
+                  <ng-template pTemplate="header">
+                    <div class="f3-panel-title">
+                      <i class="pi pi-file"></i>
+                      <span>Thông tin bản vẽ</span>
+                    </div>
+                  </ng-template>
+                  <div class="f3-form" *ngIf="drawingLines.length > 0 && drawingLines[selectedDrawingForMaterial]">
+                    <div class="f3-row f3-row-3">
+                      <div class="f3-field">
+                        <label>VNT ID</label>
+                        <input pInputText type="text" class="f3-input" [value]="drawingLines[selectedDrawingForMaterial].id" readonly />
+                      </div>
+                      <div class="f3-field">
+                        <label>Mã bản vẽ</label>
+                        <input pInputText type="text" class="f3-input" [(ngModel)]="drawingLines[selectedDrawingForMaterial].ma_ban_ve" />
+                      </div>
+                      <div class="f3-field">
+                        <label>Số lượng</label>
+                        <input pInputText type="number" class="f3-input" [(ngModel)]="drawingLines[selectedDrawingForMaterial].so_luong" />
+                      </div>
+                    </div>
+                    <div class="f3-row f3-row-3">
+                      <div class="f3-field">
+                        <label>Tiêu thụ</label>
+                        <input pInputText type="number" class="f3-input f3-input-right" placeholder="Nhập tiêu thụ" />
+                      </div>
+                      <div class="f3-field">
+                        <label>Khối lượng bao sp</label>
+                        <input pInputText type="number" class="f3-input f3-input-right" placeholder="Nhập khối lượng bao sp" />
+                      </div>
+                      <div class="f3-field">
+                        <label>Công</label>
+                        <input pInputText type="number" class="f3-input f3-input-right" placeholder="Nhập công" />
+                      </div>
+                    </div>
+                    <div class="f3-row f3-row-3">
+                      <div class="f3-field">
+                        <label>Trừ</label>
+                        <input pInputText type="number" class="f3-input f3-input-right" placeholder="Nhập trừ" />
+                      </div>
+                      <div class="f3-field">
+                        <label>Khối lượng thực tế</label>
+                        <input pInputText type="number" class="f3-input f3-input-right" placeholder="Nhập khối lượng thực tế" />
+                      </div>
+                      <div class="f3-field">
+                        <label>Ghi chú</label>
+                        <input pInputText type="text" class="f3-input" placeholder="Nhập ghi chú" />
+                      </div>
+                    </div>
+                  </div>
+                </p-panel>
+              </div>
+
+              <!-- Quy cách nguyên vật liệu -->
+              <div class="f3-section">
+                <p-panel [toggleable]="true" [collapsed]="false" styleClass="f4-orange-section">
+                  <ng-template pTemplate="header">
+                    <div class="f3-panel-title">
+                      <i class="pi pi-box"></i>
+                      <span>Quy cách nguyên vật liệu</span>
+                    </div>
+                  </ng-template>
+                  <div class="f3-form">
+                    <div class="f3-table-wrap">
+                      <p-table [value]="[{}]" styleClass="p-datatable-sm">
+                        <ng-template pTemplate="header">
+                          <tr>
+                            <th style="width: 60px;">STT</th>
+                            <th style="width: 80px;">Loại</th>
+                            <th style="width: 120px;">Mã NVL</th>
+                            <th style="width: 120px;">Hình dạng</th>
+                            <th style="width: 80px;">Dài</th>
+                            <th style="width: 80px;">Rộng</th>
+                            <th style="width: 80px;">Cao</th>
+                            <th style="width: 80px;">Ø lớn</th>
+                            <th style="width: 80px;">Ø †</th>
+                          </tr>
+                        </ng-template>
+                        <ng-template pTemplate="body">
+                          <tr>
+                            <td class="f3-td-center">1</td>
+                            <td>
+                              <input pInputText type="text" class="f3-input" placeholder="Nhập loại" />
+                            </td>
+                            <td>
+                              <input pInputText type="text" class="f3-input" placeholder="Nhập mã NVL" />
+                            </td>
+                            <td>
+                              <input pInputText type="text" class="f3-input" placeholder="Nhập hình dạng" />
+                            </td>
+                            <td>
+                              <input pInputText type="number" class="f3-input f3-input-right" placeholder="Nhập dài" />
+                            </td>
+                            <td>
+                              <input pInputText type="number" class="f3-input f3-input-right" placeholder="Nhập rộng" />
+                            </td>
+                            <td>
+                              <input pInputText type="number" class="f3-input f3-input-right" placeholder="Nhập cao" />
+                            </td>
+                            <td>
+                              <input pInputText type="number" class="f3-input f3-input-right" placeholder="Nhập Ø lớn" />
+                            </td>
+                            <td>
+                              <input pInputText type="number" class="f3-input f3-input-right" placeholder="Nhập Ø †" />
+                            </td>
+                          </tr>
+                        </ng-template>
+                      </p-table>
+                    </div>
+                  </div>
+                </p-panel>
+              </div>
+
+              <!-- Tính toán -->
+              <div class="f3-section">
+                <p-panel [toggleable]="true" [collapsed]="false" styleClass="f4-calc-section">
+                  <ng-template pTemplate="header">
+                    <div class="f3-panel-title">
+                      <i class="pi pi-calculator"></i>
+                      <span>Tính toán</span>
+                    </div>
+                  </ng-template>
+                  <div class="f3-form">
+                    <div style="margin-bottom: 16px;">
+                      <div class="f4-calc-grid">
+                        <div class="f4-calc-item">
+                          <label>Tính toán</label>
+                          <input pInputText type="text" class="f3-input f3-input-right" placeholder="Nhập tính toán" />
+                        </div>
+                        <div class="f4-calc-item">
+                          <label>Làm tròn</label>
+                          <input pInputText type="text" class="f3-input f3-input-right" placeholder="Nhập làm tròn" />
+                        </div>
+                        <div class="f4-calc-item">
+                          <label>Hệ số</label>
+                          <input pInputText type="text" class="f3-input f3-input-right" placeholder="Nhập hệ số" />
+                        </div>
+                      </div>
+                    </div>
+                    <div class="f4-subsection-title" style="margin-top: 16px;">Khối lượng bao sản phẩm</div>
+                    <div class="f3-table-wrap">
+                      <p-table [value]="[{}]" styleClass="p-datatable-sm">
+                        <ng-template pTemplate="header">
+                          <tr>
+                            <th style="width: 60px;">STT</th>
+                            <th style="width: 120px;">Hình dạng</th>
+                            <th style="width: 80px;">Dài</th>
+                            <th style="width: 80px;">Rộng</th>
+                            <th style="width: 80px;">Cao</th>
+                            <th style="width: 80px;">Ø lớn</th>
+                            <th style="width: 80px;">Ø †</th>
+                          </tr>
+                        </ng-template>
+                        <ng-template pTemplate="body">
+                          <tr>
+                            <td class="f3-td-center">1</td>
+                            <td>
+                              <input pInputText type="text" class="f3-input" placeholder="Nhập hình dạng" />
+                            </td>
+                            <td>
+                              <input pInputText type="number" class="f3-input f3-input-right" placeholder="Nhập dài" />
+                            </td>
+                            <td>
+                              <input pInputText type="number" class="f3-input f3-input-right" placeholder="Nhập rộng" />
+                            </td>
+                            <td>
+                              <input pInputText type="number" class="f3-input f3-input-right" placeholder="Nhập cao" />
+                            </td>
+                            <td>
+                              <input pInputText type="number" class="f3-input f3-input-right" placeholder="Nhập Ø lớn" />
+                            </td>
+                            <td>
+                              <input pInputText type="number" class="f3-input f3-input-right" placeholder="Nhập Ø †" />
+                            </td>
+                          </tr>
+                        </ng-template>
+                      </p-table>
+                    </div>
+                  </div>
+                </p-panel>
+              </div>
+
+              <!-- Tăng giảm khối lượng -->
+              <div class="f3-section">
+                <p-panel [toggleable]="true" [collapsed]="false" styleClass="f4-orange-section">
+                  <ng-template pTemplate="header">
+                    <div class="f3-panel-title">
+                      <i class="pi pi-arrows-v"></i>
+                      <span>Tăng giảm khối lượng</span>
+                    </div>
+                  </ng-template>
+                  <div class="f3-form">
+                    <div class="f4-subsection-title" style="color: #f97316;">Cắt - giảm</div>
+                    <div class="f3-table-wrap">
+                      <p-table [value]="[{}]" styleClass="p-datatable-sm">
+                        <ng-template pTemplate="header">
+                          <tr>
+                            <th style="width: 60px;">STT</th>
+                            <th style="width: 120px;">Hình dạng</th>
+                            <th style="width: 80px;">Dài</th>
+                            <th style="width: 80px;">Rộng</th>
+                            <th style="width: 80px;">Cao</th>
+                            <th style="width: 80px;">Ø lớn</th>
+                            <th style="width: 80px;">Ø</th>
+                          </tr>
+                        </ng-template>
+                        <ng-template pTemplate="body">
+                          <tr>
+                            <td class="f3-td-center">1</td>
+                            <td>
+                              <input pInputText type="text" class="f3-input" placeholder="Nhập hình dạng" />
+                            </td>
+                            <td>
+                              <input pInputText type="number" class="f3-input f3-input-right" placeholder="Nhập dài" />
+                            </td>
+                            <td>
+                              <input pInputText type="number" class="f3-input f3-input-right" placeholder="Nhập rộng" />
+                            </td>
+                            <td>
+                              <input pInputText type="number" class="f3-input f3-input-right" placeholder="Nhập cao" />
+                            </td>
+                            <td>
+                              <input pInputText type="number" class="f3-input f3-input-right" placeholder="Nhập Ø lớn" />
+                            </td>
+                            <td>
+                              <input pInputText type="number" class="f3-input f3-input-right" placeholder="Nhập Ø" />
+                            </td>
+                          </tr>
+                        </ng-template>
+                      </p-table>
+                    </div>
+
+                    <div class="f4-subsection-title" style="margin-top: 16px; color: #059669;">Bổ sung - tăng</div>
+                    <div class="f3-table-wrap">
+                      <p-table [value]="[{}]" styleClass="p-datatable-sm">
+                        <ng-template pTemplate="header">
+                          <tr>
+                            <th style="width: 60px;">STT</th>
+                            <th style="width: 120px;">Hình dạng</th>
+                            <th style="width: 80px;">Dài</th>
+                            <th style="width: 80px;">Rộng</th>
+                            <th style="width: 80px;">Cao</th>
+                            <th style="width: 80px;">Ø lớn</th>
+                            <th style="width: 80px;">Ø</th>
+                          </tr>
+                        </ng-template>
+                        <ng-template pTemplate="body">
+                          <tr>
+                            <td class="f3-td-center">1</td>
+                            <td>
+                              <input pInputText type="text" class="f3-input" placeholder="Nhập hình dạng" />
+                            </td>
+                            <td>
+                              <input pInputText type="number" class="f3-input f3-input-right" placeholder="Nhập dài" />
+                            </td>
+                            <td>
+                              <input pInputText type="number" class="f3-input f3-input-right" placeholder="Nhập rộng" />
+                            </td>
+                            <td>
+                              <input pInputText type="number" class="f3-input f3-input-right" placeholder="Nhập cao" />
+                            </td>
+                            <td>
+                              <input pInputText type="number" class="f3-input f3-input-right" placeholder="Nhập Ø lớn" />
+                            </td>
+                            <td>
+                              <input pInputText type="number" class="f3-input f3-input-right" placeholder="Nhập Ø" />
+                            </td>
+                          </tr>
+                        </ng-template>
+                      </p-table>
+                    </div>
+                  </div>
+                </p-panel>
+              </div>
+
+              <!-- Tăng giảm thiết diện -->
+              <div class="f3-section">
+                <p-panel [toggleable]="true" [collapsed]="false" styleClass="f4-red-section">
+                  <ng-template pTemplate="header">
+                    <div class="f3-panel-title">
+                      <i class="pi pi-th-large"></i>
+                      <span>Tăng giảm thiết diện</span>
+                    </div>
+                  </ng-template>
+                  <div class="f3-form">
+                    <div class="f4-subsection-title" style="color: #ef4444;">Cắt - giảm</div>
+                    <div class="f3-table-wrap">
+                      <p-table [value]="[{}]" styleClass="p-datatable-sm">
+                        <ng-template pTemplate="header">
+                          <tr>
+                            <th style="width: 50px;">STT</th>
+                            <th style="width: 100px;">Hình dạng</th>
+                            <th style="width: 70px;">Dài</th>
+                            <th style="width: 70px;">Rộng</th>
+                            <th style="width: 70px;">Cao</th>
+                            <th style="width: 70px;">Ø lớn</th>
+                            <th style="width: 70px;">Ø nhỏ</th>
+                            <th style="width: 70px;">Tiêu thụ</th>
+                            <th style="width: 100px;">Ghi chú</th>
+                          </tr>
+                        </ng-template>
+                        <ng-template pTemplate="body">
+                          <tr>
+                            <td class="f3-td-center">1</td>
+                            <td>
+                              <input pInputText type="text" class="f3-input" placeholder="Nhập hình dạng" />
+                            </td>
+                            <td>
+                              <input pInputText type="number" class="f3-input f3-input-right" placeholder="Nhập dài" />
+                            </td>
+                            <td>
+                              <input pInputText type="number" class="f3-input f3-input-right" placeholder="Nhập rộng" />
+                            </td>
+                            <td>
+                              <input pInputText type="number" class="f3-input f3-input-right" placeholder="Nhập cao" />
+                            </td>
+                            <td>
+                              <input pInputText type="number" class="f3-input f3-input-right" placeholder="Nhập Ø lớn" />
+                            </td>
+                            <td>
+                              <input pInputText type="number" class="f3-input f3-input-right" placeholder="Nhập Ø nhỏ" />
+                            </td>
+                            <td>
+                              <input pInputText type="number" class="f3-input f3-input-right" placeholder="Nhập tiêu thụ" />
+                            </td>
+                            <td>
+                              <input pInputText type="text" class="f3-input" placeholder="Nhập ghi chú" />
+                            </td>
+                          </tr>
+                        </ng-template>
+                      </p-table>
+                    </div>
+
+                    <div class="f4-subsection-title" style="margin-top: 16px; color: #059669;">Bổ sung - tăng</div>
+                    <div class="f3-table-wrap">
+                      <p-table [value]="[{}]" styleClass="p-datatable-sm">
+                        <ng-template pTemplate="header">
+                          <tr>
+                            <th style="width: 50px;">STT</th>
+                            <th style="width: 100px;">Hình dạng</th>
+                            <th style="width: 70px;">Dài</th>
+                            <th style="width: 70px;">Rộng</th>
+                            <th style="width: 70px;">Cao</th>
+                            <th style="width: 70px;">Ø lớn</th>
+                            <th style="width: 70px;">Ø nhỏ</th>
+                            <th style="width: 70px;">Tiêu thụ</th>
+                            <th style="width: 100px;">Ghi chú</th>
+                          </tr>
+                        </ng-template>
+                        <ng-template pTemplate="body">
+                          <tr>
+                            <td class="f3-td-center">1</td>
+                            <td>
+                              <input pInputText type="text" class="f3-input" placeholder="Nhập hình dạng" />
+                            </td>
+                            <td>
+                              <input pInputText type="number" class="f3-input f3-input-right" placeholder="Nhập dài" />
+                            </td>
+                            <td>
+                              <input pInputText type="number" class="f3-input f3-input-right" placeholder="Nhập rộng" />
+                            </td>
+                            <td>
+                              <input pInputText type="number" class="f3-input f3-input-right" placeholder="Nhập cao" />
+                            </td>
+                            <td>
+                              <input pInputText type="number" class="f3-input f3-input-right" placeholder="Nhập Ø lớn" />
+                            </td>
+                            <td>
+                              <input pInputText type="number" class="f3-input f3-input-right" placeholder="Nhập Ø nhỏ" />
+                            </td>
+                            <td>
+                              <input pInputText type="number" class="f3-input f3-input-right" placeholder="Nhập tiêu thụ" />
+                            </td>
+                            <td>
+                              <input pInputText type="text" class="f3-input" placeholder="Nhập ghi chú" />
+                            </td>
+                          </tr>
+                        </ng-template>
+                      </p-table>
+                    </div>
+                  </div>
+                </p-panel>
+              </div>
+
+              <!-- Thiết diện sản phẩm -->
+              <div class="f3-section">
+                <p-panel [toggleable]="true" [collapsed]="false" styleClass="f4-blue-section">
+                  <ng-template pTemplate="header">
+                    <div class="f3-panel-title">
+                      <i class="pi pi-chart-line"></i>
+                      <span>Thiết diện sản phẩm</span>
+                    </div>
+                  </ng-template>
+                  <div class="f3-form">
+                    <div class="f4-calc-section" style="margin: 0; border: none; border-radius: 0;">
+                      <div class="f4-calc-grid">
+                        <div class="f4-calc-item">
+                          <label>Tính toán</label>
+                          <input pInputText type="text" class="f3-input f3-input-right" placeholder="Nhập tính toán" />
+                        </div>
+                        <div class="f4-calc-item">
+                          <label>Làm tròn</label>
+                          <input pInputText type="text" class="f3-input f3-input-right" placeholder="Nhập làm tròn" />
+                        </div>
+                        <div class="f4-calc-item">
+                          <label>Hệ số</label>
+                          <input pInputText type="text" class="f3-input f3-input-right" placeholder="Nhập hệ số" />
+                        </div>
+                      </div>
+                    </div>
+
+                    <div class="f3-table-wrap" style="margin-top: 16px;">
+                      <p-table [value]="[{}]" styleClass="p-datatable-sm">
+                        <ng-template pTemplate="header">
+                          <tr>
+                            <th style="width: 60px;">STT</th>
+                            <th style="width: 120px;">Hình dạng</th>
+                            <th style="width: 80px;">Dài</th>
+                            <th style="width: 80px;">Rộng</th>
+                            <th style="width: 80px;">Cao</th>
+                            <th style="width: 80px;">Ø lớn</th>
+                            <th style="width: 80px;">Ø †</th>
+                          </tr>
+                        </ng-template>
+                        <ng-template pTemplate="body">
+                          <tr>
+                            <td class="f3-td-center">1</td>
+                            <td>
+                              <input pInputText type="text" class="f3-input" placeholder="Nhập hình dạng" />
+                            </td>
+                            <td>
+                              <input pInputText type="number" class="f3-input f3-input-right" placeholder="Nhập dài" />
+                            </td>
+                            <td>
+                              <input pInputText type="number" class="f3-input f3-input-right" placeholder="Nhập rộng" />
+                            </td>
+                            <td>
+                              <input pInputText type="number" class="f3-input f3-input-right" placeholder="Nhập cao" />
+                            </td>
+                            <td>
+                              <input pInputText type="number" class="f3-input f3-input-right" placeholder="Nhập Ø lớn" />
+                            </td>
+                            <td>
+                              <input pInputText type="number" class="f3-input f3-input-right" placeholder="Nhập Ø †" />
+                            </td>
+                          </tr>
+                        </ng-template>
+                      </p-table>
+                    </div>
+                  </div>
+                </p-panel>
+              </div>
+            </div>
+
+            <!-- Right Panel - PDF Preview -->
+            <div class="f3-right">
+              <div class="f3-pdf-container">
+                <div class="f3-pdf-header">
+                  <span class="f3-pdf-title">
+                    <i class="pi pi-file-pdf"></i>
+                    {{ previewName || 'Xem bản vẽ' }}
+                  </span>
+                </div>
+                <div class="f3-pdf-body">
+                  <ng-container *ngIf="previewData && previewName">
+                    <app-pdf-viewer
+                      [pdfData]="previewData"
+                      [currentPage]="previewPage"
+                      (pageChange)="onPageChange($event)"
+                    ></app-pdf-viewer>
+                  </ng-container>
+                  <div *ngIf="!previewData || !previewName" class="f3-pdf-empty">
+                    <i class="pi pi-file-pdf"></i>
+                    <p>Chọn file đính kèm để xem bản vẽ</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- ── TAB 3: QUY TRÌNH GIA CÔNG (F5) ──────────────────────────────── -->
+        <div class="tab-content tab-f5" *ngIf="currentTab === 3">
+          <div class="f5-container">
+            <!-- Left Panel -->
+            <div class="f5-left">
+              <!-- Drawing Selector -->
+              <div class="f3-selector" *ngIf="drawingLines.length > 0">
+                <label class="f3-selector-label">CHỌN BẢN VẼ</label>
+                <select
+                  class="f3-select"
+                  [(ngModel)]="selectedDrawingForMaterial"
+                  (ngModelChange)="onDrawingSelectionChangeByIndex($event)"
+                >
+                  <option *ngFor="let drawing of drawingLines; let i = index" [value]="i">
+                    {{ drawing.ma_ban_ve || 'BV-' + (i + 1) }} - {{ drawing.vat_lieu }} • SL: {{ drawing.so_luong }}
+                  </option>
+                </select>
+              </div>
+
+              <!-- Thông tin bản vẽ -->
+              <div class="f3-section">
+                <p-panel [toggleable]="true" [collapsed]="false" styleClass="f4-info-section">
+                  <ng-template pTemplate="header">
+                    <div class="f3-panel-title">
+                      <i class="pi pi-file"></i>
+                      <span>Thông tin bản vẽ</span>
+                    </div>
+                  </ng-template>
+                  <div class="f3-form" *ngIf="drawingLines.length > 0 && selectedDrawingForMaterial < drawingLines.length">
+                    <div class="f3-row f3-row-2">
+                      <div class="f3-field">
+                        <label>VNT ID</label>
+                        <input pInputText type="text" class="f3-input" [value]="drawingLines[selectedDrawingForMaterial].id" readonly />
+                      </div>
+                      <div class="f3-field">
+                        <label>Tên sản phẩm</label>
+                        <input pInputText type="text" class="f3-input" placeholder="Nhập Tên sản phẩm" />
+                      </div>
+                    </div>
+                    <div class="f3-row f3-row-2">
+                      <div class="f3-field">
+                        <label>Mã BV</label>
+                        <input pInputText type="text" class="f3-input" [(ngModel)]="drawingLines[selectedDrawingForMaterial].ma_ban_ve" />
+                      </div>
+                      <div class="f3-field">
+                        <label>Mã nội bộ</label>
+                        <input pInputText type="text" class="f3-input" placeholder="Nhập Mã nội bộ" />
+                      </div>
+                    </div>
+                    <div class="f3-row f3-row-2">
+                      <div class="f3-field">
+                        <label>Mã NL</label>
+                        <input pInputText type="text" class="f3-input" placeholder="Nhập Mã NL" />
+                      </div>
+                      <div class="f3-field">
+                        <label>Mô tả</label>
+                        <textarea pInputTextarea class="f3-textarea" rows="1" placeholder="Nhập Mô tả"></textarea>
+                      </div>
+                    </div>
+                    <div class="f3-row f3-row-full">
+                      <div class="f3-field">
+                        <label>Ghi chú</label>
+                        <textarea pInputTextarea class="f3-textarea" rows="1" [(ngModel)]="drawingLines[selectedDrawingForMaterial].note" placeholder="Nhập Ghi chú"></textarea>
+                      </div>
+                    </div>
+                  </div>
+                </p-panel>
+              </div>
+
+              <!-- Danh sách quy trình gia công -->
+              <div class="f3-section">
+                <div class="f5-table-header">
+                  <h4 class="f5-table-title">Danh sách quy trình gia công</h4>
+                  <button type="button" class="btn-f5-add" (click)="addMachiningProcess()">
+                    <i class="pi pi-plus"></i> Thêm công đoạn
+                  </button>
+                </div>
+                <div class="f5-table-wrap">
+                  <p-table [value]="quotationData.machining_processes" styleClass="p-datatable-sm f5-table">
                     <ng-template pTemplate="header">
                       <tr>
-                        <th
-                          [style.width.px]="getColWidth('stt')"
-                          style="font-size: 12.8px"
-                          pResizableColumn
-                          title="STT"
-                          data-col-key="stt"
-                        >
-                          STT
-                        </th>
-                        <th
-                          [style.width.px]="getColWidth('ma_ban_ve')"
-                          style="font-size: 12.8px"
-                          pResizableColumn
-                          title="Mã bản vẽ"
-                          data-col-key="ma_ban_ve"
-                        >
-                          Mã bản vẽ
-                        </th>
-                        <th
-                          class="th-right"
-                          [style.width.px]="getColWidth('so_luong')"
-                          style="font-size: 12.8px"
-                          pResizableColumn
-                          title="Số lượng"
-                          data-col-key="so_luong"
-                        >
-                          SL
-                        </th>
-                        <th
-                          [style.width.px]="getColWidth('hinh_dang')"
-                          style="font-size: 12.8px"
-                          pResizableColumn
-                          title="Hình dạng"
-                          data-col-key="hinh_dang"
-                        >
-                          Hình dạng
-                        </th>
-                        <th
-                          [style.width.px]="getColWidth('xlbm')"
-                          style="font-size: 12.8px"
-                          pResizableColumn
-                          title="Xử lý bề mặt"
-                          data-col-key="xlbm"
-                        >
-                          XLBM
-                        </th>
-                        <th
-                          [style.width.px]="getColWidth('hrc')"
-                          style="font-size: 12.8px"
-                          pResizableColumn
-                          title="Độ cứng HRC"
-                          data-col-key="hrc"
-                        >
-                          HRC
-                        </th>
-                        <th
-                          [style.width.px]="getColWidth('vat_lieu')"
-                          style="font-size: 12.8px"
-                          pResizableColumn
-                          title="Vật liệu"
-                          data-col-key="vat_lieu"
-                        >
-                          Vật liệu
-                        </th>
-                        <th
-                          [style.width.px]="getColWidth('kich_thuoc')"
-                          style="font-size: 12.8px"
-                          pResizableColumn
-                          title="Kích thước"
-                          data-col-key="kich_thuoc"
-                        >
-                          Kích thước
-                        </th>
-                        <th
-                          [style.width.px]="getColWidth('ma_quy_trinh')"
-                          style="font-size: 12.8px"
-                          pResizableColumn
-                          title="Mã quy trình"
-                          data-col-key="ma_quy_trinh"
-                        >
-                          Mã QT
-                        </th>
-                        <th
-                          [style.width.px]="getColWidth('ghi_chu')"
-                          style="font-size: 12.8px"
-                          pResizableColumn
-                          title="Ghi chú"
-                          data-col-key="ghi_chu"
-                        >
-                          Ghi chú
-                        </th>
-                        <th
-                          [style.width.px]="getColWidth('dung_sai_chung')"
-                          style="font-size: 12.8px"
-                          pResizableColumn
-                          title="Dung sai chung"
-                          data-col-key="dung_sai_chung"
-                        >
-                          DS chung
-                        </th>
-                        <th
-                          [style.width.px]="getColWidth('so_be_mat_cnc')"
-                          style="font-size: 12.8px"
-                          pResizableColumn
-                          title="Số bề mặt CNC"
-                          data-col-key="so_be_mat_cnc"
-                        >
-                          Số BM CNC
-                        </th>
-                        <th
-                          [style.width.px]="getColWidth('dung_sai_chat_nhat')"
-                          style="font-size: 12.8px"
-                          pResizableColumn
-                          title="Dung sai chặt nhất"
-                          data-col-key="dung_sai_chat_nhat"
-                        >
-                          DS chặt nhất
-                        </th>
-                        <th
-                          [style.width.px]="getColWidth('co_gdt')"
-                          style="font-size: 12.8px"
-                          pResizableColumn
-                          title="Có GD&T"
-                          data-col-key="co_gdt"
-                        >
-                          GD&T
-                        </th>
+                        <th style="width: 40px;"><p-checkbox binary="true"></p-checkbox></th>
+                        <th style="width: 50px;">STT</th>
+                        <th style="width: 120px;">Nguyên công</th>
+                        <th style="width: 100px;">Giá trị</th>
+                        <th style="width: 80px;">DVT</th>
+                        <th style="width: 110px;">Đơn giá</th>
+                        <th style="width: 90px;">XLN (ph)</th>
+                        <th style="width: 90px;">QC (ph)</th>
+                        <th style="width: 120px;">Thành tiền (VND)</th>
+                        <th style="width: 110px;">Giá min</th>
+                        <th style="width: 140px;">Ghi chú</th>
+                        <th style="width: 60px;"></th>
                       </tr>
                     </ng-template>
-                    <ng-template
-                      pTemplate="body"
-                      let-drawingLine
-                      let-rowIndex="rowIndex"
-                    >
+                    <ng-template pTemplate="body" let-process let-i="rowIndex">
                       <tr>
-                        <td class="cell-num" title="{{ rowIndex + 1 }}">
-                          {{ rowIndex + 1 }}
+                        <td style="text-align: center;">
+                          <p-checkbox [(ngModel)]="process.checked" binary="true"></p-checkbox>
                         </td>
-                        <td class="cell-ma" pTooltip="{{ drawingLine.ma_ban_ve }}" tooltipPosition="top">
-                          <button
-                            type="button"
-                            class="bv-page-btn"
-                            (click)="loadPdfPageByLine(drawingLine)"
-                            [title]="'Xem trang ' + drawingLine.page"
-                          >
-                            <mat-icon class="icon-sm">description</mat-icon>
+                        <td style="text-align: center;">{{ i + 1 }}</td>
+                        <td style="padding: 0 !important;">
+                          <input pInputText type="text" class="f5-input-cell" [(ngModel)]="process.operation_code" placeholder="Nhập nguyên công" />
+                        </td>
+                        <td style="padding: 0 !important;">
+                          <input pInputText type="number" class="f5-input-cell f5-input-right" [(ngModel)]="process.operation_value" placeholder="0" />
+                        </td>
+                        <td style="padding: 0 !important;">
+                          <input pInputText type="text" class="f5-input-cell" [(ngModel)]="process.unit" placeholder="Nhập DVT" />
+                        </td>
+                        <td style="padding: 0 !important;">
+                          <input pInputText type="number" class="f5-input-cell f5-input-right" [(ngModel)]="process.operation_unit_price" placeholder="0" />
+                        </td>
+                        <td style="padding: 0 !important;">
+                          <input pInputText type="number" class="f5-input-cell f5-input-right" [(ngModel)]="process.machining_time" placeholder="0" />
+                        </td>
+                        <td style="padding: 0 !important;">
+                          <input pInputText type="number" class="f5-input-cell f5-input-right" [(ngModel)]="process.qc" placeholder="0" />
+                        </td>
+                        <td style="padding: 0 !important;">
+                          <input pInputText type="number" class="f5-input-cell f5-input-right" [(ngModel)]="process.operation_total_price" placeholder="0" />
+                        </td>
+                        <td style="padding: 0 !important;">
+                          <input pInputText type="number" class="f5-input-cell f5-input-right" [(ngModel)]="process.min_price" placeholder="0" />
+                        </td>
+                        <td style="padding: 0 !important;">
+                          <input pInputText type="text" class="f5-input-cell" [(ngModel)]="process.note" placeholder="Nhập ghi chú" />
+                        </td>
+                        <td style="text-align: center;">
+                          <button type="button" class="btn-f5-delete" (click)="removeMachiningProcess(i)" pTooltip="Xóa">
+                            <i class="pi pi-trash"></i>
                           </button>
-                          <input
-                            type="text"
-                            class="bv-input bv-input--mono bv-input--brand"
-                            [value]="drawingLine.ma_ban_ve"
-                            (change)="
-                              onDrawingFieldChange(
-                                rowIndex,
-                                'ma_ban_ve',
-                                $event
-                              )
-                            "
-                          />
                         </td>
-                        <td class="cell-sl" pTooltip="{{ drawingLine.so_luong }}" tooltipPosition="top">
-                          <p-inputNumber
-                            [inputId]="'sl_' + rowIndex"
-                            [(ngModel)]="drawingLine.so_luong"
-                            [min]="0"
-                            [showButtons]="false"
-                            inputStyleClass="bv-input bv-input--num"
-                          ></p-inputNumber>
-                        </td>
-                        <td pTooltip="{{ drawingLine.hinh_dang }}" tooltipPosition="top">
-                          <input
-                            type="text"
-                            class="bv-input"
-                            [value]="drawingLine.hinh_dang"
-                            (change)="
-                              onDrawingFieldChange(
-                                rowIndex,
-                                'hinh_dang',
-                                $event
-                              )
-                            "
-                          />
-                        </td>
-                        <td pTooltip="{{ drawingLine.xu_ly_be_mat }}" tooltipPosition="top">
-                          <input
-                            type="text"
-                            class="bv-input bv-input--mono bv-input--amber"
-                            [value]="drawingLine.xu_ly_be_mat"
-                            placeholder="—"
-                            (change)="
-                              onDrawingFieldChange(
-                                rowIndex,
-                                'xu_ly_be_mat',
-                                $event
-                              )
-                            "
-                          />
-                        </td>
-                        <td pTooltip="{{ drawingLine.xu_ly_nhiet }}" tooltipPosition="top">
-                          <input
-                            type="text"
-                            class="bv-input bv-input--mono bv-input--amber"
-                            [value]="drawingLine.xu_ly_nhiet"
-                            placeholder="—"
-                            (change)="
-                              onDrawingFieldChange(
-                                rowIndex,
-                                'xu_ly_nhiet',
-                                $event
-                              )
-                            "
-                          />
-                        </td>
-                        <td pTooltip="{{ drawingLine.vat_lieu }}" tooltipPosition="top">
-                          <input
-                            type="text"
-                            class="bv-input bv-input--mono bv-input--green"
-                            [value]="drawingLine.vat_lieu"
-                            (change)="
-                              onDrawingFieldChange(rowIndex, 'vat_lieu', $event)
-                            "
-                          />
-                        </td>
-                        <td class="cell-kt" pTooltip="{{ drawingLine.kich_thuoc }}" tooltipPosition="top">
-                          {{ drawingLine.kich_thuoc || "—" }}
-                        </td>
-                        <td pTooltip="{{ drawingLine.ma_quy_trinh }}" tooltipPosition="top">
-                          <input
-                            type="text"
-                            class="bv-input bv-input--mono"
-                            [class.bv-input--brand]="!!drawingLine.ma_quy_trinh"
-                            [value]="drawingLine.ma_quy_trinh"
-                            placeholder="—"
-                            (change)="
-                              onDrawingFieldChange(
-                                rowIndex,
-                                'ma_quy_trinh',
-                                $event
-                              )
-                            "
-                          />
-                        </td>
-                        <td pTooltip="{{ drawingLine.ghi_chu }}" tooltipPosition="top">
-                          <input
-                            type="text"
-                            class="bv-input"
-                            [class.bv-input--modified]="
-                              isDrawingFieldModified(rowIndex, 'ghi_chu')
-                            "
-                            [value]="drawingLine.ghi_chu"
-                            placeholder="—"
-                            (change)="
-                              onDrawingFieldChange(rowIndex, 'ghi_chu', $event)
-                            "
-                          />
-                        </td>
-                        <td pTooltip="{{ drawingLine.dung_sai_chung }}" tooltipPosition="top">
-                          <input
-                            type="text"
-                            class="bv-input bv-input--mono"
-                            [value]="drawingLine.dung_sai_chung"
-                            placeholder="—"
-                            (change)="
-                              onDrawingFieldChange(rowIndex, 'dung_sai_chung', $event)
-                            "
-                          />
-                        </td>
-                        <td class="cell-num" pTooltip="{{ drawingLine.so_be_mat_cnc }}" tooltipPosition="top">
-                          <p-inputNumber
-                            [inputId]="'sbm_' + rowIndex"
-                            [(ngModel)]="drawingLine.so_be_mat_cnc"
-                            [min]="0"
-                            [showButtons]="false"
-                            inputStyleClass="bv-input bv-input--num"
-                          ></p-inputNumber>
-                        </td>
-                        <td pTooltip="{{ drawingLine.dung_sai_chat_nhat }}" tooltipPosition="top">
-                          <input
-                            type="text"
-                            class="bv-input bv-input--mono bv-input--amber"
-                            [value]="drawingLine.dung_sai_chat_nhat"
-                            placeholder="—"
-                            (change)="
-                              onDrawingFieldChange(rowIndex, 'dung_sai_chat_nhat', $event)
-                            "
-                          />
-                        </td>
-                        <td pTooltip="{{ drawingLine.co_gdt ? 'Có' : 'Không' }}" tooltipPosition="top">
-                          <span class="bv-badge" [class.bv-badge--green]="drawingLine.co_gdt">
-                            {{ drawingLine.co_gdt ? '✓' : '—' }}
-                          </span>
-                        </td>
+                      </tr>
+                    </ng-template>
+                    <ng-template pTemplate="emptymessage">
+                      <tr>
+                        <td colspan="12" class="f5-empty">Chưa có công đoạn nào</td>
+                      </tr>
+                    </ng-template>
+                    <ng-template pTemplate="footer">
+                      <tr>
+                        <td colspan="6"></td>
+                        <td style="text-align: right; color: #e40000; font-weight: 600;">0</td>
+                        <td style="text-align: right; color: #e40000; font-weight: 600;">0</td>
+                        <td style="text-align: right; color: #e40000; font-weight: 600;">0</td>
+                        <td colspan="3"></td>
                       </tr>
                     </ng-template>
                   </p-table>
                 </div>
-              </ng-template>
+              </div>
 
-              <ng-template pTemplate="panel">
-                <div
-                  class="bv-split-preview"
-                  aria-label="Xem trước file đính kèm"
-                >
-                  <div class="bv-preview-header">
-                    <button
-                      type="button"
-                      class="bv-split-toggle"
-                      [class.active]="splitMode === 'fullRight'"
-                      (click)="toggleSplitFull('right')"
-                      title="Full preview"
-                    >
-                      <i
-                        class="pi"
-                        [ngClass]="
-                          splitMode === 'fullRight'
-                            ? 'pi-minus'
-                            : 'pi-window-maximize'
-                        "
-                      ></i>
-                    </button>
-                    <span
-                      class="bv-preview-filename"
-                      [class.bv-preview-filename--empty]="!previewName"
-                    >
-                      <mat-icon *ngIf="previewName" class="icon-sm" style="margin-right: 4px;">description</mat-icon>
-                      {{ previewName || "Chưa chọn file" }}
-                    </span>
-                  </div>
-                  <div class="bv-preview-body">
-                    <app-pdf-viewer
-                      *ngIf="previewData && !previewLoading"
-                      [pdfData]="previewData"
-                      [currentPage]="previewPage"
-                      [fileName]="previewName || ''"
-                      (pageChange)="onPageChange($event)"
-                    ></app-pdf-viewer>
-                    <div *ngIf="previewLoading" class="bv-preview-loading">
-                      <i class="pi pi-spin pi-spinner"></i>
-                      Đang tải bản xem trước…
+              <!-- Các nguyên công đặc biệt -->
+              <div class="f3-section">
+                <div class="f5-special-header">
+                  <h4>Các nguyên công đặc biệt</h4>
+                </div>
+                <div class="f5-special-checkboxes">
+                  <label class="f5-checkbox-label">
+                    <p-checkbox [(ngModel)]="quotationData.special_machining.wc" binary="true" inputId="wc"></p-checkbox>
+                    <span>WC</span>
+                  </label>
+                  <label class="f5-checkbox-label">
+                    <p-checkbox [(ngModel)]="quotationData.special_machining.gf" binary="true" inputId="gf"></p-checkbox>
+                    <span>GF</span>
+                  </label>
+                  <label class="f5-checkbox-label">
+                    <p-checkbox [(ngModel)]="quotationData.special_machining.lf" binary="true" inputId="lf"></p-checkbox>
+                    <span>LF</span>
+                  </label>
+                  <label class="f5-checkbox-label">
+                    <p-checkbox [(ngModel)]="quotationData.special_machining.han" binary="true" inputId="han"></p-checkbox>
+                    <span>HAN</span>
+                  </label>
+                  <label class="f5-checkbox-label">
+                    <p-checkbox [(ngModel)]="quotationData.special_machining.cayren" binary="true" inputId="cayren"></p-checkbox>
+                    <span>CAYREN</span>
+                  </label>
+                  <label class="f5-checkbox-label">
+                    <p-checkbox [(ngModel)]="quotationData.special_machining.dongpin" binary="true" inputId="dongpin"></p-checkbox>
+                    <span>DONGPIN</span>
+                  </label>
+                  <label class="f5-checkbox-label">
+                    <p-checkbox [(ngModel)]="quotationData.special_machining.tool" binary="true" inputId="tool"></p-checkbox>
+                    <span>TOOL</span>
+                  </label>
+                </div>
+              </div>
+
+              <!-- Biến số gia công -->
+              <div class="f3-section">
+                <h4 class="f5-subsection-title">Biến số gia công</h4>
+                <div class="f5-variables-table">
+                  <p-table [value]="[{}]" styleClass="p-datatable-sm f5-variables-table-custom">
+                    <ng-template pTemplate="header">
+                      <tr>
+                        <th style="width: 100px;">Danh mục</th>
+                        <th style="width: 120px;">Kích thước</th>
+                        <th style="width: 120px;">Khối lượng</th>
+                        <th style="width: 120px;">Loại vật liệu</th>
+                        <th style="width: 150px;">Nguyên công hàn</th>
+                        <th style="width: 150px;">Độ khó dung sai</th>
+                        <th style="width: 120px;">Hình dạng</th>
+                      </tr>
+                    </ng-template>
+                    <ng-template pTemplate="body">
+                      <tr>
+                        <td style="font-weight: 600;">Loại</td>
+                        <td>
+                          <input pInputText type="text" class="f5-input-cell" [(ngModel)]="quotationData.machining_coefficients.size_type" placeholder="Nhập loại" />
+                        </td>
+                        <td>
+                          <input pInputText type="text" class="f5-input-cell" [(ngModel)]="quotationData.machining_coefficients.mass_type" placeholder="Nhập loại" />
+                        </td>
+                        <td>
+                          <input pInputText type="text" class="f5-input-cell" [(ngModel)]="quotationData.machining_coefficients.material_type" placeholder="Nhập loại" />
+                        </td>
+                        <td>
+                          <input pInputText type="text" class="f5-input-cell" [(ngModel)]="quotationData.machining_coefficients.welding_type" placeholder="Nhập loại" />
+                        </td>
+                        <td>
+                          <input pInputText type="text" class="f5-input-cell" [(ngModel)]="quotationData.machining_coefficients.tolerance_type" placeholder="Nhập loại" />
+                        </td>
+                        <td>
+                          <input pInputText type="text" class="f5-input-cell" [(ngModel)]="quotationData.machining_coefficients.shape_type" placeholder="Nhập loại" />
+                        </td>
+                      </tr>
+                      <tr>
+                        <td style="font-weight: 600;">Biến số</td>
+                        <td style="text-align: right;">{{ quotationData.machining_coefficients.size_coefficient || '—' }}</td>
+                        <td style="text-align: right;">{{ quotationData.machining_coefficients.mass_coefficient || '—' }}</td>
+                        <td style="text-align: right;">{{ quotationData.machining_coefficients.material_coefficient || '—' }}</td>
+                        <td style="text-align: right;">{{ quotationData.machining_coefficients.welding_coefficient || '—' }}</td>
+                        <td style="text-align: right;">{{ quotationData.machining_coefficients.tolerance_coefficient || '—' }}</td>
+                        <td style="text-align: right;">{{ quotationData.machining_coefficients.shape_coefficient || '—' }}</td>
+                      </tr>
+                    </ng-template>
+                  </p-table>
+                </div>
+              </div>
+
+              <!-- Ghi chú kỹ thuật -->
+              <div class="f3-section">
+                <p-panel [toggleable]="true" [collapsed]="false" styleClass="f5-notes-section">
+                  <ng-template pTemplate="header">
+                    <div class="f3-panel-title">
+                      <i class="pi pi-pencil"></i>
+                      <span>Ghi chú kỹ thuật</span>
                     </div>
-                    <div
-                      *ngIf="!previewData && !previewLoading"
-                      class="bv-preview-empty"
-                    >
-                      <div>
-                        Bấm <mat-icon class="icon-sm" style="vertical-align: middle;">attach_file</mat-icon> trên tag file để xem trực
-                        tiếp.<br />
-                        Hoặc <strong>Upload</strong> PDF/ảnh để xem tại đây.
+                  </ng-template>
+                  <div class="f3-form">
+                    <div class="f3-row f3-row-full">
+                      <div class="f3-field">
+                        <label>Ghi chú kỹ thuật</label>
+                        <textarea pInputTextarea class="f3-textarea" rows="3" placeholder="Nhập ghi chú kỹ thuật"></textarea>
                       </div>
                     </div>
                   </div>
+                </p-panel>
+              </div>
+            </div>
+
+            <!-- Right Panel - PDF Preview -->
+            <div class="f5-right">
+              <div class="f5-pdf-container">
+                <div class="f5-pdf-header">
+                  <span class="f5-pdf-title">
+                    <i class="pi pi-file-pdf"></i>
+                    {{ previewName || 'Xem bản vẽ' }}
+                  </span>
                 </div>
-              </ng-template>
-            </p-splitter>
+                <div class="f5-pdf-body">
+                  <ng-container *ngIf="previewData && previewName">
+                    <app-pdf-viewer
+                      [pdfData]="previewData"
+                      [currentPage]="previewPage"
+                      (pageChange)="onPageChange($event)"
+                    ></app-pdf-viewer>
+                  </ng-container>
+                  <div *ngIf="!previewData || !previewName" class="f5-pdf-empty">
+                    <i class="pi pi-file-pdf"></i>
+                    <p>Chọn file đính kèm để xem bản vẽ</p>
+                  </div>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       </div>

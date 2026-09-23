@@ -11,16 +11,16 @@ import { ActivatedRoute } from '@angular/router';
 import { MessageService } from 'primeng/api';
 import { TreeNode } from 'primeng/api';
 
-import { MekongAiService } from '../mekong-ai.service';
-import { EmailRow } from '../models/email.model';
+import { MekongAiService } from '../../../services/mekong-ai/mekong-ai.service';
+import { EmailRow } from '../../../models/mekong-ai/email.model';
 import {
   KnowledgeBlock,
   UiCell,
   UiRow,
   UiSchema,
-} from '../models/prompt.model';
-import { TableResizeService } from '../table-resize.service';
-import { DrawingLine, drawingToLine } from '../utils/drawing.util';
+} from '../../../models/mekong-ai/prompt.model';
+import { TableResizeService } from '../../../services/mekong-ai/table-resize.service';
+import { DrawingLine, drawingToLine } from '../../../shared/utils/drawing.util';
 import {
   collectSchemaKeys,
   fmtDDMM,
@@ -31,10 +31,16 @@ import {
   parseHanGiaoToDate,
   resolveClassifyValue,
   truthyClassify
-} from '../utils/email.util';
-import { buildEmailTree, filterEmailsByNode } from '../utils/tree.util';
-import { DemoV3Service } from './demo-v3.service';
-import { DrawingVersion, VersionService } from './version.service';
+} from '../../../shared/utils/email.util';
+import { buildEmailTree, filterEmailsByNode } from '../../../shared/utils/tree.util';
+import { DemoV3Service } from '../../../services/mekong-ai/demo-v3.service';
+import { DrawingVersion, VersionService } from '../../../services/mekong-ai/version.service';
+import {
+  QuotationData,
+  Material,
+  MachiningProcess,
+  ProductVolume,
+} from '../../../models/mekong-ai/quotation.model';
 
 export const DEFAULT_COL_WIDTHS: Record<string, number> = {
   stt: 36,
@@ -53,7 +59,7 @@ export const DEFAULT_COL_WIDTHS: Record<string, number> = {
   ghi_chu: 105,
 };
 
-type ViewTab = 0 | 1;
+type ViewTab = 0 | 1 | 2 | 3;
 type SplitMode = 'normal' | 'fullLeft' | 'fullRight';
 
 @Component({
@@ -91,16 +97,76 @@ export class DemoV3Component implements OnInit, OnDestroy, AfterViewChecked {
   previewPage = 1;
   saving = false;
   pushingErp = false;
-  ghiChu = '';
-  hanBaoGia: Date | null = null;
-  coVanChuyen: boolean | null = null;
-  xuLyBeMat: boolean | null = null;
+
+  // Quotation data for 4 tabs
+  quotationData: QuotationData = {
+    general_info: {
+      type: '',
+      quoting_status: '',
+      format: '',
+      language: '',
+      created_date: undefined,
+      creator: '',
+      request_time: undefined,
+      quote_deadline: undefined,
+      has_transport: false,
+      transport_method: '',
+      surface_treatment: false,
+      material: 0,
+      vat: false,
+      discount: 0,
+      vat_value: 0,
+      quotation_currency: '',
+      exchange_rate: 0,
+      lot_number: 0,
+      quantity_for_min_price: 0,
+      company_code: '',
+      company_name: '',
+      company_tax: '',
+      company_email: '',
+      company_contact: '',
+      company_phone: '',
+      company_fax: '',
+      company_address: '',
+      company_language: '',
+      customer_code: '',
+      customer_name: '',
+      phone_number: '',
+      fax_number: '',
+      staff_in_charge: '',
+      vietnamese_address: '',
+      email: '',
+      tax_code: '',
+      representative: '',
+      unit: '',
+      customer_note: '',
+      internal_note: '',
+      email_content: '',
+    },
+    materials: [],
+    special_machining: {
+      wc: false,
+      gf: false,
+      lf: false,
+      han: false,
+      cayren: false,
+      dongpin: false,
+      tool: false,
+    },
+    machining_coefficients: {},
+    product_volumes: [{}],
+    product_weight_summary: {},
+    machining_processes: [],
+  };
 
   // Version tracking
   drawingVersions: Map<number, DrawingVersion[]> = new Map();
   currentVersionType: 'ai_extracted' | 'user_draft' | 'approved' = 'ai_extracted';
   showVersionHistory = false;
   selectedDrawingIndex: number | null = null;
+
+  // Selected drawing for material tab (F3)
+  selectedDrawingForMaterial: number = 0;
 
   // Column resize — widths from localStorage
   colWidths: Record<string, number> = {};
@@ -243,13 +309,6 @@ export class DemoV3Component implements OnInit, OnDestroy, AfterViewChecked {
     ];
     this.activeEmail = full;
     this.loadDrawingLines();
-    // Load tab thong tin chung fields
-    this.ghiChu = job.ghi_chu || '';
-    this.hanBaoGia = parseHanGiaoToDate(job.han_bao_gia || null);
-    this.coVanChuyen =
-      job.co_van_chuyen ?? (full.classify_output as any)?.co_van_chuyen ?? null;
-    this.xuLyBeMat =
-      job.xu_ly_be_mat ?? (full.classify_output as any)?.xu_ly_be_mat ?? null;
 
     // Load version counts
     await this.loadAllVersionCounts();
@@ -302,33 +361,109 @@ export class DemoV3Component implements OnInit, OnDestroy, AfterViewChecked {
       );
       this.activeEmail = full;
       this.loadDrawingLines();
-      // Load tab thong tin chung fields
-      this.ghiChu = job.ghi_chu || '';
-      this.hanBaoGia = parseHanGiaoToDate(job.han_bao_gia || null);
-      this.coVanChuyen =
-        job.co_van_chuyen ??
-        (full.classify_output as any)?.co_van_chuyen ??
-        null;
-      this.xuLyBeMat =
-        job.xu_ly_be_mat ?? (full.classify_output as any)?.xu_ly_be_mat ?? null;
+
+      // Map email data to quotation form
+      this.mapEmailToQuotation(full);
 
       // Load version counts for all drawings
       await this.loadAllVersionCounts();
     } else if (this.activeEmail?.drawings?.length) {
       this.loadDrawingLines();
-      this.ghiChu =
-        emailItem.ghi_chu || (emailItem.classify_output as any)?.ghi_chu || '';
-      this.coVanChuyen =
-        emailItem.co_van_chuyen ??
-        (emailItem.classify_output as any)?.co_van_chuyen ??
-        null;
-      this.xuLyBeMat =
-        emailItem.xu_ly_be_mat ??
-        (emailItem.classify_output as any)?.xu_ly_be_mat ??
-        null;
     }
 
     this.cdr.markForCheck();
+  }
+
+  private mapEmailToQuotation(email: EmailRow): void {
+    const classify = email.classify_output;
+
+    // Reset quotation data
+    this.quotationData = {
+      general_info: {
+        // Section 1 - Thông tin chung
+        type: classify?.loai || '',
+        quoting_status: '',
+        format: classify?.hinh_thuc_giao || '',
+        language: email.ngon_ngu || classify?.ngon_ngu || '',
+        created_date: email.created_at ? new Date(email.created_at) : undefined,
+        creator: email.from || '',
+        request_time: email.created_at ? new Date(email.created_at) : undefined,
+        quote_deadline: classify?.han_giao_hang ? this.parseDate(classify.han_giao_hang) :
+                       (email.han_giao ? this.parseDate(email.han_giao) : undefined),
+        has_transport: classify?.co_van_chuyen ?? false,
+        transport_method: classify?.hinh_thuc_giao || '',
+        surface_treatment: this.parseSurfaceTreatment(classify?.xu_ly_be_mat),
+        material: 0,
+        vat: false,
+        discount: 0,
+        vat_value: 0,
+        quotation_currency: 'JPY',
+        exchange_rate: 0,
+        lot_number: 0,
+        quantity_for_min_price: 0,
+
+        // Section 2 - Thông tin công ty
+        company_code: '',
+        company_name: classify?.ten_cong_ty || '',
+        company_tax: '',
+        company_email: '',
+        company_contact: '',
+        company_phone: '',
+        company_fax: '',
+        company_address: '',
+        company_language: email.ngon_ngu || classify?.ngon_ngu || '',
+
+        // Section 3 - Thông tin khách hàng
+        customer_code: email.ma_khach_hang || '',
+        customer_name: email.ten_kh || email.from || '',
+        phone_number: '',
+        fax_number: '',
+        staff_in_charge: '',
+        vietnamese_address: '',
+        email: email.email || '',
+        tax_code: '',
+        representative: '',
+
+        // Section 4 - Ghi chú
+        unit: '',
+        customer_note: classify?.ghi_chu || email.ghi_chu || '',
+        internal_note: '',
+        email_content: email.body || '',
+      },
+      materials: [],
+      special_machining: {
+        wc: false,
+        gf: false,
+        lf: false,
+        han: false,
+        cayren: false,
+        dongpin: false,
+        tool: false,
+      },
+      machining_coefficients: {},
+      product_volumes: [{}],
+      product_weight_summary: {},
+      machining_processes: [],
+    };
+  }
+
+  private parseDate(dateStr: string | null | undefined): Date | undefined {
+    if (!dateStr) return undefined;
+    try {
+      const parsed = new Date(dateStr);
+      return isNaN(parsed.getTime()) ? undefined : parsed;
+    } catch {
+      return undefined;
+    }
+  }
+
+  private parseSurfaceTreatment(value: boolean | string | null | undefined): boolean {
+    if (typeof value === 'boolean') return value;
+    if (typeof value === 'string') {
+      const lower = value.toLowerCase();
+      return lower === 'true' || lower === 'có' || lower === 'yes';
+    }
+    return false;
   }
 
   private async loadAllVersionCounts(): Promise<void> {
@@ -355,10 +490,6 @@ export class DemoV3Component implements OnInit, OnDestroy, AfterViewChecked {
     this.resetPreview();
     this.drawingLines = [];
     this.modifiedDrawingFields = new Set();
-    this.ghiChu = '';
-    this.hanBaoGia = null;
-    this.coVanChuyen = null;
-    this.xuLyBeMat = null;
     this.splitMode = 'normal';
   }
 
@@ -380,6 +511,8 @@ export class DemoV3Component implements OnInit, OnDestroy, AfterViewChecked {
             rowIndex
           )
       );
+      // Reset selected drawing to first one when loading new email
+      this.selectedDrawingForMaterial = 0;
     }
   }
 
@@ -734,6 +867,17 @@ export class DemoV3Component implements OnInit, OnDestroy, AfterViewChecked {
 
   setTab(tab: ViewTab): void {
     this.currentTab = tab;
+
+    // Auto-load PDF preview when switching to F3 (Material), F4 (Product Volume), or F5 (Machining Process) tab
+    if ((tab === 1 || tab === 2 || tab === 3) && this.drawingLines.length > 0) {
+      const drawing = this.drawingLines[this.selectedDrawingForMaterial];
+      if (drawing && drawing.filename && this.activeEmail?.id) {
+        // Only load if preview is not already showing this file
+        if (this.previewName !== drawing.filename) {
+          this.onSelectAttachment(drawing.filename);
+        }
+      }
+    }
   }
 
   // ── Schema rendering helpers ─────────────────────────────
@@ -856,20 +1000,7 @@ export class DemoV3Component implements OnInit, OnDestroy, AfterViewChecked {
       },
     }));
 
-    const d = this.hanBaoGia;
-    const hanBaoGiaValue = d
-      ? `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(
-          2,
-          '0'
-        )}-${String(d.getDate()).padStart(2, '0')}`
-      : undefined;
-
-    const ok = await this.svc.savePhieu(this.activeEmail.id, drawings, {
-      ghi_chu: this.ghiChu,
-      han_bao_gia: hanBaoGiaValue,
-      co_van_chuyen: this.coVanChuyen,
-      xu_ly_be_mat: this.xuLyBeMat,
-    });
+    const ok = await this.svc.savePhieu(this.activeEmail.id, drawings, {});
 
     this.saving = false;
     this.cdr.markForCheck();
@@ -1073,5 +1204,78 @@ export class DemoV3Component implements OnInit, OnDestroy, AfterViewChecked {
     } else {
       this.selectedTreeNode = null;
     }
+  }
+
+  // ── Quotation methods ─────────────────────────────────────
+
+  onDrawingSelectionChange(event: any): void {
+    // event.value is the selected DrawingLine object
+    const selectedIndex = this.drawingLines.findIndex(d => d === event.value);
+    if (selectedIndex >= 0) {
+      this.selectedDrawingForMaterial = selectedIndex;
+      this.loadMaterialDataForDrawing(selectedIndex);
+    }
+    this.cdr.markForCheck();
+  }
+
+  onDrawingSelectionChangeByIndex(index: number): void {
+    this.selectedDrawingForMaterial = index;
+    this.loadMaterialDataForDrawing(index);
+    this.cdr.markForCheck();
+  }
+
+  private loadMaterialDataForDrawing(drawingIndex: number): void {
+    if (!this.drawingLines || drawingIndex >= this.drawingLines.length) {
+      return;
+    }
+    const drawing = this.drawingLines[drawingIndex];
+
+    // Auto-load PDF preview when selecting a drawing
+    if (drawing.filename && this.activeEmail?.id) {
+      this.onSelectAttachment(drawing.filename);
+    }
+  }
+
+  addMaterial(): void {
+    const newMaterial: Material = {};
+    this.quotationData.materials = this.quotationData.materials || [];
+    this.quotationData.materials.push(newMaterial);
+    this.cdr.markForCheck();
+  }
+
+  removeMaterial(index: number): void {
+    if (this.quotationData.materials && index >= 0 && index < this.quotationData.materials.length) {
+      this.quotationData.materials.splice(index, 1);
+      this.cdr.markForCheck();
+    }
+  }
+
+  addMachiningProcess(): void {
+    const newProcess: MachiningProcess = {};
+    this.quotationData.machining_processes = this.quotationData.machining_processes || [];
+    this.quotationData.machining_processes.push(newProcess);
+    this.cdr.markForCheck();
+  }
+
+  removeMachiningProcess(index: number): void {
+    if (this.quotationData.machining_processes && index >= 0 && index < this.quotationData.machining_processes.length) {
+      this.quotationData.machining_processes.splice(index, 1);
+      this.cdr.markForCheck();
+    }
+  }
+
+  // Helper methods for F3 material tab
+  getMaterialType(drawing: DrawingLine): string {
+    if (!drawing || !drawing.vat_lieu) return '—';
+    // Extract material type from format like "SKD61 (Thép)"
+    const match = drawing.vat_lieu.match(/\(([^)]+)\)/);
+    return match ? match[1] : '—';
+  }
+
+  getMaterialCode(drawing: DrawingLine): string {
+    if (!drawing || !drawing.vat_lieu) return '—';
+    // Extract material code from format like "SKD61 (Thép)" or just "SKD61"
+    const match = drawing.vat_lieu.match(/^([^\s(]+)/);
+    return match ? match[1] : drawing.vat_lieu;
   }
 }

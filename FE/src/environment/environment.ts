@@ -9,4 +9,11 @@ export const environment = {
 
   /** Mekong AI endpoint - NodeJS backend port 3000 */
   mekong_ai_endpoint: 'http://localhost:3000',
+
+  /** Keycloak configuration */
+  keycloak: {
+    issuer: 'https://ssovnt.xfactory.vn/auth/',
+    realm: 'fcim_cloud',
+    clientId: 'fcim_cloud',
+  },
 };

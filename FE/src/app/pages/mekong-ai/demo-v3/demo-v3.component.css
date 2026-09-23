@@ -811,10 +811,10 @@
 }
 
 .form-input.ai {
-  background: #f0f4ff;
-  border-color: var(--v3-brand-border, #c7d2fe);
-  color: var(--v3-brand2, #4338ca);
-  font-weight: 500;
+  background: #ffffff;
+  border-color: var(--v3-line2, #cbd5e1);
+  color: var(--v3-ink);
+  font-weight: 400;
 }
 
 .form-input.ro,
@@ -847,8 +847,8 @@
 }
 
 .ta-field.ai {
-  background: #f0f4ff;
-  border-color: var(--v3-brand-border, #c7d2fe);
+  background: #ffffff;
+  border-color: var(--v3-line2, #cbd5e1);
 }
 
 .radio-row {
@@ -869,6 +869,20 @@
 
 .radio-row input[type="radio"] {
   cursor: pointer;
+}
+
+.radio-group {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.radio-label {
+  font-size: 13px;
+  color: var(--v3-ink);
+  cursor: pointer;
+  font-weight: 400;
+  margin-left: 4px;
 }
 
 /* ── Bản Vẽ Tab ───────────────────────────────────────────── */
@@ -1220,6 +1234,13 @@ textarea.form-input {
   font-size: 12px;
 }
 
+.email-content-textarea {
+  min-height: 200px !important;
+  max-height: 500px !important;
+  resize: vertical !important;
+  line-height: 1.6;
+}
+
 .bv-select {
   cursor: pointer;
   text-align: center;
@@ -1505,6 +1526,790 @@ textarea.form-input {
   border-radius: 3px;
 }
 
+/* ── Tab F3: Nguyên vật liệu ──────────────────────────────── */
+.tab-f3 {
+  padding: 0 !important;
+  background: #f8fafc !important;
+}
+
+.f3-container {
+  display: flex;
+  height: calc(100vh - 200px);
+  gap: 0;
+}
+
+.f3-left {
+  flex: 1;
+  overflow-y: auto;
+  padding: 16px;
+  background: #f8fafc;
+}
+
+.f3-right {
+  width: 45%;
+  flex-shrink: 0;
+  border-left: 1px solid #e2e8f0;
+  background: #ffffff;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Selector */
+.f3-selector {
+  margin-bottom: 16px;
+  padding: 12px 16px;
+  background: #ffffff;
+  border-radius: 8px;
+  border: 1px solid #e2e8f0;
+}
+
+.f3-selector-label {
+  display: block;
+  font-size: 11px;
+  font-weight: 600;
+  color: #64748b;
+  margin-bottom: 8px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.f3-select {
+  width: 100%;
+  height: 38px;
+  padding: 0 12px;
+  border: 1px solid #cbd5e1;
+  border-radius: 6px;
+  font-size: 13px;
+  color: #1e293b;
+  background: #ffffff;
+  outline: none;
+  transition: border-color 0.15s;
+  cursor: pointer;
+}
+
+.f3-select:focus {
+  border-color: #4f46e5;
+  box-shadow: 0 0 0 2px rgba(79, 70, 229, 0.1);
+}
+
+.f3-select option {
+  padding: 8px;
+}
+
+/* Section */
+.f3-section {
+  margin-bottom: 16px;
+}
+
+.f3-panel-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  color: #1e293b;
+}
+
+.f3-panel-title i {
+  font-size: 14px;
+  color: #64748b;
+}
+
+/* Form */
+.f3-form {
+  padding: 16px;
+}
+
+.f3-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.f3-row-2 {
+  grid-template-columns: 1fr 1fr;
+}
+
+.f3-row-3 {
+  grid-template-columns: 1fr 1fr 1fr;
+}
+
+.f3-row-4 {
+  grid-template-columns: 1fr 1fr 1fr 1fr;
+}
+
+.f3-row-5 {
+  grid-template-columns: 1fr 1fr 1fr 1fr 1fr;
+}
+
+.f3-row-full {
+  grid-template-columns: 1fr;
+}
+
+.f3-field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.f3-field label {
+  font-size: 11px;
+  font-weight: 600;
+  color: #64748b;
+}
+
+.f3-input {
+  width: 100%;
+  height: 32px;
+  padding: 0 10px;
+  border: 1px solid #cbd5e1;
+  border-radius: 4px;
+  font-size: 12px;
+  color: #1e293b;
+  background: #ffffff;
+}
+
+.f3-input:focus {
+  outline: none;
+  border-color: #4f46e5;
+  box-shadow: 0 0 0 2px rgba(79, 70, 229, 0.1);
+}
+
+.f3-input-right {
+  text-align: right;
+}
+
+.f3-textarea {
+  width: 100%;
+  min-height: 60px;
+  padding: 8px 10px;
+  border: 1px solid #cbd5e1;
+  border-radius: 4px;
+  font-size: 12px;
+  color: #1e293b;
+  background: #ffffff;
+  resize: vertical;
+  font-family: inherit;
+}
+
+.f3-textarea:focus {
+  outline: none;
+  border-color: #4f46e5;
+  box-shadow: 0 0 0 2px rgba(79, 70, 229, 0.1);
+}
+
+/* Material Spec */
+.f3-material-spec {
+  background: #fef8d0;
+  padding: 16px;
+  border-radius: 6px;
+}
+
+.f3-subsection-title {
+  font-size: 13px;
+  font-weight: 700;
+  color: #1e293b;
+  margin: 16px 0 12px 0;
+}
+
+.f3-calc-section {
+  background: #dcfce7;
+  padding: 16px;
+  border-radius: 6px;
+  margin-top: 16px;
+}
+
+.f3-calc-title {
+  font-size: 13px;
+  font-weight: 700;
+  color: #1e293b;
+  margin: 0 0 12px 0;
+}
+
+.f3-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 16px;
+}
+
+/* Table */
+.f3-table-wrap {
+  margin-top: 12px;
+}
+
+.f3-td-center {
+  text-align: center !important;
+}
+
+.f3-td-right {
+  text-align: right !important;
+}
+
+.f3-empty {
+  text-align: center;
+  padding: 32px;
+  color: #94a3b8;
+  font-size: 12px;
+}
+
+/* PDF Preview */
+.f3-pdf-container {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+.f3-pdf-header {
+  padding: 12px 16px;
+  border-bottom: 1px solid #e2e8f0;
+  background: #f8fafc;
+  flex-shrink: 0;
+}
+
+.f3-pdf-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  font-weight: 600;
+  color: #1e293b;
+  font-family: 'Courier New', monospace;
+}
+
+.f3-pdf-title i {
+  color: #dc2626;
+  font-size: 16px;
+}
+
+.f3-pdf-body {
+  flex: 1;
+  overflow: hidden;
+  position: relative;
+  background: #0f172a;
+}
+
+.f3-pdf-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  color: #64748b;
+}
+
+.f3-pdf-empty i {
+  font-size: 48px;
+  margin-bottom: 16px;
+  opacity: 0.3;
+}
+
+.f3-pdf-empty p {
+  font-size: 13px;
+  margin: 0;
+}
+
+/* Checkbox group for special machining */
+.f3-td-center {
+  text-align: center !important;
+}
+
+/* ── Tab F4: Khối lượng sản phẩm ──────────────────────────── */
+.f4-calc-section {
+  background: rgba(254, 252, 191, 0.3);
+  border: 1px solid #fde047;
+}
+
+.f4-calc-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+}
+
+.f4-calc-item {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.f4-calc-item label {
+  font-size: 11px;
+  font-weight: 600;
+  color: #64748b;
+}
+
+.f4-table-wrap {
+  width: 100%;
+  overflow-x: auto;
+}
+
+.f4-input {
+  width: 100%;
+  height: 32px;
+  padding: 0 8px;
+  border: 1px solid #cbd5e1;
+  border-radius: 4px;
+  font-size: 12px;
+  color: #1e293b;
+  background: #ffffff;
+  box-sizing: border-box;
+}
+
+.f4-input:focus {
+  outline: none;
+  border-color: #4f46e5;
+  box-shadow: 0 0 0 2px rgba(79, 70, 229, 0.1);
+}
+
+.f4-td-center {
+  text-align: center !important;
+}
+
+.f4-btn-icon {
+  background: transparent;
+  border: 1px solid #cbd5e1;
+  border-radius: 4px;
+  padding: 4px 8px;
+  cursor: pointer;
+  color: #64748b;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.15s;
+}
+
+.f4-btn-icon:hover {
+  background: #f1f5f9;
+  border-color: #94a3b8;
+  color: #1e293b;
+}
+
+.f4-btn-copy i {
+  font-size: 12px;
+}
+
+.f4-orange-section {
+  border-left: 4px solid #f97316;
+  background: rgba(254, 243, 199, 0.15);
+}
+
+.f4-red-section {
+  border-left: 4px solid #ef4444;
+  background: rgba(254, 226, 226, 0.15);
+}
+
+.f4-blue-section {
+  border-left: 4px solid #3b82f6;
+  background: rgba(219, 234, 254, 0.15);
+}
+
+.f4-info-section {
+  border-left: 4px solid #8b5cf6;
+  background: rgba(237, 233, 254, 0.15);
+}
+
+.f4-green-section {
+  border-left: 4px solid #10b981;
+  background: rgba(209, 250, 229, 0.15);
+}
+
+.f4-subsection-title {
+  font-size: 12px;
+  font-weight: 700;
+  color: #1e293b;
+  margin-bottom: 12px;
+}
+
+/* PrimeNG Overrides for F3 */
+:host ::ng-deep .f3-section .p-panel {
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+}
+
+:host ::ng-deep .f3-section .p-panel .p-panel-header {
+  background: #ffffff;
+  border: none;
+  padding: 4px 16px;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+:host ::ng-deep .f3-section .p-panel .p-panel-content {
+  border: none;
+  padding: 0;
+}
+
+:host ::ng-deep .f4-info-section .p-panel-content {
+  background: rgba(237, 233, 254, 0.3) !important;
+}
+
+:host ::ng-deep .f4-orange-section .p-panel-content {
+  background: rgba(254, 243, 199, 0.3) !important;
+}
+
+:host ::ng-deep .f4-green-section .p-panel-content {
+  background: rgba(209, 250, 229, 0.3) !important;
+}
+
+:host ::ng-deep .f4-calc-section .p-panel-content {
+  background: rgba(254, 252, 191, 0.4) !important;
+}
+
+:host ::ng-deep .f4-red-section .p-panel-content {
+  background: rgba(254, 226, 226, 0.3) !important;
+}
+
+:host ::ng-deep .f4-blue-section .p-panel-content {
+  background: rgba(219, 234, 254, 0.3) !important;
+}
+
+:host ::ng-deep .f3-material-spec .p-inputtext,
+:host ::ng-deep .f3-material-spec .p-dropdown {
+  height: 32px;
+  font-size: 12px;
+}
+
+:host ::ng-deep .f3-table-wrap .p-datatable .p-datatable-thead > tr > th {
+  background: #f1f5f9;
+  color: #1e293b;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 8px;
+  border: 1px solid #e2e8f0;
+}
+
+:host ::ng-deep .f3-table-wrap .p-datatable .p-datatable-tbody > tr > td {
+  font-size: 12px;
+  padding: 6px 8px;
+  border: 1px solid #e2e8f0;
+}
+
+/* Email content textarea */
+.email-content-textarea {
+  min-height: 200px !important;
+  max-height: 500px !important;
+  resize: vertical !important;
+  line-height: 1.6 !important;
+}
+
+/* ── Tab F5: Quy trình gia công ──────────────────────────────── */
+.tab-f5 {
+  padding: 0 !important;
+  background: #f8fafc !important;
+  height: 100%;
+}
+
+.f5-container {
+  display: flex;
+  height: calc(100vh - 200px);
+  gap: 0;
+}
+
+.f5-left {
+  flex: 1;
+  overflow-y: auto;
+  padding: 16px;
+  background: #f8fafc;
+}
+
+.f5-right {
+  width: 45%;
+  flex-shrink: 0;
+  border-left: 1px solid #e2e8f0;
+  background: #ffffff;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Table header */
+.f5-table-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 16px;
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-bottom: none;
+  border-radius: 8px 8px 0 0;
+}
+
+.f5-table-title {
+  font-size: 13px;
+  font-weight: 700;
+  color: #1e293b;
+  margin: 0;
+}
+
+.btn-f5-add {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border: 1px solid #01aba8;
+  border-radius: 4px;
+  background: transparent;
+  color: #01aba8;
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.btn-f5-add:hover {
+  background: #01aba8;
+  color: #ffffff;
+}
+
+.btn-f5-add i {
+  font-size: 12px;
+}
+
+/* Table */
+.f5-table-wrap {
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 0 0 8px 8px;
+}
+
+.f5-input-cell {
+  width: 100%;
+  border: 1px solid transparent;
+  padding: 6px 8px;
+  font-size: 12px;
+  color: #1e293b;
+  background: transparent;
+  transition: all 0.15s;
+}
+
+.f5-input-cell:focus {
+  outline: none;
+  border-color: #4f46e5;
+  background: #ffffff;
+  box-shadow: 0 0 0 2px rgba(79, 70, 229, 0.1);
+}
+
+.btn-f5-delete {
+  background: transparent;
+  border: none;
+  color: #dc2626;
+  cursor: pointer;
+  padding: 4px 8px;
+  border-radius: 4px;
+  transition: all 0.15s;
+}
+
+.btn-f5-delete:hover {
+  background: #fee2e2;
+}
+
+.btn-f5-delete i {
+  font-size: 14px;
+}
+
+.f5-empty {
+  text-align: center;
+  padding: 32px;
+  color: #94a3b8;
+  font-size: 12px;
+}
+
+/* Special machining */
+.f5-special-header {
+  background: #01aba8;
+  padding: 8px 12px;
+  border-radius: 8px 8px 0 0;
+}
+
+.f5-special-header h4 {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 600;
+  color: #ffffff;
+}
+
+.f5-special-checkboxes {
+  display: flex;
+  justify-content: space-between;
+  padding: 12px 16px;
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-top: none;
+  border-radius: 0 0 8px 8px;
+}
+
+.f5-checkbox-label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+  font-size: 12px;
+  color: #1e293b;
+  font-weight: 500;
+}
+
+/* Variables table */
+.f5-subsection-title {
+  font-size: 13px;
+  font-weight: 700;
+  color: #1e293b;
+  margin: 0 0 12px 0;
+}
+
+.f5-variables-table {
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+/* PDF Preview */
+.f5-pdf-container {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+.f5-pdf-header {
+  padding: 12px 16px;
+  border-bottom: 1px solid #e2e8f0;
+  background: #f8fafc;
+  flex-shrink: 0;
+}
+
+.f5-pdf-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  font-weight: 600;
+  color: #1e293b;
+  font-family: 'Courier New', monospace;
+}
+
+.f5-pdf-title i {
+  color: #dc2626;
+  font-size: 16px;
+}
+
+.f5-pdf-body {
+  flex: 1;
+  overflow: hidden;
+  position: relative;
+  background: #0f172a;
+}
+
+.f5-pdf-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  color: #64748b;
+}
+
+.f5-pdf-empty i {
+  font-size: 48px;
+  margin-bottom: 16px;
+  opacity: 0.3;
+}
+
+.f5-pdf-empty p {
+  font-size: 13px;
+  margin: 0;
+}
+
+/* PrimeNG Overrides for F5 */
+:host ::ng-deep .f5-info-section .p-panel {
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+}
+
+:host ::ng-deep .f5-info-section .p-panel .p-panel-header {
+  background: #ffffff;
+  border: none;
+  padding: 12px 16px;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+:host ::ng-deep .f5-info-section .p-panel .p-panel-content {
+  border: none;
+  padding: 0;
+  background: rgba(237, 233, 254, 0.3) !important;
+}
+
+:host ::ng-deep .f5-notes-section .p-panel {
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+}
+
+:host ::ng-deep .f5-notes-section .p-panel .p-panel-header {
+  background: #ffffff;
+  border: none;
+  padding: 12px 16px;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+:host ::ng-deep .f5-notes-section .p-panel .p-panel-content {
+  border: none;
+  padding: 0;
+  background: rgba(254, 243, 199, 0.3) !important;
+}
+
+:host ::ng-deep .f5-table .p-datatable-thead > tr > th {
+  background: #f1f5f9;
+  color: #1e293b;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 8px;
+  border: 1px solid #e2e8f0;
+}
+
+:host ::ng-deep .f5-table .p-datatable-tbody > tr > td {
+  font-size: 12px;
+  padding: 4px;
+  border: 1px solid #e2e8f0;
+}
+
+:host ::ng-deep .f5-table .p-datatable-tbody > tr:hover {
+  background: rgba(79, 70, 229, 0.04) !important;
+}
+
+:host ::ng-deep .f5-table .p-datatable-tfoot > tr > td {
+  background: #fafafa;
+  font-weight: 600;
+  border: 1px solid #e2e8f0;
+}
+
+:host ::ng-deep .f5-variables-table .p-datatable-thead > tr > th {
+  background: #f1f5f9;
+  color: #1e293b;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 8px;
+  border: 1px solid #e2e8f0;
+}
+
+:host ::ng-deep .f5-variables-table .p-datatable-tbody > tr > td {
+  font-size: 12px;
+  padding: 8px;
+  border: 1px solid #e2e8f0;
+}
+
+:host ::ng-deep .f5-variables-table-custom .p-datatable-tbody > tr > td {
+  padding: 6px 8px !important;
+}
+
+:host ::ng-deep .f5-variables-table .p-dropdown {
+  height: 32px;
+  font-size: 12px;
+}
+
+:host ::ng-deep .f5-variables-table .p-dropdown .p-dropdown-label {
+  padding: 0.4rem 0.75rem;
+}
+
 /* ── Responsive ─────────────────────────────────────────────── */
 @media (max-width: 768px) {
   .app-sidebar {
@@ -1519,6 +2324,10 @@ textarea.form-input {
 
   .bv-split-preview {
     display: none;
+  }
+
+  .drawing-info-grid {
+    grid-template-columns: 1fr;
   }
 }
 

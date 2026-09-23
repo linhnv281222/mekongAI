@@ -2,10 +2,10 @@
  * Email / Job utilities — date formatting, classify output normalization, job→email mapping
  */
 
-import { Job } from '../models/job.model';
-import { EmailRow } from '../models/email.model';
-import { ClassifyOutput } from '../models/job.model';
-import { UiSchema } from '../models/prompt.model';
+import { Job } from '../../models/mekong-ai/job.model';
+import { EmailRow } from '../../models/mekong-ai/email.model';
+import { ClassifyOutput } from '../../models/mekong-ai/job.model';
+import { UiSchema } from '../../models/mekong-ai/prompt.model';
 
 // ── Date formatters ──────────────────────────────────────────
 

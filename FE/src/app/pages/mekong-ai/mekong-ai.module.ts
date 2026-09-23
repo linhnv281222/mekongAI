@@ -34,15 +34,17 @@ import { SplitterModule } from 'primeng/splitter';
 import { InputSwitchModule } from 'primeng/inputswitch';
 import { VirtualScrollerModule } from 'primeng/virtualscroller';
 import { TreeModule } from 'primeng/tree';
+import { CheckboxModule } from 'primeng/checkbox';
+import { PanelModule } from 'primeng/panel';
 
 import { MessageService } from 'primeng/api';
 import { ConfirmationService } from 'primeng/api';
 import { MekongAiRoutingModule } from './mekong-ai-routing.module';
 import { AdminPromptsComponent } from './admin-prompts/admin-prompts.component';
 import { AdminTokenStatsComponent } from './admin-token-stats/admin-token-stats.component';
-import { SafeUrlPipe } from './pipes/safe-url.pipe';
+import { SafeUrlPipe } from '../../shared/pipes/safe-url.pipe';
 import { DemoV3Component } from './demo-v3/demo-v3.component';
-import { DemoV3Service } from './demo-v3/demo-v3.service';
+import { DemoV3Service } from '../../services/mekong-ai/demo-v3.service';
 import { ChatbotComponent } from './chatbot/chatbot.component';
 import { SharedComponentsModule } from '../../shared/shared-components.module';
 import { AppPdfViewerComponent } from './pdf-viewer/pdf-viewer.component';
@@ -84,6 +86,8 @@ import { TokenUsageComponent } from './components/token-usage/token-usage.compon
     SplitterModule,
     VirtualScrollerModule,
     TreeModule,
+    CheckboxModule,
+    PanelModule,
     RouterModule,
     SharedComponentsModule,
     MekongAiRoutingModule,
