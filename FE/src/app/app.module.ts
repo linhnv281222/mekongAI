@@ -6,16 +6,33 @@ import { HttpClient } from '@angular/common/http';
 import { MessagesModule } from 'primeng/messages';
 import { RouterModule } from '@angular/router';
 import { TranslateModule, TranslateLoader } from '@ngx-translate/core';
-import { KeycloakAngularModule, KeycloakService } from 'keycloak-angular';
 import { AppRoutingModule } from './app-routing.module';
 import { AppComponent } from './app.component';
-import { initializer } from './app-init';
 import { MekongAiModule } from './pages/mekong-ai/mekong-ai.module';
 import { TokenInterceptor } from './services/interceptors/token-interceptor';
+import { AuthService } from './services/mekong-ai/auth.service';
 
 export function translateLoaderFactory(http: HttpClient): TranslateLoader {
   return {
     getTranslation: (lang: string) => http.get(`/assets/i18n/${lang}.json`),
+  };
+}
+
+export function initializeApp(authService: AuthService): () => Promise<any> {
+  return (): Promise<any> => {
+    return new Promise((resolve, reject) => {
+      authService.getToken().subscribe({
+        next: () => {
+          console.log('Token fetched successfully');
+          resolve(true);
+        },
+        error: (error) => {
+          console.error('Failed to fetch token:', error);
+          // Resolve anyway to allow app to start
+          resolve(true);
+        }
+      });
+    });
   };
 }
 
@@ -26,7 +43,6 @@ export function translateLoaderFactory(http: HttpClient): TranslateLoader {
     AppRoutingModule,
     BrowserModule,
     BrowserAnimationsModule,
-    KeycloakAngularModule,
     MessagesModule,
     RouterModule,
     TranslateModule.forRoot({
@@ -40,11 +56,10 @@ export function translateLoaderFactory(http: HttpClient): TranslateLoader {
     MekongAiModule,
   ],
   providers: [
-    KeycloakService,
     {
       provide: APP_INITIALIZER,
-      useFactory: initializer,
-      deps: [KeycloakService],
+      useFactory: initializeApp,
+      deps: [AuthService],
       multi: true,
     },
     {
