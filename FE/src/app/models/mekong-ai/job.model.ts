@@ -6,6 +6,7 @@ import { Drawing } from './drawing.model';
 export interface Job {
   // Backend fields (from /jobs API)
   id: number | string;
+  erp_quote_id?: number | string | null;
   email_id?: string;           // from API response
   username?: string;           // from API response - sender name
   sender?: string;             // alias for username

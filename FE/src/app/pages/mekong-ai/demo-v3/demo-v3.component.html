@@ -293,6 +293,11 @@
             value="Agent"
             severity="warning"
           ></p-tag>
+          <p-tag
+            *ngIf="activeEmail?.erp_quote_id"
+            [value]="'ERP Quote ID: ' + activeEmail.erp_quote_id"
+            severity="success"
+          ></p-tag>
         </div>
         <div class="e-actions">
           <app-token-usage [data]="activeEmail" [compact]="true"></app-token-usage>
@@ -2045,7 +2050,7 @@
           styleClass="p-button-warning"
           (onClick)="pushErp()"
           [loading]="pushingErp"
-          [disabled]="pushingErp || drawingLines.length === 0"
+          [disabled]="pushingErp || drawingLines.length === 0 || activeEmail?.erp_quote_id"
         ></p-button>
         <p-button
           label="Hủy"

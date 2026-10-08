@@ -14,7 +14,7 @@ import {
 } from '../utils/email.util';
 import { drawingToLine, DrawingLine } from '../utils/drawing.util';
 
-const JOBS_POLL_MS = 8000;
+const JOBS_POLL_MS = 800000;
 
 @Injectable({
   providedIn: 'root',

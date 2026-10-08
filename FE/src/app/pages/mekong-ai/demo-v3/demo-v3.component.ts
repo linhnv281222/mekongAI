@@ -844,6 +844,14 @@ export class DemoV3Component implements OnInit, OnDestroy, AfterViewChecked {
 
     try {
       await this.svc.pushToErp(this.activeEmail.id);
+      const job = await this.svc.loadJobDetail(this.activeEmail.id);
+      if (job) {
+        const updatedEmail = this.svc.buildFullEmailRow(job, this.activeEmail);
+        this.emails = this.emails.map((email) =>
+          email.id === updatedEmail.id ? updatedEmail : email
+        );
+        this.activeEmail = updatedEmail;
+      }
       this.messageService.add({
         severity: 'success',
         summary: '✓ Đã push ERP!',

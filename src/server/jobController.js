@@ -59,25 +59,51 @@ async function createErpWorkflowInput(job, res) {
 
   const tempPath = path.join(os.tmpdir(), filename);
   await fs.writeFileSync(tempPath, fileResult.buf);
+  // const filename = typeof pdfAttachment === "string" ? pdfAttachment : pdfAttachment.name;
+  // const tempPath = "c:\\Users\\Admin\\Downloads\\test.pdf"; // Hardcoded for testing
   console.log(`[createErpWorkflowInput] Saved PDF to temp path: ${tempPath}`);
-  const classify = job.classify_output || {
-    ngon_ngu: job.ngon_ngu,
-    ten_cong_ty: job.ten_cong_ty,
-    han_giao_hang: job.han_giao,
-    hinh_thuc_giao: job.hinh_thuc_giao,
-    xu_ly_be_mat: job.xu_ly_be_mat,
+  const classifyOutput =
+    job.classify_output && typeof job.classify_output === "object"
+      ? job.classify_output
+      : {};
+  const emailInfo =
+    classifyOutput.email_info && typeof classifyOutput.email_info === "object"
+      ? classifyOutput.email_info
+      : {};
+  const classify = {
+    ...classifyOutput,
+    ngon_ngu: emailInfo.ngon_ngu || classifyOutput.ngon_ngu || job.ngon_ngu,
+    ten_cong_ty:
+      emailInfo.ten_cong_ty ||
+      classifyOutput.ten_cong_ty ||
+      job.ten_cong_ty ||
+      job.sender_company,
+    han_giao_hang:
+      classifyOutput.han_giao_hang ||
+      emailInfo.han_giao_hang ||
+      job.han_giao ||
+      job.han_giao_hang,
+    hinh_thuc_giao:
+      classifyOutput.hinh_thuc_giao ||
+      emailInfo.hinh_thuc_giao ||
+      job.hinh_thuc_giao,
+    xu_ly_be_mat:
+      classifyOutput.xu_ly_be_mat ?? job.xu_ly_be_mat,
+    co_van_chuyen:
+      classifyOutput.co_van_chuyen ?? job.co_van_chuyen,
   };
   const header = buildQuotationHeader(
     {
       date: job.created_at,
-      senderEmail: job.sender_email,
+      senderEmail: emailInfo.email_khach_hang || job.sender_email,
       subject: job.subject,
     },
     classify,
     {
       company_code: 1,
-      customer_code: job.ma_khach_hang || 64,
+      customer_code: 64,
       quotation_currency: classify.quotation_currency,
+      job_id: job.id
     }
   );
 
@@ -539,7 +565,7 @@ router.post("/:id/push-erp", async (req, res) => {
       error: error.message || "Push ERP thất bại",
     });
   } finally {
-    if (tempPath) fs.unlink(tempPath, () => {});
+    // if (tempPath) fs.unlink(tempPath, () => {});
   }
 });
 

@@ -7,6 +7,7 @@ import { ClassifyOutput } from './job.model';
 export interface EmailRow {
   id: number | string;
   jobId?: number | string;
+  erp_quote_id?: number | string | null;
   from: string;
   email: string;
   subject: string;

@@ -2,6 +2,7 @@ import fs from "fs";
 import path from "path";
 import fetch, { Blob, FormData } from "node-fetch";
 import { erpCfg } from "../libs/config.js";
+import { updateJob } from "../data/jobStore.js";
 
 const DEFAULT_SSO_URL =
 	"https://sso.xfactory.vn/auth/realms/fcim_cloud/protocol/openid-connect/token";
@@ -135,6 +136,34 @@ export async function prepareQuotationMasterData(filters = {}) {
 export function buildQuotationHeader(emailData = {}, classify = {}, master = {}) {
 	const language = { vi: "Tiếng Việt", en: "Tiếng Anh", ja: "Tiếng Nhật" }[classify.ngon_ngu] || "Tiếng Nhật";
 	const currency = { vi: "VND", en: "USD", ja: "JPY" }[classify.ngon_ngu] || "VND";
+	const deliveryDate = classify.han_giao_hang
+		? `Hạn giao: ${classify.han_giao_hang}`
+		: "";
+	const transportTerms = classify.hinh_thuc_giao || "";
+	const terms = classify.han_giao_hang || classify.hinh_thuc_giao
+		? JSON.stringify([
+				{
+					languageId: "vi",
+					terms: [
+						{ termName: "1", termContent: deliveryDate },
+						{ termName: "2", termContent: transportTerms },
+					],
+				},
+				{ languageId: "en", terms: [] },
+				{
+					languageId: "jp",
+					terms: [
+						{
+							termName: "1",
+							termContent: classify.han_giao_hang
+								? `納期：${classify.han_giao_hang}`
+								: "",
+						},
+						{ termName: "2", termContent: transportTerms },
+					],
+				},
+			])
+		: JSON.stringify([]);
 	return {
 		id: null,
 		quota_code: null,
@@ -157,12 +186,16 @@ export function buildQuotationHeader(emailData = {}, classify = {}, master = {})
 		company_code: master.company_code ?? 1,
 		customer_code: master.customer_code ?? 64,
 		transport_method: master.transport_method ?? null,
-		has_transport: Boolean(classify.hinh_thuc_giao),
+		has_transport:
+			classify.co_van_chuyen == null
+				? Boolean(classify.hinh_thuc_giao)
+				: classify.co_van_chuyen === true,
 		surface_treatment: classify.xu_ly_be_mat === true,
 		unit: "PCS",
-		term: master.term || JSON.stringify([]),
+		term: master.term ?? terms,
 		assignment: null,
 		_agent_note: `Mekong AI — ${emailData.senderEmail || ""} — ${emailData.subject || ""}`,
+		job_id: master.job_id || null,
 	};
 }
 
@@ -262,39 +295,40 @@ export async function runQuotationWorkflow({ header, drawing, f1, f3, f4, f5 }) 
 	const quotaCode = quote.quota_code || quote.data?.quota_code || (typeof quote.data === "string" ? quote.data : null);
 	if (!quotaCode) throw new Error("ERP không trả về quota_code sau khi tạo phiếu báo giá");
     console.log("Tạo phiếu báo giá thành công Quota code:", quotaCode);
+	updateJob(Number(header.job_id),{erp_quote_id: quotaCode, status: "ERP_Created" });
 	const imported = drawing?.pdfPath ? await importDrawingPdf(drawing) : null;
     // console.log("Drawing PDF imported:", imported);
     // Lấy dữ liệu từ các bước trước và ghép thành payload F1.
     
 	const f1Items = imported?.data;
     
-    // buildF1Items({
-	// 	drawings: f1?.drawings || drawing?.drawings || [],
-	// 	imported,
-	// 	items: f1?.items,
-	// });
+    buildF1Items({
+		drawings: f1?.drawings || drawing?.drawings || [],
+		imported,
+		items: f1?.items,
+	});
     console.log("Inserting quotation items for quotaCode:", quotaCode, "with items:", f1Items);
 	const inserted = f1Items.length ? await insertQuotationItems(quotaCode, f1Items) : null;
-	// const items = await getQuotationItems(quotaCode);
-	// const itemList = Array.isArray(items) ? items : items.data || items.rows || [];
+	const items = await getQuotationItems(quotaCode);
+	const itemList = Array.isArray(items) ? items : items.data || items.rows || [];
 
 	const result = { quote, quotaCode, imported, f1Items, inserted };
     console.log("Workflow results:", { quote, quotaCode, imported, inserted });
 	// if (f1?.analyze !== false && itemList.length > 0) {
 	// 	result.f1Status = await batchAnalyzeQuotationItems(quotaCode, itemList.map((item) => item.id));
 	// }
-	// if (f1?.blueprintCode) result.blueprintCode = await updateBlueprintCode(f1.blueprintCode);
-	// if (f1?.quotationBlueprint) result.quotationBlueprint = await saveQuotationBlueprint(f1.quotationBlueprint);
-	// if (f3) result.f3 = await Promise.all((f3.items || []).map((item) => updateQuotationBlueprintF3(item.id, item.payload)));
-	// if (f4?.volumes) result.volumes = await upsertQuotationVolumes(f4.volumes);
-	// if (f4?.items) result.f4 = await Promise.all((f4.items || []).map((item) => updateQuotationBlueprintF4(item.id, item.payload)));
-	// if (f5) {
-	// 	if (f5.processes) result.processes = await Promise.all(f5.processes.map((item) => searchTechnologyProcesses(item)));
-	// 	if (f5.operations) result.operations = await Promise.all(f5.operations.map((item) => getTechnologyProcessOperations(item)));
-	// 	if (f5.blueprints) result.processBlueprints = await Promise.all(f5.blueprints.map((item) => replaceTechnologyProcessBlueprint(item.internalCode, item.records)));
-	// 	if (f5.additionalData) result.additionalData = await updateQuotationAdditionalData(f5.additionalData);
-	// 	if (f5.items) result.f5 = await Promise.all(f5.items.map((item) => updateQuotationItemData(item.id, item.payload)));
-	// 	if (f5.syncCodes) result.synced = await Promise.all(f5.syncCodes.map(syncQuotationItemFromTechnology));
-	// }
+	if (f1?.blueprintCode) result.blueprintCode = await updateBlueprintCode(f1.blueprintCode);
+	if (f1?.quotationBlueprint) result.quotationBlueprint = await saveQuotationBlueprint(f1.quotationBlueprint);
+	if (f3) result.f3 = await Promise.all((f3.items || []).map((item) => updateQuotationBlueprintF3(item.id, item.payload)));
+	if (f4?.volumes) result.volumes = await upsertQuotationVolumes(f4.volumes);
+	if (f4?.items) result.f4 = await Promise.all((f4.items || []).map((item) => updateQuotationBlueprintF4(item.id, item.payload)));
+	if (f5) {
+		if (f5.processes) result.processes = await Promise.all(f5.processes.map((item) => searchTechnologyProcesses(item)));
+		if (f5.operations) result.operations = await Promise.all(f5.operations.map((item) => getTechnologyProcessOperations(item)));
+		if (f5.blueprints) result.processBlueprints = await Promise.all(f5.blueprints.map((item) => replaceTechnologyProcessBlueprint(item.internalCode, item.records)));
+		if (f5.additionalData) result.additionalData = await updateQuotationAdditionalData(f5.additionalData);
+		if (f5.items) result.f5 = await Promise.all(f5.items.map((item) => updateQuotationItemData(item.id, item.payload)));
+		if (f5.syncCodes) result.synced = await Promise.all(f5.syncCodes.map(syncQuotationItemFromTechnology));
+	}
 	return result;
 }
